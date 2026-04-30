@@ -51,7 +51,7 @@ export class AuthService {
         const {password,...safeUser} = user.toObject()
 
         const payload = {
-            id:user._id,
+            sub:user._id,
             email:user.email,
             role:user.role,
         }

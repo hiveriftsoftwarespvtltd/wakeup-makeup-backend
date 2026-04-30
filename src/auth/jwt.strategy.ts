@@ -1,11 +1,14 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
+import { InjectModel } from '@nestjs/mongoose';
+import { User, UserDocument } from 'src/user/schema/user.schema';
+import { Model } from 'mongoose';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService) {
+  constructor(configService: ConfigService,@InjectModel(User.name) private userModel:Model<UserDocument>) {
     const secret = configService.get<string>('JWT_SECRET');
 
     if (!secret) {
@@ -20,6 +23,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    return payload; // attaches to req.user
+
+    if(!payload.sub){
+      throw new UnauthorizedException()
+    }
+
+    const user = await this.userModel.findById(payload.sub).select("email role isActive tenantId")
+    if(!user){
+      throw new UnauthorizedException("User not found")
+    }
+    if(!user?.isActive){
+       throw new UnauthorizedException("User is not active")
+    }
+
+    return {
+      _id:payload.sub,
+      email:payload.email,
+      role:payload.role
+    }
   }
 }

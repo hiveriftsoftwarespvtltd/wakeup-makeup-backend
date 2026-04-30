@@ -7,6 +7,7 @@ import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
 import { VendorModule } from './vendor/vendor.module';
 import { DocumentModule } from './document/document.module';
+import { ProductModule } from './product/product.module';
 
 @Module({
   imports: [
@@ -22,13 +23,14 @@ import { DocumentModule } from './document/document.module';
         if(!uri){
           throw new Error("MNGO_URI NOT FOUND IN ENV")
         }
-        return {uri,}
+        return {uri}
       }
     }),
     UserModule,
     AuthModule,
     VendorModule,
-    DocumentModule
+    DocumentModule,
+    ProductModule
   ],
   controllers: [AppController],
   providers: [AppService],

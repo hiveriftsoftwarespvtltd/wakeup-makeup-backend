@@ -24,11 +24,11 @@ export class Vendor {
   @Prop()
   email?: string;
 
-  @Prop()
-  logo?: string;
+  @Prop({type:Types.ObjectId , ref:'Media'})
+  logo?: Types.ObjectId
 
-  @Prop()
-  banner?: string;
+  @Prop({type:Types.ObjectId , ref:'Media'})
+  banner?: Types.ObjectId;
 
   @Prop({ type: [Types.ObjectId], ref: 'User', default: [] })
   staff!: Types.ObjectId[];

@@ -24,6 +24,9 @@ export class User {
   @Prop({ required: true, unique: true })
   email!: string;
 
+  @Prop({type:Types.ObjectId,ref:"Media"})
+  avatar?:Types.ObjectId
+
 
   @Prop()
   password?: string;
