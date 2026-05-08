@@ -1,6 +1,8 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Types } from "mongoose";
 
+
+export type VendorDocument = Vendor & Document;
 @Schema({ timestamps: true })
 export class Vendor {
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
@@ -39,7 +41,9 @@ export class Vendor {
   @Prop({ default: 0 })
   commissionRate!: number;
 
-  @Prop({ default: true })
+  
+
+  @Prop({ default: false })
   isActive!: boolean;
 
   @Prop({ default: false })
@@ -48,6 +52,3 @@ export class Vendor {
 
 export const VendorSchema = SchemaFactory.createForClass(Vendor);
 
-// Indexes
-VendorSchema.index({ ownerId: 1 });
-VendorSchema.index({ slug: 1 }, { unique: true });

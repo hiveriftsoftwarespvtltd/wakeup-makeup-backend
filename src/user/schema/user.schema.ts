@@ -61,9 +61,12 @@ export class User {
   @Prop({ default: true })
   isActive!: boolean;
 
+  @Prop({default:false})
+  isDeleted!:boolean
+
  
   @Prop({ type: Types.ObjectId, ref: 'Tenant' })
-  tenantId?: Types.ObjectId;
+  vendorId?: Types.ObjectId;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

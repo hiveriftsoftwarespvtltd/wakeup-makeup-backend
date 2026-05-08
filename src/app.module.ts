@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 import { VendorModule } from './vendor/vendor.module';
 import { DocumentModule } from './document/document.module';
 import { ProductModule } from './product/product.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -30,7 +31,8 @@ import { ProductModule } from './product/product.module';
     AuthModule,
     VendorModule,
     DocumentModule,
-    ProductModule
+    ProductModule,
+    AdminModule
   ],
   controllers: [AppController],
   providers: [AppService],

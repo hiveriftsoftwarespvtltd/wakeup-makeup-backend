@@ -18,7 +18,7 @@ export class CategoryAttribute {
   @Prop({ default: false })
   isRequired!: boolean;
 
-  @Prop({ default: true })
+  @Prop({ default: false })
   isVariant!: boolean; 
   // true = used in product variants (like size/color)
 

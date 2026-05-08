@@ -11,6 +11,7 @@ async function bootstrap() {
   app.setGlobalPrefix('/api/v1')
   app.useGlobalInterceptors(new ResponseInterceptor())
   app.useGlobalFilters(new GlobalExceptionFilter())
+  app.enableCors()
   await app.listen(process.env.PORT ?? 3000);
 
   console.log(`backedn running on ${process.env.PORT ?? 3000}`)

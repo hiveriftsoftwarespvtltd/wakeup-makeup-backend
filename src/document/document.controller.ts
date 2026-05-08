@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { DocumentService } from './document.service';
-import { FileInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 
 @Controller('document')
 export class DocumentController {
@@ -10,6 +10,12 @@ export class DocumentController {
     @UseInterceptors(FileInterceptor('file'))
     upload(@UploadedFile() file:Express.Multer.File,@Body('folder') folder:string){
         return this.documentService.upload(file,folder)
+    }
+
+    @Post("upload-multiple")
+    @UseInterceptors(FilesInterceptor('files',10))
+    uploadMultiple(@UploadedFile() files:Express.Multer.File[],@Body('folder') folder:string){
+        return this.documentService.uploadMultiplFiles(files,folder)
     }
 
     @Patch(':id')

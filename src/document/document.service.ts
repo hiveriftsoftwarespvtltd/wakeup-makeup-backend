@@ -30,7 +30,7 @@ export class DocumentService {
     return DocumentType.DOCUMENT;
   }
 
-    async upload(file:Express.Multer.File,folder:string,userId?:string){
+    async upload(file:Express.Multer.File,folder:string,userId?:string,vendorId?:string){
         if(!file){
             throw new BadRequestException("File is required")
         }
@@ -41,10 +41,30 @@ export class DocumentService {
             folder,
             uploadedBy:userId,
             type:this.getType(file.mimetype),
-            storage: this.storageType
+            storage: this.storageType,
+            vendor:vendorId
         })
 
         return media
+    }
+
+    async uploadMultiplFiles(files:Express.Multer.File[],folder:string,userId?:string){
+        if(!files || files.length === 0){
+            throw new BadRequestException("Files are required")
+        }
+
+        const uploadMedia = await Promise.all(
+            files.map(async(file)=>{
+                const uploaded = await this.storage.upload(file,folder)
+
+                return this.mediaModel.create({
+                    ...uploaded,
+                    folder,uploadedBy:userId,type:this.getType(file.mimetype),storage:this.storageType
+                })
+            })
+        )
+
+        return ApiResponse.success("Files Uploaded Successfully",uploadMedia)
     }
 
     async deleteMedia(id:string){

@@ -44,14 +44,21 @@ export class UserService {
     return user;
   }
 
-  async updateUser(id: string, dto: UpdateUserDto) {
-    const user = await this.userModel
-      .findByIdAndUpdate(id, dto, { new: true })
-      .select('-password');
+  async updateUser(userId: string, dto: UpdateUserDto) {
+    const user = await this.userModel.findById(userId).select('email name phone role');
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw new NotFoundException('User Not Found');
     }
-    return user;
+
+    if (dto.name.trim()) user.name = dto.name;
+    if (dto.phone.trim()) user.phone = dto.phone;
+
+    await user.save();
+    return ApiResponse.success(
+      'Your changes updated successfully',
+      user,
+      200,
+    );
   }
 
   async removeUser(id: string) {
@@ -62,6 +69,24 @@ export class UserService {
 
     return { message: 'User deleted successfully' };
   }
+
+  async deletAccount(userId:string){
+    const user = await this.userModel.findById(userId)
+    if(!user){
+      throw new NotFoundException("User not found ")
+    }
+
+    user.isDeleted = true
+    user.save()
+
+    return ApiResponse.success(
+      'Your Account deleted Successfully',
+      null,
+      200,
+    );
+  }
+
+  
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {
     const user = await this.userModel.findById(userId);
@@ -74,7 +99,6 @@ export class UserService {
     }
     const response = await this.documentService.upload(file, 'avatar', userId);
 
-   
     const newMedia = response;
 
     if (user.avatar) {
@@ -94,7 +118,11 @@ export class UserService {
     user.avatar = newMedia._id;
     await user.save();
 
-    return  ApiResponse.success("User Avatar Changes Successfully", newMedia.url,200)
+    return ApiResponse.success(
+      'User Avatar Changes Successfully',
+      newMedia.url,
+      200,
+    );
   }
 
   async deleteUserAvatar(userId: string) {
@@ -126,7 +154,7 @@ export class UserService {
       throw new NotFoundException('User not found');
     }
 
-     if (!user.avatar) {
+    if (!user.avatar) {
       throw new NotFoundException('User Avatar not found');
     }
     return ApiResponse.success('User avatar fetched successfully', user, 200);

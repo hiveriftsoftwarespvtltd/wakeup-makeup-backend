@@ -43,14 +43,22 @@ export class UserController {
         return this.userService.getUserAvatar(req.user._id)
     }
     
-    @Get(':id')
-    findOne(@Param('id') id:string){
-        return this.userService.findById(id)
+    @UseGuards(JwtAuthGuard)
+    @Get('user-details')
+    findOne(@Req() req:any){
+        return this.userService.findById(req.user._id)
     }
 
-    @Patch(':id')
-    updateUser(@Param('id') id:string, @Body() dto:UpdateUserDto){
-        return this.userService.updateUser(id,dto)
+    @UseGuards(JwtAuthGuard)
+    @Patch('edit-user-details')
+    updateUser(@Req() req:any, @Body() dto:UpdateUserDto){
+        return this.userService.updateUser(req.user._id,dto)
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Delete('delete-user-account')
+    deleteAccount(@Req() req:any){
+        return this.userService.deletAccount(req.user._id)
     }
 
     @Delete(':id')

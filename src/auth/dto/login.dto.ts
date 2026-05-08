@@ -12,5 +12,4 @@ export class LoginDTO{
     @IsMongoId()
     @IsOptional()
     tenantId!:string
-
 }

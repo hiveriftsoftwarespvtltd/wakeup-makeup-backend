@@ -1,7 +1,13 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDTO } from './dto/register.dto';
 import { LoginDTO } from './dto/login.dto';
+import { VerifyEmailDTO } from './dto/verify-email.dto';
+import { VerifyLoginDTO } from './dto/verify-login.dto';
+import { ResetPasswordDTO } from './dto/reset-password.dto';
+import { ForgotPasswordOTPDTO } from './dto/verify-forgot-password-otp.dto';
+import { AuthGuard } from '@nestjs/passport';
+import { JwtAuthGuard } from './jwt-auth.guad';
 
 @Controller('auth')
 export class AuthController {
@@ -15,5 +21,33 @@ export class AuthController {
     @Post('login')
     login(@Body() dto:LoginDTO){
         return this.authService.login(dto)
+    }
+
+    @Post('verify-email')
+    verifyEmail(@Body() dto:VerifyEmailDTO){
+        return this.authService.verifyEmail(dto)
+    }
+
+    @Post('verify-login-otp')
+    verifyLoginOTP(@Body() dto:VerifyLoginDTO){
+        return this.authService.verifyLoginOtp(dto)
+    }
+
+    @UseGuards(JwtAuthGuard)
+    @Post('reset-password')
+    resetPassword(@Req() req:any,@Body() dto:ResetPasswordDTO){
+        return this.authService.resetPassword(dto,req.user._id)
+    }
+
+   
+    @Post('send-forgot-password-otp')
+    forgotPasswordOTP(@Body('email') email:string){
+        return this.authService.sendForgotPasswordOTP(email)
+    }
+
+    
+    @Post('verify-forgot-password-otp')
+    verifyForgotPasswordOTP(@Body() dto:ForgotPasswordOTPDTO){
+        return this.authService.verifyForgotPasswordOTP(dto)
     }
 }

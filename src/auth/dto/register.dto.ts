@@ -12,6 +12,10 @@ export class RegisterDTO{
     @MinLength(6)
     password!:string
 
+    @IsOptional()
+    @IsString()
+    phone?:string
+
     @IsEnum(UserRole)
     @IsOptional()
     role?:UserRole
@@ -19,4 +23,7 @@ export class RegisterDTO{
     @IsMongoId()
     @IsOptional()
     tenantId!:string
+
+    @IsOptional()
+    isActive?:boolean
 }

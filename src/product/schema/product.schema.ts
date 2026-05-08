@@ -32,25 +32,8 @@ export class Product {
   categoryId!: Types.ObjectId;
 
   
-  @Prop({ required: true })
-  price!: number;
-
-  @Prop()
-  compareAtPrice?: number;
-
-  @Prop({ default: 0 })
-  costPrice?: number;
-
-  
-  @Prop({ default: 0 })
-  stock!: number;
-
-  @Prop({ default: false })
-  trackStock!: boolean;
-
- 
   @Prop({ type: [Types.ObjectId], ref: "Media", default: [] })
-  images!: Types.ObjectId[];
+  images?: Types.ObjectId[];
 
  
   @Prop({ type: Types.ObjectId, ref: "Media" })
@@ -70,6 +53,20 @@ export class Product {
   
   @Prop({ enum: ProductStatus, default: ProductStatus.DRAFT })
   status!: ProductStatus;
+
+  @Prop()
+  price?:number
+
+  @Prop()
+  salesPrice?:number
+
+  @Prop()
+  stock?: number;
+
+  @Prop({default:false})
+  hasVariants!:boolean
+
+
 
   @Prop({ default: true })
   isActive!: boolean;

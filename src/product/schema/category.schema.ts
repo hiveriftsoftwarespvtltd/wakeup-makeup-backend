@@ -8,15 +8,27 @@ export class Category {
   @Prop({ required: true })
   name!: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   slug!: string;
 
   @Prop()
   description?: string;
 
+  @Prop({
+    type:[
+      {name:String,isVariant:Boolean,values:[String]}
+    ],default:[]
+  })
+  attributes!:{
+    name:string,
+    isVariant:boolean,
+    values:string[]
+  }[]
+
+ 
   // 🌳 Parent category (for tree structure)
-  @Prop({ type: Types.ObjectId, ref: "Category", default: null })
-  parentId?: Types.ObjectId;
+  // @Prop({ type: Types.ObjectId, ref: "Category", default: null })
+  // parentId?: Types.ObjectId;
 
   // 🏢 Multi-tenant support
   @Prop({ type: Types.ObjectId, ref: "Vendor", required: true, index: true })
@@ -35,7 +47,5 @@ export class Category {
 
 export const CategorySchema = SchemaFactory.createForClass(Category);
 
-// Indexes
-CategorySchema.index({ vendorId: 1 });
-CategorySchema.index({ parentId: 1 });
-CategorySchema.index({ slug: 1, vendorId: 1 }, { unique: true });
+
+
