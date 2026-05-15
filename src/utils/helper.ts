@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 
 export const generateOTP = (): string => {
@@ -6,23 +7,37 @@ export const generateOTP = (): string => {
   ).toString();
 };
 
+// create transporter once
+
 export const sendMail = async (
   to: string,
   subject: string,
   html: string,
-) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_PASS,
-    },
-  });
+): Promise<boolean> => {
+  try {
+    const transporter = nodemailer.createTransport({
+  service: 'gmail',
 
-  return transporter.sendMail({
-    from: process.env.GMAIL_USER,
-    to,
-    subject,
-    html,
-  });
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS,
+  },
+});
+
+
+    await transporter.sendMail({
+      from: process.env.GMAIL_USER,
+      to,
+      subject,
+      html,
+    });
+
+    return true;
+  } catch (error) {
+    console.log('MAIL ERROR:', error);
+
+    throw new BadRequestException(
+      'Unable to send email at the moment. Please try again later.',
+    );
+  }
 };

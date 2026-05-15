@@ -9,6 +9,12 @@ import { VendorModule } from './vendor/vendor.module';
 import { DocumentModule } from './document/document.module';
 import { ProductModule } from './product/product.module';
 import { AdminModule } from './admin/admin.module';
+import { InfluencerModule } from './influencer/influencer.module';
+import { CartModule } from './cart/cart.module';
+import { WishlistModule } from './wishlist/wishlist.module';
+import { OrderModule } from './order/order.module';
+import { AddressModule } from './address/address.module';
+import { CouponModule } from './coupon/coupon.module';
 
 @Module({
   imports: [
@@ -32,7 +38,13 @@ import { AdminModule } from './admin/admin.module';
     VendorModule,
     DocumentModule,
     ProductModule,
-    AdminModule
+    AdminModule,
+    InfluencerModule,
+    CartModule,
+    WishlistModule,
+    OrderModule,
+    AddressModule,
+    CouponModule
   ],
   controllers: [AppController],
   providers: [AppService],

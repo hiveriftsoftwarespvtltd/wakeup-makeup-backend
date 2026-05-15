@@ -50,4 +50,9 @@ export class AuthController {
     verifyForgotPasswordOTP(@Body() dto:ForgotPasswordOTPDTO){
         return this.authService.verifyForgotPasswordOTP(dto)
     }
+
+    @Post('send-verify-email-otp')
+    sendVerifyEmailOTP(@Body('email') email:string){
+        return this.authService.sendVerifyEmailOTP(email)
+    }
 }

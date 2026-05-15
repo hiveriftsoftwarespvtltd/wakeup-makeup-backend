@@ -65,8 +65,11 @@ export class User {
   isDeleted!:boolean
 
  
-  @Prop({ type: Types.ObjectId, ref: 'Tenant' })
+  @Prop({ type: Types.ObjectId, ref: 'Vendor' })
   vendorId?: Types.ObjectId;
+
+  @Prop({default:false})
+  isVendorOnboardingCompleted!:boolean
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

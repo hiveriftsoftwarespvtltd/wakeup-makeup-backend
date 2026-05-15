@@ -26,11 +26,11 @@ export class CreateCategory{
     @IsString()
     description?:string;
 
-    @IsOptional()
-    @IsArray()
-    @ValidateNested({each:true})
-    @Type(()=>categoryAttributeDTO)
-    attributes?:categoryAttributeDTO[]
+    // @IsOptional()
+    // @IsArray()
+    // @ValidateNested({each:true})
+    // @Type(()=>categoryAttributeDTO)
+    // attributes?:categoryAttributeDTO[]
 
     @IsOptional()
     @IsMongoId()

@@ -29,6 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     const user = await this.userModel.findById(payload.sub).select("email role isActive vendorId")
+    
     if(!user){
       throw new UnauthorizedException("User not found")
     }

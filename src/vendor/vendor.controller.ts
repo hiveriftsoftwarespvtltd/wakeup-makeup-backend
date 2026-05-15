@@ -1,36 +1,110 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Put,
+  Req,
+  UploadedFiles,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { VendorService } from './vendor.service';
 import { createVendorDTO } from './dto/create-vendor.dto';
+// import { updateVendorDTO } from './dto/update-vendor.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { UserRole } from 'src/user/schema/user.schema';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { updateVendorDTO } from './dto/update-vendor-dto';
+import { UpdateOrderDTO } from './dto/order.dto';
 
-
-@UseGuards(JwtAuthGuard,RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.VENDOR)
 @Controller('vendor')
 export class VendorController {
   constructor(private vendorService: VendorService) {}
 
-  
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'banner', maxCount: 1 },
+    ]),
+  )
   @Post()
-  async registerVendor(@Body() dto: createVendorDTO, @Req() req: any) {
-    return this.vendorService.registerVendor(dto, req.user._id);
+  async registerVendor(
+    @Body() dto: createVendorDTO,
+    @UploadedFiles()
+    files: {
+      logo?: Express.Multer.File[];
+      banner?: Express.Multer.File[];
+    },
+    @Req() req: any,
+  ) {
+    return this.vendorService.registerVendor(
+      dto,
+      req.user._id,
+      files,
+    );
   }
 
-  //  @UseGuards(JwtAuthGuard,RolesGuard)
-  // @Roles(UserRole.ADMIN)
-  // @Get()
+  @UseInterceptors(
+    FileFieldsInterceptor([
+      { name: 'logo', maxCount: 1 },
+      { name: 'banner', maxCount: 1 },
+    ]),
+  )
+  @Put()
+  async updateVendor(
+    @Body() dto: updateVendorDTO,
+    @UploadedFiles()
+    files: {
+      logo?: Express.Multer.File[];
+      banner?: Express.Multer.File[];
+    },
+    @Req() req: any,
+  ) {
+    return this.vendorService.updateVendorDetails(
+      dto,
+      req.user._id,
+      req.user.vendorId,
+      files,
+    );
+  }
 
-  // async getAllVendors() {
-  //   return await this.vendorService.getAllVendors();
-  // }
-
-  @UseGuards(JwtAuthGuard,RolesGuard)
-  @Roles(UserRole.VENDOR)
   @Get('vendor-details')
-  async vendorDetails(@Req() req:any){
-    return await this.vendorService.getVendorDetails(req.user._id,req.user.vendorId)
+  async vendorDetails(@Req() req: any) {
+    return await this.vendorService.getVendorDetails(
+      req.user._id,
+      req.user.vendorId,
+    );
+  }
+
+  @Get('vendor-products')
+  async vendorProducts(@Req() req:any){
+    return await this.vendorService.vendorProducts(req.user._id,req.user.vendorId)
+  }
+
+  @Get('vendor-categories')
+  async vendorCategories(@Req() req:any){
+    return await this.vendorService.vendorCategories(req.user._id,req.user.vendorId)
+  }
+
+  @Get('vendor-orders')
+  async vendorOrders(@Req() req:any){
+    return this.vendorService.vendorOrders(req.user.vendorId)
+  }
+
+  @Get('vendor-orders/:id')
+  async vendorOrdersDetails(@Req() req:any,@Param('id') id:string){
+    return this.vendorService.orderDetails(req.user.vendorId,id)
+  }
+
+  @Put('update-order/:id')
+  updateOrder(@Body() dto:UpdateOrderDTO,@Param('id') id:string,@Req() req:any){
+    return this.vendorService.updateOrder(dto,id,req.user.vendorId)
   }
 }

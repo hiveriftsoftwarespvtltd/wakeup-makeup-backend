@@ -30,7 +30,7 @@ export class createVendorDTO{
     @IsEmail()
     email?:string;
 
-    @IsOptional()
-    @IsNumber()
-    comissionRate?:string
+    // @IsOptional()
+    // @IsNumber()
+    // comissionRate?:string
 }

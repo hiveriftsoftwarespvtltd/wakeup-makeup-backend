@@ -14,16 +14,16 @@ export class Category {
   @Prop()
   description?: string;
 
-  @Prop({
-    type:[
-      {name:String,isVariant:Boolean,values:[String]}
-    ],default:[]
-  })
-  attributes!:{
-    name:string,
-    isVariant:boolean,
-    values:string[]
-  }[]
+  // @Prop({
+  //   type:[
+  //     {name:String,isVariant:Boolean,values:[String]}
+  //   ],default:[]
+  // })
+  // attributes!:{
+  //   name:string,
+  //   isVariant:boolean,
+  //   values:string[]
+  // }[]
 
  
   // 🌳 Parent category (for tree structure)
@@ -31,8 +31,11 @@ export class Category {
   // parentId?: Types.ObjectId;
 
   // 🏢 Multi-tenant support
-  @Prop({ type: Types.ObjectId, ref: "Vendor", required: true, index: true })
+  @Prop({ type: Types.ObjectId, ref: "Vendor", required: true })
   vendorId!: Types.ObjectId;
+
+  @Prop({type:Types.ObjectId, ref:"User",required:true})
+  ownerId!:Types.ObjectId
 
   // 🖼️ Category Image
   @Prop({ type: Types.ObjectId, ref: "Media" })

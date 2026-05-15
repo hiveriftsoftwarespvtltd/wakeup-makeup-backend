@@ -41,8 +41,6 @@ export class Vendor {
   @Prop({ default: 0 })
   commissionRate!: number;
 
-  
-
   @Prop({ default: false })
   isActive!: boolean;
 

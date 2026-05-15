@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotAcceptableException,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
@@ -141,7 +142,7 @@ export class AuthService {
     otp,
     otpExpiresAt,
     isEmailVerified: false,
-    isActive: dto.role === UserRole.VENDOR ? false : true,
+    isActive: true,
   });
 
   await sendMail(
@@ -156,6 +157,28 @@ export class AuthService {
     201,
   );
 }
+
+  async sendVerifyEmailOTP(email:string){
+    const user = await this.userModel.findOne({email})
+    if(!user){
+      throw new NotFoundException("User Not Found")
+    }
+
+    if(user.isEmailVerified){
+      throw new ConflictException("This email is already verified")
+    }
+
+    const otp = generateOTP();
+
+  // expiry
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    user.otp = otp
+    user.otpExpiresAt = otpExpiresAt
+
+    await user.save()
+    await sendMail(email,"Verify Your Email",verificationTemplate(user.name, otp))
+    return ApiResponse.success('Verification OTP successfully sent on your mail',otp)
+  }
 
   
 

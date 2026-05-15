@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserDocument } from './schema/user.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { Media, MediaDocument } from 'src/document/schema/document.schema';
@@ -13,14 +13,25 @@ import { DocumentService } from 'src/document/document.service';
 
 import { StorageFactory } from 'src/document/storage/storage.factory';
 import { ApiResponse } from 'src/common/responses/api-response';
+import {
+  Product,
+  ProductDocument,
+  ProductStatus,
+} from 'src/product/schema/product.schema';
+import { AddressService } from 'src/address/address.service';
+import { AddAddressDTO, UpdateAddressDTO } from 'src/address/dto/address.dto';
+import { Wishlist, WishlistDocument } from 'src/wishlist/schema/wishlist.schema';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    @InjectModel(Wishlist.name) private wishlistModel:Model<WishlistDocument>,
     private documentService: DocumentService,
     private StorageFactory: StorageFactory,
+    private addressService: AddressService,
   ) {}
 
   async create(dto: CreateUserDto) {
@@ -45,7 +56,9 @@ export class UserService {
   }
 
   async updateUser(userId: string, dto: UpdateUserDto) {
-    const user = await this.userModel.findById(userId).select('email name phone role');
+    const user = await this.userModel
+      .findById(userId)
+      .select('email name phone role');
     if (!user) {
       throw new NotFoundException('User Not Found');
     }
@@ -54,11 +67,7 @@ export class UserService {
     if (dto.phone.trim()) user.phone = dto.phone;
 
     await user.save();
-    return ApiResponse.success(
-      'Your changes updated successfully',
-      user,
-      200,
-    );
+    return ApiResponse.success('Your changes updated successfully', user, 200);
   }
 
   async removeUser(id: string) {
@@ -70,23 +79,17 @@ export class UserService {
     return { message: 'User deleted successfully' };
   }
 
-  async deletAccount(userId:string){
-    const user = await this.userModel.findById(userId)
-    if(!user){
-      throw new NotFoundException("User not found ")
+  async deletAccount(userId: string) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found ');
     }
 
-    user.isDeleted = true
-    user.save()
+    user.isDeleted = true;
+    user.save();
 
-    return ApiResponse.success(
-      'Your Account deleted Successfully',
-      null,
-      200,
-    );
+    return ApiResponse.success('Your Account deleted Successfully', null, 200);
   }
-
-  
 
   async uploadAvatar(userId: string, file: Express.Multer.File) {
     const user = await this.userModel.findById(userId);
@@ -132,7 +135,7 @@ export class UserService {
     }
 
     if (!user.avatar) {
-      throw new NotFoundException('Vatar not found for this user');
+      throw new NotFoundException('Avatar not found for this user');
     }
 
     const media = await this.mediaModel.findById(user.avatar);
@@ -158,5 +161,221 @@ export class UserService {
       throw new NotFoundException('User Avatar not found');
     }
     return ApiResponse.success('User avatar fetched successfully', user, 200);
+  }
+
+  async fetchProducts(category?: string, minPrice?: number, maxPrice?: number) {
+    const matchStage: any = {
+      isDeleted: false,
+      isActive: true,
+      status: ProductStatus.ACTIVE,
+    };
+
+    const pipeline: any[] = [
+      {
+        $match: matchStage,
+      },
+
+      {
+        $lookup: {
+          from: 'categories',
+          localField: 'categoryId',
+          foreignField: '_id',
+          as: 'category',
+        },
+      },
+
+      {
+        $unwind: {
+          path: '$category',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      ...(category
+        ? [
+            {
+              $match: {
+                'category.name': {
+                  $regex: new RegExp(`^${category}$`, 'i'),
+                },
+              },
+            },
+          ]
+        : []),
+
+      {
+        $lookup: {
+          from: 'productvariants',
+          localField: 'variants',
+          foreignField: '_id',
+          as: 'variants',
+        },
+      },
+
+      ...(minPrice || maxPrice
+        ? [
+            {
+              $match: {
+                variants: {
+                  $elemMatch: {
+                    ...(minPrice && {
+                      price: { $gte: Number(minPrice) },
+                    }),
+                    ...(maxPrice && {
+                      price: { $lte: Number(maxPrice) },
+                    }),
+                  },
+                },
+              },
+            },
+          ]
+        : []),
+
+      {
+        $lookup: {
+          from: 'vendors',
+          localField: 'vendorId',
+          foreignField: '_id',
+          as: 'vendor',
+        },
+      },
+
+      {
+        $unwind: {
+          path: '$vendor',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+
+      {
+        $lookup: {
+          from: 'media',
+          localField: 'variants.thumbnail',
+          foreignField: '_id',
+          as: 'thumbnails',
+        },
+      },
+
+      // images
+      {
+        $lookup: {
+          from: 'media',
+          localField: 'variants.images',
+          foreignField: '_id',
+          as: 'images',
+        },
+      },
+
+      {
+        $project: {
+          name: 1,
+          slug: 1,
+          description: 1,
+
+          category: {
+            _id: '$category._id',
+            name: '$category.name',
+          },
+
+          vendor: {
+            _id: '$vendor._id',
+            businessName: '$vendor.businessName',
+          },
+
+          variants: {
+            $map: {
+              input: '$variants',
+              as: 'variant',
+              in: {
+                _id: '$$variant._id',
+                sku: '$$variant.sku',
+                price: '$$variant.price',
+                salesPrice: '$$variant.salesPrice',
+
+                thumbnail: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$thumbnails',
+                        as: 'thumb',
+                        cond: {
+                          $eq: ['$$thumb._id', '$$variant.thumbnail'],
+                        },
+                      },
+                    },
+                    0,
+                  ],
+                },
+
+                images: {
+                  $filter: {
+                    input: '$images',
+                    as: 'image',
+                    cond: {
+                      $in: ['$$image._id', '$$variant.images'],
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    ];
+
+    const products = await this.productModel.aggregate(pipeline);
+
+    return ApiResponse.success('Products fetched successfully', products);
+  }
+
+  async fetchProductDetails(userId:string,productId:string){
+      const product = await this.productModel.findById(new Types.ObjectId(productId)).populate("categoryId").populate({
+        path:"variants",
+        populate:[
+          {
+            path:"thumbnail"
+          },
+          {
+            path:"images"
+          }
+        ]
+      }).lean()
+      if(!product){
+        throw new NotFoundException("Product Not Found")
+      }
+
+      if (userId) {
+    const wishlist =
+      await this.wishlistModel.findOne({
+        user: new Types.ObjectId(userId),
+        'items.product':
+          new Types.ObjectId(productId),
+      });
+
+    product['isWishlisted'] = !!wishlist;
+  }
+
+  return ApiResponse.success("Product Details Fetched!",product)
+      
+  }
+
+  async addAddress(dto:AddAddressDTO,userId:string){
+    return await this.addressService.addAddress(dto,userId)
+  }
+
+  async fetchAddresses(userId:string){
+    return await this.addressService.fetchAddress(userId)
+  }
+
+  async fetchAddressDetails(userId:string,addressId:string){
+    return await this.addressService.fetchAddressDetails(userId,addressId)
+  }
+
+  async updateAddress(dto:UpdateAddressDTO,userId:string,addressId:string){
+    return await this.addressService.updateAddress(dto,userId,addressId)
+  }
+
+  async deleteAddress(userId:string,addressId:string){
+    return await this.addressService.deleteAddress(userId,addressId)
   }
 }

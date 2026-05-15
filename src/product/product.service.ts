@@ -1,75 +1,766 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Product, ProductDocument } from './schema/product.schema';
-import { Model } from 'mongoose';
-import { ProductVariant, ProductVariantDocument } from './schema/product-variant.schema';
+import { Model, Types } from 'mongoose';
+import {
+  ProductVariant,
+  ProductVariantDocument,
+} from './schema/product-variant.schema';
 import { Category, CategoryDocument } from './schema/category.schema';
 import { CreateCategory } from './dto/create-category.dto';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { Media, MediaDocument } from 'src/document/schema/document.schema';
 import { DocumentService } from 'src/document/document.service';
-import { StorageFactory } from 'src/document/storage/storage.factory';
+// import { StorageFactory } from 'src/document/storage/storage.factory';
 import { ApiResponse } from 'src/common/responses/api-response';
+import { UpdateCategoryDTO } from './dto/update-category.dto';
+import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 
 @Injectable()
 export class ProductService {
-    constructor(@InjectModel(Product.name) private productModel:Model<ProductDocument>, @InjectModel(ProductVariant.name) private productVariantModel:Model<ProductVariantDocument>,@InjectModel(Category.name) private categoryModel:Model<CategoryDocument>,@InjectModel(Media.name) private mediaModel:Model<MediaDocument>,private documentService: DocumentService,
-        private StorageFactory: StorageFactory,){}
+  constructor(
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    @InjectModel(ProductVariant.name)
+    private productVariantModel: Model<ProductVariantDocument>,
+    @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
+    @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
+    private documentService: DocumentService,
+  ) {}
 
-    async CreateCategory(dto:CreateCategory,file:Express.Multer.File,userId:string,vendorId:string){
-        if(!vendorId){
-            throw new ForbiddenException("Your account is not verified yet")
+  async CreateCategory(
+    dto: CreateCategory,
+    file: Express.Multer.File,
+    userId: string,
+    vendorId: string,
+  ) {
+    if (!vendorId) {
+      throw new ForbiddenException('Your account is not verified yet');
+    }
+    const isCategoryExist = await this.categoryModel.findOne({
+      vendorId,
+      $or: [{ name: dto.name }, { slug: dto.slug }],
+    });
+    if (isCategoryExist) {
+      throw new ConflictException('Category exist with same name or slug');
+    }
+
+    let mediaId;
+    if (file) {
+      const mediaResponse = await this.documentService.upload(
+        file,
+        'category',
+        userId,
+        vendorId,
+      );
+      mediaId = mediaResponse._id;
+    }
+
+    // if (dto.attributes && typeof dto.attributes === 'string') {
+    //   dto.attributes = JSON.parse(dto.attributes as any);
+    // }
+    const newcategory = await this.categoryModel.create({
+      ...dto,
+      vendorId,
+      ownerId: userId,
+      image: mediaId,
+    });
+
+    return ApiResponse.success('Category Create Successfully', newcategory);
+  }
+
+  async updateCategory(
+    dto: UpdateCategoryDTO,
+    file: Express.Multer.File,
+    userId: string,
+    vendorId: string,
+    categoryId: string,
+  ) {
+    if (!vendorId) {
+      throw new ForbiddenException('Your account is not verified yet');
+    }
+
+    const category = await this.categoryModel.findOne({
+      vendorId,
+      _id: categoryId,
+      isDeleted: false,
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category Not Found');
+    }
+
+    if (dto.name || dto.slug) {
+      const existingCategory = await this.categoryModel.findOne({
+        vendorId,
+        _id: { $ne: categoryId },
+
+        $or: [
+          ...(dto.name ? [{ name: dto.name }] : []),
+
+          ...(dto.slug ? [{ slug: dto.slug }] : []),
+        ],
+      });
+
+      if (existingCategory) {
+        throw new ConflictException(
+          'Category with same name or slug already exists',
+        );
+      }
+    }
+
+    // if (dto.attributes && typeof dto.attributes === 'string') {
+    //   dto.attributes = JSON.parse(dto.attributes as any);
+    // }
+
+    if (file) {
+      if (category.image) {
+        await this.documentService.deleteMedia(category.image.toString());
+      }
+
+      const uploaded = await this.documentService.upload(
+        file,
+        'category',
+        userId,
+        vendorId,
+      );
+
+      category.image = uploaded._id;
+    }
+
+    if (dto.name !== undefined && dto.name.trim() !== '') {
+      category.name = dto.name;
+    }
+
+    if (dto.slug !== undefined && dto.slug.trim() !== '') {
+      category.slug = dto.slug;
+    }
+
+    if (dto.description !== undefined) {
+      category.description = dto.description;
+    }
+
+    // if (dto.attributes !== undefined) {
+    //   category.attributes = dto.attributes;
+    // }
+
+    await category.save();
+
+    return ApiResponse.success('Category Updated Successfully', category);
+  }
+
+  async fetchVendorCategories(vendorId: string) {
+    if (!vendorId) {
+      throw new ForbiddenException('Your account is not verified yet');
+    }
+    const categories = await this.categoryModel
+      .find({ vendorId })
+      .populate('image')
+      .lean();
+    return categories;
+  }
+
+  async deleteVendorCategory(vendorId: string, categoryId: string) {
+    if (!vendorId) {
+      throw new ForbiddenException('Your account is not verified yet');
+    }
+
+    const category = await this.categoryModel.findOne({
+      vendorId,
+      _id: categoryId,
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    const productExists = await this.productModel.exists({
+      categoryId: category._id,
+      vendorId,
+      isDeleted: false,
+    });
+
+    if (productExists) {
+      throw new BadRequestException(
+        'Cannot delete category because products exist under this category',
+      );
+    }
+
+    if (category.image) {
+      await this.documentService.deleteMedia(category.image.toString());
+    }
+
+    await category.deleteOne();
+
+    return ApiResponse.success('Category Deleted Successfully', null);
+  }
+
+  async createProduct(
+    dto: CreateProductDto,
+    files: Express.Multer.File[],
+    userId: string,
+    vendorId: string,
+  ) {
+    if (!vendorId) {
+      throw new ForbiddenException('Your account is not verified yet');
+    }
+
+    const existingProduct = await this.productModel.findOne({
+      vendorId,
+      $or: [{ name: dto.name }, { slug: dto.slug }],
+    });
+
+    if (existingProduct) {
+      throw new ConflictException('Product already exists');
+    }
+
+    const category = await this.categoryModel.findOne({
+      _id: dto.categoryId,
+      vendorId,
+      isDeleted: false,
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found');
+    }
+
+    if (!dto.variants?.length) {
+      throw new BadRequestException('At least one variant is required');
+    }
+
+    const product = await this.productModel.create({
+      name: dto.name,
+      slug: dto.slug,
+      description: dto.description,
+
+      vendorId,
+      createdBy: userId,
+
+      categoryId: new Types.ObjectId(dto.categoryId),
+
+      metaTitle: dto.metaTitle,
+      metaDescription: dto.metaDescription,
+
+      status: dto.status,
+
+      hasVariants: dto.variants.length > 1,
+    });
+
+    const variantIds: Types.ObjectId[] = [];
+
+    for (let i = 0; i < dto.variants.length; i++) {
+      const variant = dto.variants[i];
+
+      const thumbnailFile = files.find(
+        (file) => file.fieldname === `variant_${i}_thumbnail`,
+      );
+
+      const imageFiles = files.filter(
+        (file) => file.fieldname === `variant_${i}_images`,
+      );
+
+      console.log("Thumbnail and Images",thumbnailFile,imageFiles)
+     
+      if (!thumbnailFile) {
+        throw new BadRequestException(
+          `Thumbnail required for variant ${i + 1}`,
+        );
+      }
+
+      if (!imageFiles.length) {
+        throw new BadRequestException(`Images required for variant ${i + 1}`);
+      }
+
+      // ========= UPLOAD THUMBNAIL =========
+
+      const uploadedThumbnail = await this.documentService.upload(
+        thumbnailFile,
+        'product',
+        userId,
+        vendorId,
+      );
+
+      const uploadedImages: Types.ObjectId[] = [];
+
+      for (const image of imageFiles) {
+        const uploaded = await this.documentService.upload(
+          image,
+          'product',
+          userId,
+          vendorId,
+        );
+
+        uploadedImages.push(uploaded._id);
+      }
+
+      const createdVariant = await this.productVariantModel.create({
+        productId: product._id,
+
+        sku: variant.sku,
+
+        price: variant.price,
+
+        salesPrice: variant.salesPrice,
+
+        stock: variant.stock,
+
+        attributes: variant.attributes,
+
+        thumbnail: uploadedThumbnail._id,
+
+        images: uploadedImages,
+      });
+
+      variantIds.push(createdVariant._id as Types.ObjectId);
+    }
+
+    product.variants = variantIds;
+
+    await product.save();
+
+    const finalProduct = await this.productModel
+      .findById(product._id)
+      .populate({
+        path: 'variants',
+        populate: [
+          {
+            path: 'thumbnail',
+            select: 'url publicId type originalName',
+          },
+          {
+            path: 'images',
+            select: 'url publicId type originalName',
+          },
+        ],
+      });
+
+    return ApiResponse.success('Product created successfully', finalProduct);
+  }
+
+  async updateProduct(
+    dto: UpdateProductDto,
+    files: Express.Multer.File[],
+    userId: string,
+    vendorId: string,
+    productId: string,
+  ) {
+    if (!vendorId) {
+      throw new ForbiddenException('Your account is not verified yet');
+    }
+
+    const product = await this.productModel.findOne({
+      _id: productId,
+      vendorId,
+      createdBy: userId,
+      isDeleted: false,
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (dto.name || dto.slug) {
+      const existingProduct = await this.productModel.findOne({
+        vendorId,
+        _id: { $ne: productId },
+
+        $or: [
+          ...(dto.name ? [{ name: dto.name }] : []),
+          ...(dto.slug ? [{ slug: dto.slug }] : []),
+        ],
+      });
+
+      if (existingProduct) {
+        throw new ConflictException(
+          'Product with same name or slug already exists',
+        );
+      }
+    }
+
+    if (dto.categoryId) {
+      const category = await this.categoryModel.findOne({
+        _id: dto.categoryId,
+        vendorId,
+        isDeleted: false,
+      });
+
+      if (!category) {
+        throw new NotFoundException('Category not found');
+      }
+    }
+
+    if (dto.name !== undefined) {
+      product.name = dto.name;
+    }
+
+    if (dto.slug !== undefined) {
+      product.slug = dto.slug;
+    }
+
+    if (dto.description !== undefined) {
+      product.description = dto.description;
+    }
+
+    if (dto.categoryId !== undefined) {
+      product.categoryId = new Types.ObjectId(dto.categoryId);
+    }
+
+    if (dto.metaTitle !== undefined) {
+      product.metaTitle = dto.metaTitle;
+    }
+
+    if (dto.metaDescription !== undefined) {
+      product.metaDescription = dto.metaDescription;
+    }
+
+    if (dto.status !== undefined) {
+      product.status = dto.status;
+    }
+
+    if (dto.variants?.length) {
+      const variantIds: Types.ObjectId[] = [];
+
+      for (let i = 0; i < dto.variants.length; i++) {
+        const variant = dto.variants[i];
+
+        const thumbnailFile = files.find(
+          (file) => file.fieldname === `variant_${i}_thumbnail`,
+        );
+
+        const imageFiles = files.filter(
+          (file) => file.fieldname === `variant_${i}_images`,
+        );
+
+        // =========================
+        // UPDATE EXISTING VARIANT
+        // =========================
+
+        if ((variant as any)._id) {
+          const existingVariant = await this.productVariantModel.findOne({
+            _id: (variant as any)._id,
+            productId: product._id,
+          });
+
+          if (!existingVariant) {
+            throw new NotFoundException(`Variant not found`);
+          }
+
+          
+
+          if (variant.sku !== undefined) {
+            existingVariant.sku = variant.sku;
+          }
+
+          if (variant.price !== undefined) {
+            existingVariant.price = Number(variant.price);
+          }
+
+          if (variant.salesPrice !== undefined) {
+            existingVariant.salesPrice = Number(variant.salesPrice);
+          }
+
+          if (variant.stock !== undefined) {
+            existingVariant.stock = Number(variant.stock);
+          }
+
+          if (variant.attributes !== undefined) {
+            existingVariant.attributes = variant.attributes;
+          }
+
+          if (variant.isActive !== undefined) {
+            existingVariant.isActive = variant.isActive;
+          }
+
+          // ===== thumbnail update =====
+
+          if (thumbnailFile) {
+            if (existingVariant.thumbnail) {
+              await this.documentService.deleteMedia(
+                existingVariant.thumbnail.toString(),
+              );
+            }
+
+            const uploadedThumbnail = await this.documentService.upload(
+              thumbnailFile,
+              'product',
+              userId,
+              vendorId,
+            );
+
+            existingVariant.thumbnail = uploadedThumbnail._id;
+          }
+
+          // ===== images update =====
+
+          if (imageFiles.length) {
+            if (existingVariant.images?.length) {
+              for (const imageId of existingVariant.images) {
+                await this.documentService.deleteMedia(imageId.toString());
+              }
+            }
+
+            const uploadedImages: Types.ObjectId[] = [];
+
+            for (const image of imageFiles) {
+              const uploaded = await this.documentService.upload(
+                image,
+                'product',
+                userId,
+                vendorId,
+              );
+
+              uploadedImages.push(uploaded._id);
+            }
+
+            existingVariant.images = uploadedImages;
+          }
+
+          await existingVariant.save();
+
+          variantIds.push(existingVariant._id as Types.ObjectId);
         }
-        const isCategoryExist = await this.categoryModel.findOne({vendorId,$or:[{name:dto.name},{slug:dto.slug}]})
-        if(isCategoryExist){
-            throw new ConflictException("Category exist with same name or slug")
-        }
 
-        let mediaId
-        if(file){
-            const mediaResponse = await this.documentService.upload(file,"category",userId,vendorId)
-            mediaId = mediaResponse._id
-        }
+        // =========================
+        // CREATE NEW VARIANT
+        // =========================
+        else {
 
-        
+          const isVariantExist = await this.productModel.findOne({})
+          if (
+            variant.price === undefined ||
+            variant.stock === undefined ||
+            !variant.sku
+          ) {
+            throw new BadRequestException(
+              `price, stock and sku required for new variant`,
+            );
+          }
 
-        const newcategory = await this.categoryModel.create({
-            ...dto,
+          if (!thumbnailFile) {
+            throw new BadRequestException(`Thumbnail required for new variant`);
+          }
+
+          const uploadedThumbnail = await this.documentService.upload(
+            thumbnailFile,
+            'product',
+            userId,
             vendorId,
-            image:mediaId
-        })
+          );
 
-        return ApiResponse.success("Category Create Successfully",newcategory)
+          const uploadedImages: Types.ObjectId[] = [];
 
+          for (const image of imageFiles) {
+            const uploaded = await this.documentService.upload(
+              image,
+              'product',
+              userId,
+              vendorId,
+            );
+
+            uploadedImages.push(uploaded._id);
+          }
+
+          const createdVariant = await this.productVariantModel.create({
+            productId: product._id,
+
+            sku: variant.sku,
+
+            price: Number(variant.price),
+
+            salesPrice: variant.salesPrice,
+
+            stock: Number(variant.stock),
+
+            attributes: variant.attributes,
+
+            thumbnail: uploadedThumbnail._id,
+
+            images: uploadedImages,
+
+            isActive: variant.isActive !== undefined ? variant.isActive : true,
+          });
+
+          variantIds.push(createdVariant._id as Types.ObjectId);
+        }
+      }
+
+      product.variants = variantIds;
+
+      product.hasVariants = variantIds.length > 1;
     }
 
-    async fetchVendorCategories(vendorId:string){
-        if(!vendorId){
-            throw new ForbiddenException("Your account is not verified yet")
-        }
-        const categories = await this.categoryModel.find({vendorId}).lean()
-        return categories
+    await product.save();
+
+    const updatedProduct = await this.productModel
+      .findById(product._id).populate("categoryId")
+      .populate({
+        path: 'variants',
+        populate: [
+          {
+            path: 'thumbnail',
+            select: 'url publicId type originalName',
+          },
+          {
+            path: 'images',
+            select: 'url publicId type originalName',
+          },
+        ],
+      });
+
+    return ApiResponse.success('Product updated successfully', updatedProduct);
+  }
+
+  async deleteProduct(userId: string, vendorId: string, productId: string) {
+    const product = await this.productModel.findOne({
+      createdBy: userId,
+      vendorId,
+      _id: productId,
+    });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
     }
 
-    async deleteVendorCategory(vendorId:string,categoryId:string){
-        if(!vendorId){
-            throw new ForbiddenException("Your account is not verified yet")
-        }
-        const category = await this.categoryModel.findById(categoryId)
-        if(!category){
-            throw new NotFoundException("Category not found")
-        }
+    const variants = await this.productVariantModel.find({
+      productId: product._id,
+    });
 
-        await category.deleteOne()
-        return ApiResponse.success("Category Deleted Successfully",null)
+    for (const variant of variants) {
+      // delete thumbnail
+      if (variant.thumbnail) {
+        await this.documentService.deleteMedia(variant.thumbnail.toString());
+      }
 
+      if (variant.images?.length) {
+        for (const imageId of variant.images) {
+          await this.documentService.deleteMedia(imageId.toString());
+        }
+      }
+
+      await variant.deleteOne();
     }
 
-    async createProduct(vendorId:string){
-        if(!vendorId){
-            throw new ForbiddenException("Your account is not verified yet")
-        }
-        
+    await product.deleteOne();
+
+    return ApiResponse.success('Product Deleted Successfully', null);
+  }
+
+  async fetchAllProducts(userId: string, vendorId: string) {
+    const products = await this.productModel
+      .find({
+        createdBy: userId,
+        vendorId,
+      }).populate("categoryId")
+      .populate({
+        path: 'variants',
+        populate: [
+          {
+            path: 'images',
+            model: 'Media',
+          },
+          {
+            path: 'thumbnail',
+            model: 'Media',
+          },
+          
+        ],
+      });
+
+    return ApiResponse.success('Products Fetched Successfully', products || []);
+  }
+
+  async fetchProductDetails(
+    userId: string,
+    vendorId: string,
+    productId: string,
+  ) {
+    const product = await this.productModel
+      .findOne({
+        vendorId,
+        createdBy: userId,
+        _id: productId,
+      }).populate("categoryId")
+      .populate({
+        path: 'variants',
+
+        populate: [
+          {
+            path: 'thumbnail',
+            select: 'url publicId type originalName',
+          },
+          {
+            path: 'images',
+            select: 'url publicId type originalName',
+          }
+        ],
+      });
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
     }
+
+    return ApiResponse.success('Product Details Fetched Successfully', product);
+  }
+
+  async deleteProductVariants(
+    userId: string,
+    vendorId: string,
+    productVariantId: string,
+  ) {
+    const variant = await this.productVariantModel.findById(productVariantId);
+
+    if (!variant) {
+      throw new NotFoundException('Product variant not found');
+    }
+
+    const product = await this.productModel.findOne({
+      _id: variant.productId,
+      vendorId,
+      createdBy: userId,
+      isDeleted: false,
+    });
+
+    if (!product) {
+      throw new ForbiddenException(
+        'You are not allowed to delete this variant',
+      );
+    }
+
+    const totalVariants = await this.productVariantModel.countDocuments({
+      productId: product._id,
+    });
+
+    if (totalVariants <= 1) {
+      throw new BadRequestException(
+        'Cannot delete the last variant of product',
+      );
+    }
+
+    if (variant.thumbnail) {
+      await this.documentService.deleteMedia(variant.thumbnail.toString());
+    }
+
+    if (variant.images?.length) {
+      for (const imageId of variant.images) {
+        await this.documentService.deleteMedia(imageId.toString());
+      }
+    }
+
+    product.variants = product.variants.filter(
+      (id) => id.toString() !== productVariantId,
+    );
+
+    product.hasVariants = product.variants.length > 1;
+
+    await product.save();
+
+    await variant.deleteOne();
+
+    return ApiResponse.success('Product Variant Deleted Successfully', null);
+  }
 }
-

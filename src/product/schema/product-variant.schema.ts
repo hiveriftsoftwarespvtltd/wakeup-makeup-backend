@@ -1,37 +1,57 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Types } from "mongoose";
+import { Types,Document } from "mongoose";
 
 
 export type ProductVariantDocument = ProductVariant & Document
 
-@Schema({timestamps:true})
-export class ProductVariant{
-    @Prop({type:Types.ObjectId,ref:"Product",required:true,index:true})
-    productId!:Types.ObjectId
+@Schema({ timestamps: true })
+export class ProductVariant {
 
-    @Prop({ type: [Types.ObjectId], ref: "Media", default: [] })
-    images?: Types.ObjectId[];
+  @Prop({
+    type: Types.ObjectId,
+    ref: "Product",
+    required: true
+  })
+  productId!: Types.ObjectId;
 
-    @Prop({type:Types.ObjectId,ref:"Media"})
-    thumbnail?:Types.ObjectId
+  @Prop({
+    type: [Types.ObjectId],
+    ref: "Media",
+    default: []
+  })
+  images!: Types.ObjectId[];
 
-    @Prop({required:true})
-    sku!:string
+  @Prop({
+    type: Types.ObjectId,
+    ref: "Media",
+    required: true
+  })
+  thumbnail!: Types.ObjectId;
 
-    @Prop({required:true})
-    price!:number
+  @Prop({ required: true })
+  sku!: string;
 
-    @Prop()
-    salesPrice?:number
+  @Prop({ required: true })
+  price!: number;
 
-    @Prop({required:true,default:0})
-    stock!:number
+  @Prop()
+  salesPrice?: number;
 
-    @Prop({type:Map,of:String})
-    attributes!:Record<string,string>
+  @Prop({
+    required: true,
+    default: 0
+  })
+  stock!: number;
 
-    @Prop({default:true})
-    isActive!:boolean
+  @Prop({
+    type: Map,
+    of: String,
+    default: {}
+  })
+  attributes!: Record<string, string>;
+
+  @Prop({ default: true })
+  isActive!: boolean;
 }
 
 export const ProductVariantSchema = SchemaFactory.createForClass(ProductVariant);

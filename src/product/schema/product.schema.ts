@@ -12,61 +12,58 @@ export enum ProductStatus {
 
 @Schema({ timestamps: true })
 export class Product {
+
   @Prop({ required: true })
   name!: string;
 
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   slug!: string;
 
   @Prop()
   description?: string;
 
-  @Prop({ type: Types.ObjectId, ref: "Vendor", required: true, index: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: "Vendor",
+    required: true
+  })
   vendorId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: "User", required: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: "User",
+    required: true
+  })
   createdBy!: Types.ObjectId;
 
-  
-  @Prop({ type: Types.ObjectId, ref: "Category", required: true })
+  @Prop({
+    type: Types.ObjectId,
+    ref: "Category",
+    required: true
+  })
   categoryId!: Types.ObjectId;
 
-  
-  @Prop({ type: [Types.ObjectId], ref: "Media", default: [] })
-  images?: Types.ObjectId[];
-
- 
-  @Prop({ type: Types.ObjectId, ref: "Media" })
-  thumbnail?: Types.ObjectId;
-
-
-  @Prop({ type: [Types.ObjectId], ref: "ProductVariant", default: [] })
+  @Prop({
+    type: [Types.ObjectId],
+    ref: "ProductVariant",
+    default: []
+  })
   variants!: Types.ObjectId[];
 
-  
   @Prop()
   metaTitle?: string;
 
   @Prop()
   metaDescription?: string;
 
-  
-  @Prop({ enum: ProductStatus, default: ProductStatus.DRAFT })
+  @Prop({
+    enum: ProductStatus,
+    default: ProductStatus.DRAFT
+  })
   status!: ProductStatus;
 
-  @Prop()
-  price?:number
-
-  @Prop()
-  salesPrice?:number
-
-  @Prop()
-  stock?: number;
-
-  @Prop({default:false})
-  hasVariants!:boolean
-
-
+  @Prop({ default: false })
+  hasVariants!: boolean;
 
   @Prop({ default: true })
   isActive!: boolean;
@@ -74,10 +71,7 @@ export class Product {
   @Prop({ default: false })
   isDeleted!: boolean;
 }
-
 export const ProductSchema = SchemaFactory.createForClass(Product);
 
-// Indexes
-ProductSchema.index({ vendorId: 1 });
-ProductSchema.index({ categoryId: 1 });
-ProductSchema.index({ slug: 1 }, { unique: true });
+
+
