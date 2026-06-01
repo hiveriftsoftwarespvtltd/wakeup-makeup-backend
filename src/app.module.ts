@@ -15,6 +15,11 @@ import { WishlistModule } from './wishlist/wishlist.module';
 import { OrderModule } from './order/order.module';
 import { AddressModule } from './address/address.module';
 import { CouponModule } from './coupon/coupon.module';
+import { ShiprocketModule } from './shiprocket/shiprocket.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { UserReviewModule } from './user-review/user-review.module';
+import { ServiceModule } from './service/service.module';
+import { PayoutModule } from './payout/payout.module';
 
 @Module({
   imports: [
@@ -44,7 +49,12 @@ import { CouponModule } from './coupon/coupon.module';
     WishlistModule,
     OrderModule,
     AddressModule,
-    CouponModule
+    CouponModule,
+    ShiprocketModule,
+    DashboardModule,
+    UserReviewModule,
+    ServiceModule,
+    PayoutModule
   ],
   controllers: [AppController],
   providers: [AppService],

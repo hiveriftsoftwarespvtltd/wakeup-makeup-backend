@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
   Post,
   Put,
+  Query,
   Req,
   UploadedFiles,
   UseGuards,
@@ -44,6 +46,7 @@ export class VendorController {
     },
     @Req() req: any,
   ) {
+    
     return this.vendorService.registerVendor(
       dto,
       req.user._id,
@@ -75,6 +78,30 @@ export class VendorController {
     );
   }
 
+  @Get('overview')
+  async dashboardOverview(@Req() req:any){
+    return this.vendorService.overview(req.user.vendorId)
+  }
+
+  @Get('top-products')
+  async dashboardRevenue(@Req() req:any){
+    return this.vendorService.topSellingProducts(req.user.vendorId)
+  }
+
+  @Get('order-graph')
+  orderGraph(@Req() req:any,@Query('days') days:number){
+    return this.vendorService.orderGraph(req.user.vendorId,days)
+  }
+
+  @Get('top-categories')
+  topCategories(@Req() req:any){
+    return this.vendorService.topCategories(req.user.vendorId)
+  }
+
+  @Get('order-comparison')
+  orderComparison(@Req() req:any){
+    return this.vendorService.orderComparison(req.user.vendorId)
+  }
   @Get('vendor-details')
   async vendorDetails(@Req() req: any) {
     return await this.vendorService.getVendorDetails(
@@ -96,6 +123,11 @@ export class VendorController {
   @Get('vendor-orders')
   async vendorOrders(@Req() req:any){
     return this.vendorService.vendorOrders(req.user.vendorId)
+  }
+
+  @Delete("delete-all-products")
+  async deleteAllProducts(@Req() req:any){
+    return await this.vendorService.deleteAllVendorProducts(req.user.vendorId)
   }
 
   @Get('vendor-orders/:id')

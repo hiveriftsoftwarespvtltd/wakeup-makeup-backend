@@ -75,11 +75,12 @@ export class UserController {
   //  
   @Get('products')
   async fetchProducts(
+    @Req() req:any,
     @Query('categoryId') categoryId?: string,
     @Query('minPrice') minPrice?: number,
     @Query('maxPrice') maxPrice?: number,
   ) {
-    return this.userService.fetchProducts(categoryId, minPrice, maxPrice);
+    return this.userService.fetchProducts(req.user._id,categoryId, minPrice, maxPrice);
   }
 
   // addresses
@@ -100,6 +101,7 @@ export class UserController {
 
   @Get('product-details/:id')
   async fetchProductdetails(@Req() req:any,@Param('id') id:string){
+    
     return await this.userService.fetchProductDetails(req.user._id,id)
   }
 

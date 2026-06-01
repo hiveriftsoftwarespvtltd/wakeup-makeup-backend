@@ -94,6 +94,12 @@ export class Coupon {
 
   @Prop()
   description?: string;
+
+  @Prop({ default: 0 })
+  totalSalesGenerated!: number;
+
+  @Prop({ default: true })
+  isInfluencerCoupon!: boolean;
 }
 
 export const CouponSchema = SchemaFactory.createForClass(Coupon);

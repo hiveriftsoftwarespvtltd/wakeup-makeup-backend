@@ -3,16 +3,36 @@ import { Types, Document } from "mongoose";
 
 export type CategoryDocument = Category & Document;
 
+// export enum CategoryOptions {
+//   SKINCARE = 'skincare',
+//   MAKEUP = 'makeup',
+//   HAIR_CARE = 'hair_care',
+//   BATH_AND_BODY = 'bath_and_body',
+//   FRAGRANCES = 'fragrances',
+//   BEAUTY_ACCESSORIES = 'beauty_accessories',
+//   ORGANIC_PRODUCTS = 'organic_products',
+// }
+
 @Schema({ timestamps: true })
 export class Category {
-  @Prop({ required: true })
+  @Prop({ required: true,lowercase:true })
   name!: string;
+
+  @Prop({required:true})
+  label!:string
 
   @Prop({ required: true })
   slug!: string;
 
   @Prop()
   description?: string;
+
+  @Prop({
+    type:[String],
+    default:[],
+    lowercase:true
+  })
+  tags!:string[]
 
   // @Prop({
   //   type:[
@@ -31,11 +51,11 @@ export class Category {
   // parentId?: Types.ObjectId;
 
   // 🏢 Multi-tenant support
-  @Prop({ type: Types.ObjectId, ref: "Vendor", required: true })
-  vendorId!: Types.ObjectId;
+  // @Prop({ type: Types.ObjectId, ref: "Vendor", required: true })
+  // vendorId!: Types.ObjectId;
 
-  @Prop({type:Types.ObjectId, ref:"User",required:true})
-  ownerId!:Types.ObjectId
+  // @Prop({type:Types.ObjectId, ref:"User",required:true})
+  // ownerId!:Types.ObjectId
 
   // 🖼️ Category Image
   @Prop({ type: Types.ObjectId, ref: "Media" })

@@ -5,20 +5,26 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Max,
+  Min,
 } from 'class-validator';
 import { InfluencerStatus } from '../schema/influencer.schema';
 
 export class CreateInfluencerDto {
   // @IsString()
   // userId!: string;
-  @IsEmail()
-  email!:string;
+  // @IsEmail()
+  // email!: string;
 
   @IsString()
-  password!:string;
+  token!:string
 
   @IsString()
-  name!: string;
+  password!: string;
+  
+
+  // @IsString()
+  // name!: string;
 
   // @IsString()
   // referralCode!: string;
@@ -39,21 +45,18 @@ export class CreateInfluencerDto {
   @IsString()
   tiktok?: string;
 
-  @IsOptional()
-  @IsNumber()
-  commissionRate?: number;
+  // @IsOptional()
+  // @IsNumber()
+  // commissionRate?: number;
 
-   @IsOptional()
+  @IsOptional()
   @IsNumber()
   followers?: number;
 }
 
-
-
 export class UpdateInfluencerDto {
-  
   @IsMongoId()
-  userId!:string
+  userId!: string;
 
   @IsString()
   name!: string;
@@ -77,20 +80,56 @@ export class UpdateInfluencerDto {
   @IsString()
   tiktok?: string;
 
-  @IsOptional()
-  @IsNumber()
-  commissionRate?: number;
+  // @IsOptional()
+  // @IsNumber()
+  // commissionRate?: number;
 
-   @IsOptional()
+  @IsOptional()
   @IsNumber()
   followers?: number;
 
-
-   @IsOptional()
+  @IsOptional()
   @IsString()
   status?: InfluencerStatus;
 
   @IsOptional()
   @IsBoolean()
-  isActive?:boolean
+  isActive?: boolean;
+}
+
+export class createSlabDTO {
+  @IsNumber()
+  @Min(0)
+  minSales!: number;
+
+  @IsNumber()
+  @Min(0)
+  maxSales!: number;
+
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  commissionRate!: number;
+}
+
+export class UpdateSlabDTO {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  minSales?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  maxSales?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(99)
+  commissionRate?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }

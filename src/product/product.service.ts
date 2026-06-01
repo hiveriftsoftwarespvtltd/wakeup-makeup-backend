@@ -13,13 +13,13 @@ import {
   ProductVariantDocument,
 } from './schema/product-variant.schema';
 import { Category, CategoryDocument } from './schema/category.schema';
-import { CreateCategory } from './dto/create-category.dto';
+// import { CreateCategory } from './dto/create-category.dto';
 import { CreateUserDto } from 'src/user/dto/create-user.dto';
 import { Media, MediaDocument } from 'src/document/schema/document.schema';
 import { DocumentService } from 'src/document/document.service';
 // import { StorageFactory } from 'src/document/storage/storage.factory';
 import { ApiResponse } from 'src/common/responses/api-response';
-import { UpdateCategoryDTO } from './dto/update-category.dto';
+// import { UpdateCategoryDTO } from './dto/update-category.dto';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 
 @Injectable()
@@ -33,126 +33,126 @@ export class ProductService {
     private documentService: DocumentService,
   ) {}
 
-  async CreateCategory(
-    dto: CreateCategory,
-    file: Express.Multer.File,
-    userId: string,
-    vendorId: string,
-  ) {
-    if (!vendorId) {
-      throw new ForbiddenException('Your account is not verified yet');
-    }
-    const isCategoryExist = await this.categoryModel.findOne({
-      vendorId,
-      $or: [{ name: dto.name }, { slug: dto.slug }],
-    });
-    if (isCategoryExist) {
-      throw new ConflictException('Category exist with same name or slug');
-    }
+  // async CreateCategory(
+  //   dto: CreateCategory,
+  //   file: Express.Multer.File,
+  //   userId: string,
+  //   vendorId: string,
+  // ) {
+  //   if (!vendorId) {
+  //     throw new ForbiddenException('Your account is not verified yet');
+  //   }
+  //   const isCategoryExist = await this.categoryModel.findOne({
+  //     vendorId,
+  //     $or: [{ name: dto.name }, { slug: dto.slug }],
+  //   });
+  //   if (isCategoryExist) {
+  //     throw new ConflictException('Category exist with same name or slug');
+  //   }
 
-    let mediaId;
-    if (file) {
-      const mediaResponse = await this.documentService.upload(
-        file,
-        'category',
-        userId,
-        vendorId,
-      );
-      mediaId = mediaResponse._id;
-    }
+  //   let mediaId:any;
+  //   if (file) {
+  //     const mediaResponse = await this.documentService.upload(
+  //       file,
+  //       'category',
+  //       userId,
+  //       vendorId,
+  //     );
+  //     mediaId = mediaResponse._id;
+  //   }
 
-    // if (dto.attributes && typeof dto.attributes === 'string') {
-    //   dto.attributes = JSON.parse(dto.attributes as any);
-    // }
-    const newcategory = await this.categoryModel.create({
-      ...dto,
-      vendorId,
-      ownerId: userId,
-      image: mediaId,
-    });
+  //   // if (dto.attributes && typeof dto.attributes === 'string') {
+  //   //   dto.attributes = JSON.parse(dto.attributes as any);
+  //   // }
+  //   const newcategory = await this.categoryModel.create({
+  //     ...dto,
+  //     vendorId,
+  //     ownerId: userId,
+  //     image: mediaId,
+  //   });
 
-    return ApiResponse.success('Category Create Successfully', newcategory);
-  }
+  //   return ApiResponse.success('Category Create Successfully', newcategory);
+  // }
 
-  async updateCategory(
-    dto: UpdateCategoryDTO,
-    file: Express.Multer.File,
-    userId: string,
-    vendorId: string,
-    categoryId: string,
-  ) {
-    if (!vendorId) {
-      throw new ForbiddenException('Your account is not verified yet');
-    }
+  // async updateCategory(
+  //   dto: UpdateCategoryDTO,
+  //   file: Express.Multer.File,
+  //   userId: string,
+  //   vendorId: string,
+  //   categoryId: string,
+  // ) {
+  //   if (!vendorId) {
+  //     throw new ForbiddenException('Your account is not verified yet');
+  //   }
 
-    const category = await this.categoryModel.findOne({
-      vendorId,
-      _id: categoryId,
-      isDeleted: false,
-    });
+  //   const category = await this.categoryModel.findOne({
+  //     vendorId,
+  //     _id: categoryId,
+  //     isDeleted: false,
+  //   });
 
-    if (!category) {
-      throw new NotFoundException('Category Not Found');
-    }
+  //   if (!category) {
+  //     throw new NotFoundException('Category Not Found');
+  //   }
 
-    if (dto.name || dto.slug) {
-      const existingCategory = await this.categoryModel.findOne({
-        vendorId,
-        _id: { $ne: categoryId },
+  //   if (dto.name || dto.slug) {
+  //     const existingCategory = await this.categoryModel.findOne({
+  //       vendorId,
+  //       _id: { $ne: categoryId },
 
-        $or: [
-          ...(dto.name ? [{ name: dto.name }] : []),
+  //       $or: [
+  //         ...(dto.name ? [{ name: dto.name }] : []),
 
-          ...(dto.slug ? [{ slug: dto.slug }] : []),
-        ],
-      });
+  //         ...(dto.slug ? [{ slug: dto.slug }] : []),
+  //       ],
+  //     });
 
-      if (existingCategory) {
-        throw new ConflictException(
-          'Category with same name or slug already exists',
-        );
-      }
-    }
+  //     if (existingCategory) {
+  //       throw new ConflictException(
+  //         'Category with same name or slug already exists',
+  //       );
+  //     }
+  //   }
 
-    // if (dto.attributes && typeof dto.attributes === 'string') {
-    //   dto.attributes = JSON.parse(dto.attributes as any);
-    // }
+  //   // if (dto.attributes && typeof dto.attributes === 'string') {
+  //   //   dto.attributes = JSON.parse(dto.attributes as any);
+  //   // }
 
-    if (file) {
-      if (category.image) {
-        await this.documentService.deleteMedia(category.image.toString());
-      }
+  //   if (file) {
+  //     if (category.image) {
+  //       await this.documentService.deleteMedia(category.image.toString());
+  //     }
 
-      const uploaded = await this.documentService.upload(
-        file,
-        'category',
-        userId,
-        vendorId,
-      );
+  //     const uploaded = await this.documentService.upload(
+  //       file,
+  //       'category',
+  //       userId,
+  //       vendorId,
+  //     );
 
-      category.image = uploaded._id;
-    }
+  //     category.image = uploaded._id;
+  //   }
 
-    if (dto.name !== undefined && dto.name.trim() !== '') {
-      category.name = dto.name;
-    }
+  //   if (dto.name !== undefined && dto.name.trim() !== '') {
+  //     category.name = dto.name;
+  //   }
 
-    if (dto.slug !== undefined && dto.slug.trim() !== '') {
-      category.slug = dto.slug;
-    }
+  //   if (dto.slug !== undefined && dto.slug.trim() !== '') {
+  //     category.slug = dto.slug;
+  //   }
 
-    if (dto.description !== undefined) {
-      category.description = dto.description;
-    }
+  //   if (dto.description !== undefined) {
+  //     category.description = dto.description;
+  //   }
 
-    // if (dto.attributes !== undefined) {
-    //   category.attributes = dto.attributes;
-    // }
+  //   // if (dto.attributes !== undefined) {
+  //   //   category.attributes = dto.attributes;
+  //   // }
 
-    await category.save();
+  //   await category.save();
 
-    return ApiResponse.success('Category Updated Successfully', category);
-  }
+  //   return ApiResponse.success('Category Updated Successfully', category);
+  // }
 
   async fetchVendorCategories(vendorId: string) {
     if (!vendorId) {
@@ -200,6 +200,149 @@ export class ProductService {
     return ApiResponse.success('Category Deleted Successfully', null);
   }
 
+  // async createProduct(
+  //   dto: CreateProductDto,
+  //   files: Express.Multer.File[],
+  //   userId: string,
+  //   vendorId: string,
+  // ) {
+  //   if (!vendorId) {
+  //     throw new ForbiddenException('Your account is not verified yet');
+  //   }
+
+  //   const existingProduct = await this.productModel.findOne({
+  //     vendorId,
+  //     $or: [{ name: dto.name }, { slug: dto.slug }],
+  //   });
+
+  //   if (existingProduct) {
+  //     throw new ConflictException('Product already exists');
+  //   }
+
+  //   const category = await this.categoryModel.findOne({
+  //     _id: dto.categoryId,
+  //     vendorId,
+  //     isDeleted: false,
+  //   });
+
+  //   if (!category) {
+  //     throw new NotFoundException('Category not found');
+  //   }
+
+  //   if (!dto.variants?.length) {
+  //     throw new BadRequestException('At least one variant is required');
+  //   }
+
+  //   const product = await this.productModel.create({
+  //     name: dto.name,
+  //     slug: dto.slug,
+  //     description: dto.description,
+
+  //     vendorId,
+  //     createdBy: userId,
+
+  //     categoryId: new Types.ObjectId(dto.categoryId),
+
+  //     metaTitle: dto.metaTitle,
+  //     metaDescription: dto.metaDescription,
+
+  //     status: dto.status,
+
+  //     hasVariants: dto.variants.length > 1,
+  //   });
+
+  //   const variantIds: Types.ObjectId[] = [];
+
+  //   for (let i = 0; i < dto.variants.length; i++) {
+  //     const variant = dto.variants[i];
+
+  //     const thumbnailFile = files.find(
+  //       (file) => file.fieldname === `variant_${i}_thumbnail`,
+  //     );
+
+  //     const imageFiles = files.filter(
+  //       (file) => file.fieldname === `variant_${i}_images`,
+  //     );
+
+  //     console.log("Thumbnail and Images",thumbnailFile,imageFiles)
+
+  //     if (!thumbnailFile) {
+  //       throw new BadRequestException(
+  //         `Thumbnail required for variant ${i }`,
+  //       );
+  //     }
+
+  //     if (!imageFiles.length) {
+  //       throw new BadRequestException(`Images required for variant ${i}`);
+  //     }
+
+  //     // ========= UPLOAD THUMBNAIL =========
+
+  //     const uploadedThumbnail = await this.documentService.upload(
+  //       thumbnailFile,
+  //       'product',
+  //       userId,
+  //       vendorId,
+  //     );
+
+  //     const uploadedImages: Types.ObjectId[] = [];
+
+  //     for (const image of imageFiles) {
+  //       const uploaded = await this.documentService.upload(
+  //         image,
+  //         'product',
+  //         userId,
+  //         vendorId,
+  //       );
+
+  //       uploadedImages.push(uploaded._id);
+  //     }
+
+  //     const createdVariant = await this.productVariantModel.create({
+  //       productId: product._id,
+
+  //       sku: variant.sku,
+
+  //       costPrice: variant.costPrice,
+
+  //       salesPrice: variant.salesPrice,
+  //       offeredPrice:variant.offeredPrice,
+
+  //       stock: variant.stock,
+
+  //       attributes: variant.attributes,
+
+  //       thumbnail: uploadedThumbnail._id,
+
+  //       images: uploadedImages,
+  //     });
+
+  //     variantIds.push(createdVariant._id as Types.ObjectId);
+  //   }
+
+  //   product.variants = variantIds;
+
+  //   await product.save();
+
+  //   const finalProduct = await this.productModel
+  //     .findById(product._id)
+  //     .populate({
+  //       path: 'variants',
+  //       populate: [
+  //         {
+  //           path: 'thumbnail',
+  //           select: 'url publicId type originalName',
+  //         },
+  //         {
+  //           path: 'images',
+  //           select: 'url publicId type originalName',
+  //         },
+  //       ],
+  //     });
+
+  //   return ApiResponse.success('Product created successfully', finalProduct);
+  // }
+
   async createProduct(
     dto: CreateProductDto,
     files: Express.Multer.File[],
@@ -221,7 +364,7 @@ export class ProductService {
 
     const category = await this.categoryModel.findOne({
       _id: dto.categoryId,
-      vendorId,
+      // vendorId,
       isDeleted: false,
     });
 
@@ -233,113 +376,181 @@ export class ProductService {
       throw new BadRequestException('At least one variant is required');
     }
 
-    const product = await this.productModel.create({
-      name: dto.name,
-      slug: dto.slug,
-      description: dto.description,
+    // =====================
+    // UPLOAD ALL MEDIA FIRST
+    // =====================
 
-      vendorId,
-      createdBy: userId,
+    const uploadedMediaIds: string[] = [];
 
-      categoryId: new Types.ObjectId(dto.categoryId),
+    const variantMediaData: {
+      thumbnailId: Types.ObjectId;
+      imageIds: Types.ObjectId[];
+    }[] = [];
 
-      metaTitle: dto.metaTitle,
-      metaDescription: dto.metaDescription,
-
-      status: dto.status,
-
-      hasVariants: dto.variants.length > 1,
-    });
-
-    const variantIds: Types.ObjectId[] = [];
-
-    for (let i = 0; i < dto.variants.length; i++) {
-      const variant = dto.variants[i];
-
-      const thumbnailFile = files.find(
-        (file) => file.fieldname === `variant_${i}_thumbnail`,
-      );
-
-      const imageFiles = files.filter(
-        (file) => file.fieldname === `variant_${i}_images`,
-      );
-
-      console.log("Thumbnail and Images",thumbnailFile,imageFiles)
-     
-      if (!thumbnailFile) {
-        throw new BadRequestException(
-          `Thumbnail required for variant ${i + 1}`,
+    try {
+      for (let i = 0; i < dto.variants.length; i++) {
+        const thumbnailFile = files.find(
+          (file) => file.fieldname === `variant_${i}_thumbnail`,
         );
-      }
 
-      if (!imageFiles.length) {
-        throw new BadRequestException(`Images required for variant ${i + 1}`);
-      }
+        const imageFiles = files.filter(
+          (file) => file.fieldname === `variant_${i}_images`,
+        );
 
-      // ========= UPLOAD THUMBNAIL =========
+        if (!thumbnailFile) {
+          throw new BadRequestException(
+            `Thumbnail required for variant ${i + 1}`,
+          );
+        }
 
-      const uploadedThumbnail = await this.documentService.upload(
-        thumbnailFile,
-        'product',
-        userId,
-        vendorId,
-      );
+        if (!imageFiles.length) {
+          throw new BadRequestException(`Images required for variant ${i + 1}`);
+        }
 
-      const uploadedImages: Types.ObjectId[] = [];
-
-      for (const image of imageFiles) {
-        const uploaded = await this.documentService.upload(
-          image,
+        const thumbnail = await this.documentService.upload(
+          thumbnailFile,
           'product',
           userId,
           vendorId,
         );
 
-        uploadedImages.push(uploaded._id);
+        uploadedMediaIds.push(thumbnail._id.toString());
+
+        const imageIds: Types.ObjectId[] = [];
+
+        for (const image of imageFiles) {
+          const uploaded = await this.documentService.upload(
+            image,
+            'product',
+            userId,
+            vendorId,
+          );
+
+          uploadedMediaIds.push(uploaded._id.toString());
+
+          imageIds.push(uploaded._id as Types.ObjectId);
+        }
+
+        variantMediaData.push({
+          thumbnailId: thumbnail._id as Types.ObjectId,
+          imageIds,
+        });
       }
 
-      const createdVariant = await this.productVariantModel.create({
-        productId: product._id,
+      // =====================
+      // START TRANSACTION
+      // =====================
 
-        sku: variant.sku,
+      const session = await this.productModel.db.startSession();
 
-        price: variant.price,
+      try {
+        session.startTransaction();
 
-        salesPrice: variant.salesPrice,
+        const [product] = await this.productModel.create(
+          [
+            {
+              name: dto.name,
+              slug: dto.slug,
+              description: dto.description,
+              vendorId: new Types.ObjectId(vendorId),
+              createdBy: new Types.ObjectId(userId),
+              categoryId: new Types.ObjectId(dto.categoryId),
+              metaTitle: dto.metaTitle,
+              metaDescription: dto.metaDescription,
+              status: dto.status,
+              hasVariants: dto.variants.length > 1,
+              tags:dto.tags,
+              isShippingApply:dto.isShippingApply
+            },
+          ],
+          { session },
+        );
 
-        stock: variant.stock,
+        const variantIds: Types.ObjectId[] = [];
 
-        attributes: variant.attributes,
+        for (let i = 0; i < dto.variants.length; i++) {
+          const variant = dto.variants[i];
+          const media = variantMediaData[i];
 
-        thumbnail: uploadedThumbnail._id,
+          if (
+            variant.costPrice > variant.salesPrice ||
+            variant.salesPrice < variant.offeredPrice
+          ) {
+            throw new BadRequestException(
+              'Cost Price should be smaller than sales price and sales price should be greater than offered price',
+            );
+          }
 
-        images: uploadedImages,
-      });
+          const [createdVariant] = await this.productVariantModel.create(
+            [
+              {
+                productId: new Types.ObjectId(product._id),
 
-      variantIds.push(createdVariant._id as Types.ObjectId);
+                sku: variant.sku,
+                costPrice: variant.costPrice,
+
+                salesPrice: variant.salesPrice,
+
+                offeredPrice: variant.offeredPrice,
+
+                stock: variant.stock,
+                weight: variant.weight,
+                length: variant.length,
+                width: variant.width,
+                height: variant.height,
+
+                attributes: variant.attributes,
+
+                thumbnail: media.thumbnailId,
+
+                images: media.imageIds,
+              },
+            ],
+            { session },
+          );
+
+          variantIds.push(createdVariant._id as Types.ObjectId);
+        }
+
+        product.variants = variantIds;
+
+        await product.save({ session });
+
+        await session.commitTransaction();
+
+        const finalProduct = await this.productModel
+          .findById(product._id)
+          .populate({
+            path: 'variants',
+            populate: [
+              {
+                path: 'thumbnail',
+              },
+              {
+                path: 'images',
+              },
+            ],
+          });
+
+        return ApiResponse.success(
+          'Product created successfully',
+          finalProduct,
+        );
+      } catch (error) {
+        await session.abortTransaction();
+        throw error;
+      } finally {
+        session.endSession();
+      }
+    } catch (error) {
+      // cleanup uploaded media
+
+      await Promise.allSettled(
+        uploadedMediaIds.map((id) => this.documentService.deleteMedia(id)),
+      );
+
+      throw error;
     }
-
-    product.variants = variantIds;
-
-    await product.save();
-
-    const finalProduct = await this.productModel
-      .findById(product._id)
-      .populate({
-        path: 'variants',
-        populate: [
-          {
-            path: 'thumbnail',
-            select: 'url publicId type originalName',
-          },
-          {
-            path: 'images',
-            select: 'url publicId type originalName',
-          },
-        ],
-      });
-
-    return ApiResponse.success('Product created successfully', finalProduct);
   }
 
   async updateProduct(
@@ -384,8 +595,8 @@ export class ProductService {
 
     if (dto.categoryId) {
       const category = await this.categoryModel.findOne({
-        _id: dto.categoryId,
-        vendorId,
+        _id: new Types.ObjectId(dto.categoryId),
+        // vendorId,
         isDeleted: false,
       });
 
@@ -394,12 +605,18 @@ export class ProductService {
       }
     }
 
+    const uploadedMediaIds: string[] = [];
+    const oldMediaToDelete: string[] = [];
     if (dto.name !== undefined) {
       product.name = dto.name;
     }
 
     if (dto.slug !== undefined) {
       product.slug = dto.slug;
+    }
+
+    if(dto.tags !== undefined){
+      product.tags = dto.tags
     }
 
     if (dto.description !== undefined) {
@@ -422,68 +639,200 @@ export class ProductService {
       product.status = dto.status;
     }
 
-    if (dto.variants?.length) {
-      const variantIds: Types.ObjectId[] = [];
+    const session = await this.productModel.db.startSession();
+    try {
+      session.startTransaction();
+      if (dto.variants?.length) {
+        const variantIds: Types.ObjectId[] = [];
 
-      for (let i = 0; i < dto.variants.length; i++) {
-        const variant = dto.variants[i];
+        for (let i = 0; i < dto.variants.length; i++) {
+          const variant = dto.variants[i];
 
-        const thumbnailFile = files.find(
-          (file) => file.fieldname === `variant_${i}_thumbnail`,
-        );
+          const thumbnailFile = files.find(
+            (file) => file.fieldname === `variant_${i}_thumbnail`,
+          );
 
-        const imageFiles = files.filter(
-          (file) => file.fieldname === `variant_${i}_images`,
-        );
+          const imageFiles = files.filter(
+            (file) => file.fieldname === `variant_${i}_images`,
+          );
 
-        // =========================
-        // UPDATE EXISTING VARIANT
-        // =========================
+          // =========================
+          // UPDATE EXISTING VARIANT
+          // =========================
 
-        if ((variant as any)._id) {
-          const existingVariant = await this.productVariantModel.findOne({
-            _id: (variant as any)._id,
-            productId: product._id,
-          });
+          if ((variant as any)._id) {
+            const existingVariant = await this.productVariantModel
+              .findOne({
+                _id: (variant as any)._id,
+                productId: product._id,
+              })
+              .session(session);
 
-          if (!existingVariant) {
-            throw new NotFoundException(`Variant not found`);
+            if (!existingVariant) {
+              throw new NotFoundException(`Variant not found`);
+            }
+
+            if (variant.sku !== undefined) {
+              existingVariant.sku = variant.sku;
+            }
+
+            if (variant.costPrice !== undefined) {
+              existingVariant.costPrice = Number(variant.costPrice);
+            }
+
+            if (variant.salesPrice !== undefined) {
+              existingVariant.salesPrice = Number(variant.salesPrice);
+            }
+
+            if (variant.offeredPrice !== undefined) {
+              existingVariant.offeredPrice = Number(variant.offeredPrice);
+            }
+
+            if (variant.stock !== undefined) {
+              existingVariant.stock = Number(variant.stock);
+            }
+
+            if (
+              variant.attributes !== undefined &&
+              variant.attributes !== null &&
+              Object.keys(variant.attributes).length > 0
+            ) {
+              existingVariant.attributes = variant.attributes;
+            }
+
+            if (variant.isActive !== undefined) {
+              existingVariant.isActive = variant.isActive;
+            }
+
+            if (variant.weight !== undefined) {
+              existingVariant.weight = variant.weight;
+            }
+
+            if (variant.length !== undefined) {
+              existingVariant.length = variant.length;
+            }
+
+            if (variant.width !== undefined) {
+              existingVariant.width = variant.width;
+            }
+
+            if (variant.height !== undefined) {
+              existingVariant.height = variant.height;
+            }
+
+            // ===== thumbnail update =====
+
+            if (thumbnailFile) {
+              // if (existingVariant.thumbnail) {
+              //   await this.documentService.deleteMedia(
+              //     existingVariant.thumbnail.toString(),
+              //   );
+              // }
+              if (existingVariant.thumbnail) {
+                oldMediaToDelete.push(existingVariant.thumbnail.toString());
+              }
+
+              // const uploadedThumbnail = await this.documentService.upload(
+              //   thumbnailFile,
+              //   'product',
+              //   userId,
+              //   vendorId,
+              // );
+
+              const uploadedThumbnail = await this.documentService.upload(
+                thumbnailFile,
+                'product',
+                userId,
+                vendorId,
+              );
+
+              uploadedMediaIds.push(uploadedThumbnail._id.toString());
+
+              existingVariant.thumbnail = uploadedThumbnail._id;
+            }
+
+            // ===== images update =====
+
+            if (imageFiles.length) {
+              // if (existingVariant.images?.length) {
+              //   for (const imageId of existingVariant.images) {
+              //     await this.documentService.deleteMedia(imageId.toString());
+              //   }
+              // }
+
+              for (const imageId of existingVariant.images) {
+                oldMediaToDelete.push(imageId.toString());
+              }
+
+              const uploadedImages: Types.ObjectId[] = [];
+
+              for (const image of imageFiles) {
+                // const uploaded = await this.documentService.upload(
+                //   image,
+                //   'product',
+                //   userId,
+                //   vendorId,
+                // );
+
+                // uploadedImages.push(uploaded._id);
+
+                const uploaded = await this.documentService.upload(
+                  image,
+                  'product',
+                  userId,
+                  vendorId,
+                );
+
+                uploadedMediaIds.push(uploaded._id.toString());
+
+                uploadedImages.push(uploaded._id);
+              }
+
+              existingVariant.images = uploadedImages;
+            }
+
+            await existingVariant.save({ session });
+
+            variantIds.push(existingVariant._id as Types.ObjectId);
           }
 
-          
-
-          if (variant.sku !== undefined) {
-            existingVariant.sku = variant.sku;
-          }
-
-          if (variant.price !== undefined) {
-            existingVariant.price = Number(variant.price);
-          }
-
-          if (variant.salesPrice !== undefined) {
-            existingVariant.salesPrice = Number(variant.salesPrice);
-          }
-
-          if (variant.stock !== undefined) {
-            existingVariant.stock = Number(variant.stock);
-          }
-
-          if (variant.attributes !== undefined) {
-            existingVariant.attributes = variant.attributes;
-          }
-
-          if (variant.isActive !== undefined) {
-            existingVariant.isActive = variant.isActive;
-          }
-
-          // ===== thumbnail update =====
-
-          if (thumbnailFile) {
-            if (existingVariant.thumbnail) {
-              await this.documentService.deleteMedia(
-                existingVariant.thumbnail.toString(),
+          // =========================
+          // CREATE NEW VARIANT
+          // =========================
+          else {
+            if (
+              variant.costPrice === undefined ||
+              variant.salesPrice === undefined ||
+              variant.offeredPrice === undefined ||
+              variant.stock === undefined ||
+              !variant.sku
+            ) {
+              throw new BadRequestException(
+                `cost price,sales price, offered price, stock and sku required for new variant`,
               );
             }
+
+            if (
+              variant.costPrice < variant.salesPrice ||
+              variant.salesPrice < variant.offeredPrice
+            ) {
+              throw new BadRequestException(
+                'Cost Price should be greater than sales price and sales price should be greater than offered price',
+              );
+            }
+
+            if (!thumbnailFile) {
+              throw new BadRequestException(
+                `Thumbnail required for new variant`,
+              );
+            }
+
+            // const uploadedThumbnail = await this.documentService.upload(
+            //   thumbnailFile,
+            //   'product',
+            //   userId,
+            //   vendorId,
+            // );
 
             const uploadedThumbnail = await this.documentService.upload(
               thumbnailFile,
@@ -492,21 +841,20 @@ export class ProductService {
               vendorId,
             );
 
-            existingVariant.thumbnail = uploadedThumbnail._id;
-          }
-
-          // ===== images update =====
-
-          if (imageFiles.length) {
-            if (existingVariant.images?.length) {
-              for (const imageId of existingVariant.images) {
-                await this.documentService.deleteMedia(imageId.toString());
-              }
-            }
+            uploadedMediaIds.push(uploadedThumbnail._id.toString());
 
             const uploadedImages: Types.ObjectId[] = [];
 
             for (const image of imageFiles) {
+              // const uploaded = await this.documentService.upload(
+              //   image,
+              //   'product',
+              //   userId,
+              //   vendorId,
+              // );
+
+              // uploadedImages.push(uploaded._id);
+
               const uploaded = await this.documentService.upload(
                 image,
                 'product',
@@ -514,105 +862,110 @@ export class ProductService {
                 vendorId,
               );
 
+              uploadedMediaIds.push(uploaded._id.toString());
+
               uploadedImages.push(uploaded._id);
             }
 
-            existingVariant.images = uploadedImages;
+            // const createdVariant = await this.productVariantModel.create({
+            //   productId: product._id,
+
+            //   sku: variant.sku,
+
+            //   costPrice: Number(variant.costPrice),
+
+            //   salesPrice: variant.salesPrice,
+
+            //   offeredPrice: variant.offeredPrice,
+
+            //   stock: Number(variant.stock),
+
+            //   attributes: variant.attributes,
+
+            //   thumbnail: uploadedThumbnail._id,
+
+            //   images: uploadedImages,
+
+            //   isActive: variant.isActive !== undefined ? variant.isActive : true,
+            // });
+
+            const [createdVariant] = await this.productVariantModel.create(
+              [
+                {
+                  productId: product._id,
+
+                  sku: variant.sku,
+
+                  costPrice: Number(variant.costPrice),
+
+                  salesPrice: variant.salesPrice,
+
+                  offeredPrice: variant.offeredPrice,
+
+                  stock: Number(variant.stock),
+
+                  attributes: variant.attributes,
+
+                  thumbnail: uploadedThumbnail._id,
+
+                  images: uploadedImages,
+
+                  isActive:
+                    variant.isActive !== undefined ? variant.isActive : true,
+                },
+              ],
+              { session },
+            );
+
+            variantIds.push(createdVariant._id as Types.ObjectId);
           }
-
-          await existingVariant.save();
-
-          variantIds.push(existingVariant._id as Types.ObjectId);
         }
 
-        // =========================
-        // CREATE NEW VARIANT
-        // =========================
-        else {
+        product.variants = variantIds;
 
-          const isVariantExist = await this.productModel.findOne({})
-          if (
-            variant.price === undefined ||
-            variant.stock === undefined ||
-            !variant.sku
-          ) {
-            throw new BadRequestException(
-              `price, stock and sku required for new variant`,
-            );
-          }
-
-          if (!thumbnailFile) {
-            throw new BadRequestException(`Thumbnail required for new variant`);
-          }
-
-          const uploadedThumbnail = await this.documentService.upload(
-            thumbnailFile,
-            'product',
-            userId,
-            vendorId,
-          );
-
-          const uploadedImages: Types.ObjectId[] = [];
-
-          for (const image of imageFiles) {
-            const uploaded = await this.documentService.upload(
-              image,
-              'product',
-              userId,
-              vendorId,
-            );
-
-            uploadedImages.push(uploaded._id);
-          }
-
-          const createdVariant = await this.productVariantModel.create({
-            productId: product._id,
-
-            sku: variant.sku,
-
-            price: Number(variant.price),
-
-            salesPrice: variant.salesPrice,
-
-            stock: Number(variant.stock),
-
-            attributes: variant.attributes,
-
-            thumbnail: uploadedThumbnail._id,
-
-            images: uploadedImages,
-
-            isActive: variant.isActive !== undefined ? variant.isActive : true,
-          });
-
-          variantIds.push(createdVariant._id as Types.ObjectId);
-        }
+        product.hasVariants = variantIds.length > 1;
       }
 
-      product.variants = variantIds;
+      await product.save({ session });
 
-      product.hasVariants = variantIds.length > 1;
+      await session.commitTransaction();
+
+      await Promise.allSettled(
+        oldMediaToDelete.map((id) => this.documentService.deleteMedia(id)),
+      );
+
+      const updatedProduct = await this.productModel
+        .findById(product._id)
+        .populate('categoryId')
+        .populate({
+          path: 'variants',
+          populate: [
+            {
+              path: 'thumbnail',
+              select: 'url publicId type originalName',
+            },
+            {
+              path: 'images',
+              select: 'url publicId type originalName',
+            },
+          ],
+        });
+
+      return ApiResponse.success(
+        'Product updated successfully',
+        updatedProduct,
+      );
+    } catch (error) {
+      await session.abortTransaction();
+
+      await Promise.allSettled(
+        uploadedMediaIds.map((id) => this.documentService.deleteMedia(id)),
+      );
+
+      throw error;
+    } finally {
+      await session.endSession();
     }
-
-    await product.save();
-
-    const updatedProduct = await this.productModel
-      .findById(product._id).populate("categoryId")
-      .populate({
-        path: 'variants',
-        populate: [
-          {
-            path: 'thumbnail',
-            select: 'url publicId type originalName',
-          },
-          {
-            path: 'images',
-            select: 'url publicId type originalName',
-          },
-        ],
-      });
-
-    return ApiResponse.success('Product updated successfully', updatedProduct);
   }
 
   async deleteProduct(userId: string, vendorId: string, productId: string) {
@@ -655,7 +1008,8 @@ export class ProductService {
       .find({
         createdBy: userId,
         vendorId,
-      }).populate("categoryId")
+      })
+      .populate('categoryId')
       .populate({
         path: 'variants',
         populate: [
@@ -667,7 +1021,6 @@ export class ProductService {
             path: 'thumbnail',
             model: 'Media',
           },
-          
         ],
       });
 
@@ -684,7 +1037,8 @@ export class ProductService {
         vendorId,
         createdBy: userId,
         _id: productId,
-      }).populate("categoryId")
+      })
+      .populate('categoryId')
       .populate({
         path: 'variants',
 
@@ -696,7 +1050,7 @@ export class ProductService {
           {
             path: 'images',
             select: 'url publicId type originalName',
-          }
+          },
         ],
       });
 

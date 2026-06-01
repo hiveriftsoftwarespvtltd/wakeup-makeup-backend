@@ -55,10 +55,10 @@ export class Influencer {
   followers!: number;
 
   // default commission %
-  @Prop({
-    default: 5,
-  })
-  commissionRate!: number;
+  // @Prop({
+  //   default: 5,
+  // })
+  // commissionRate!: number;
 
   @Prop({
     enum: InfluencerStatus,
@@ -70,6 +70,9 @@ export class Influencer {
     default: 0,
   })
   totalSales!: number;
+
+  @Prop({default:0})
+  totalOrders!:number
 
   @Prop({
     default: 0,

@@ -7,8 +7,9 @@ export enum UserRole {
   ADMIN = 'admin',
   VENDOR = 'vendor',
   INFLUENCER = 'influencer',
+  SERVICE_PROVIDER = 'service_provider',
   DISTRIBUTOR = 'distributor',
-  USER = 'user'
+  USER = 'user',
 }
 
 export enum AuthType {
@@ -24,9 +25,8 @@ export class User {
   @Prop({ required: true, unique: true })
   email!: string;
 
-  @Prop({type:Types.ObjectId,ref:"Media"})
-  avatar?:Types.ObjectId
-
+  @Prop({ type: Types.ObjectId, ref: 'Media' })
+  avatar?: Types.ObjectId;
 
   @Prop()
   password?: string;
@@ -34,18 +34,15 @@ export class User {
   @Prop()
   phone?: string;
 
-  
   @Prop({ type: [String], enum: AuthType, default: [AuthType.EMAIL] })
   authTypes!: AuthType[];
 
-  
   @Prop()
   googleId?: string;
 
   @Prop({ type: String, enum: UserRole, default: UserRole.USER })
   role!: UserRole;
 
-  
   @Prop()
   otp?: string;
 
@@ -61,15 +58,23 @@ export class User {
   @Prop({ default: true })
   isActive!: boolean;
 
-  @Prop({default:false})
-  isDeleted!:boolean
+  @Prop({ default: false })
+  isDeleted!: boolean;
 
- 
   @Prop({ type: Types.ObjectId, ref: 'Vendor' })
   vendorId?: Types.ObjectId;
 
-  @Prop({default:false})
-  isVendorOnboardingCompleted!:boolean
+  @Prop({ type: Types.ObjectId, ref: 'Influencer' })
+  influencerId?: Types.ObjectId;
+
+  @Prop({ default: false })
+  isVendorOnboardingCompleted!: boolean;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'ServiceProvider',
+  })
+  serviceProviderId?: Types.ObjectId;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

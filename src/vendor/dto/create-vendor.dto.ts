@@ -5,8 +5,8 @@ import { IsEmail, IsMongoId, IsNumber, IsOptional, IsString } from "class-valida
 export class createVendorDTO{
 
 
-    @IsMongoId()
-    ownerId!:string;
+    // @IsMongoId()
+    // ownerId!:string;
 
     @IsString()
     businessName!:string
@@ -29,6 +29,15 @@ export class createVendorDTO{
     @IsOptional()
     @IsEmail()
     email?:string;
+
+    @IsString()
+    vendorPincode!:string
+
+    @IsString()
+    city!:string
+
+    @IsString()
+    state!:string
 
     // @IsOptional()
     // @IsNumber()

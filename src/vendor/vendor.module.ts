@@ -9,10 +9,16 @@ import { Product, ProductSchema } from 'src/product/schema/product.schema';
 import { Category, CategorySchema } from 'src/product/schema/category.schema';
 import { ProductVariant, ProductVariantSchema } from 'src/product/schema/product-variant.schema';
 import { Order, OrderSchema } from 'src/order/schema/order.schema';
+import { VendorOrder, VendorOrderSchema } from 'src/order/schema/vendor-order.schema';
+import { VendorShipment, VendorShipmentSchema } from 'src/order/schema/vendor-shipment.schema';
+import { Influencer, InfluencerSchema } from 'src/influencer/schema/influencer.schema';
+import { InfluencerCommission, InfluencerCommissionSchema } from 'src/influencer/schema/influencer-commision-rate.schema';
 
 @Module({
-  imports:[MongooseModule.forFeature([{name:Vendor.name,schema:VendorSchema}]),MongooseModule.forFeature([{name:User.name,schema:UserSchema}]),MongooseModule.forFeature([{name:Product.name,schema:ProductSchema}]),MongooseModule.forFeature([{name:Category.name,schema:CategorySchema}]),MongooseModule.forFeature([{name:ProductVariant.name,schema:ProductVariantSchema}]),MongooseModule.forFeature([{name:Order.name,schema:OrderSchema}]),DocumentModule],
+  imports:[MongooseModule.forFeature([{name:Vendor.name,schema:VendorSchema}]),MongooseModule.forFeature([{name:User.name,schema:UserSchema}]),MongooseModule.forFeature([{name:Product.name,schema:ProductSchema}]),MongooseModule.forFeature([{name:Category.name,schema:CategorySchema}]),MongooseModule.forFeature([{name:ProductVariant.name,schema:ProductVariantSchema}]),MongooseModule.forFeature([{name:Order.name,schema:OrderSchema}]),MongooseModule.forFeature([{name:VendorOrder.name,schema:VendorOrderSchema}]),
+  MongooseModule.forFeature([{name:VendorShipment.name,schema:VendorShipmentSchema}]),MongooseModule.forFeature([{name:Influencer.name,schema:InfluencerSchema}]),MongooseModule.forFeature([{name:InfluencerCommission.name,schema:InfluencerCommissionSchema}]),DocumentModule],
   providers: [VendorService],
-  controllers: [VendorController]
+  controllers: [VendorController],
+  exports:[MongooseModule]
 })
 export class VendorModule {}

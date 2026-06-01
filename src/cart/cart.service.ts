@@ -20,7 +20,37 @@ import {
   ProductVariant,
   ProductVariantDocument,
 } from 'src/product/schema/product-variant.schema';
+import { ShiprocketService } from 'src/shiprocket/shiprocket.service';
+import { Vendor, VendorDocument } from 'src/vendor/schema/vendor.schema';
+import { Address, AddressDocument } from 'src/address/schema/address.schema';
 
+export interface VendorShippingEstimate {
+  vendorId: Types.ObjectId;
+  vendorName: string;
+
+  courierCompanyId: number;
+  courierName: string;
+
+  shippingCharge: number;
+  freightCharge: number;
+  codCharge: number;
+
+  estimatedDays: number;
+  estimatedDate: string;
+
+  trackingPerformance: number;
+  rating: number;
+
+  itemCount: number;
+}
+
+export interface CartShippingEstimateResponse {
+  shippingSummary: VendorShippingEstimate[];
+
+  totalShippingCharge: number;
+
+  estimatedDeliveryDays: number;
+}
 @Injectable()
 export class CartService {
   constructor(
@@ -32,6 +62,14 @@ export class CartService {
 
     @InjectModel(ProductVariant.name)
     private productVariantModel: Model<ProductVariantDocument>,
+
+    @InjectModel(Vendor.name)
+    private vendorModel: Model<VendorDocument>,
+
+    @InjectModel(Address.name)
+    private addressModel: Model<AddressDocument>,
+
+    private shipRocketService: ShiprocketService,
   ) {}
 
   async addToCart(
@@ -40,11 +78,8 @@ export class CartService {
     variantId: string,
     quantity: number = 1,
   ) {
-
     if (quantity <= 0) {
-      throw new BadRequestException(
-        'Quantity must be greater than 0',
-      );
+      throw new BadRequestException('Quantity must be greater than 0');
     }
 
     const product = await this.productModel.findOne({
@@ -55,28 +90,21 @@ export class CartService {
     });
 
     if (!product) {
-      throw new NotFoundException(
-        'Product not found',
-      );
+      throw new NotFoundException('Product not found');
     }
 
-    const variant =
-      await this.productVariantModel.findOne({
-        _id: variantId,
-        productId: product._id,
-        isActive: true,
-      });
+    const variant = await this.productVariantModel.findOne({
+      _id: variantId,
+      productId: product._id,
+      isActive: true,
+    });
 
     if (!variant) {
-      throw new NotFoundException(
-        'Variant not found',
-      );
+      throw new NotFoundException('Variant not found');
     }
 
     if (variant.stock < quantity) {
-      throw new BadRequestException(
-        'Insufficient stock',
-      );
+      throw new BadRequestException('Insufficient stock');
     }
 
     let cart = await this.cartModel.findOne({
@@ -97,20 +125,14 @@ export class CartService {
     );
 
     if (existingItem) {
-
-      const updatedQty =
-        existingItem.quantity + quantity;
+      const updatedQty = existingItem.quantity + quantity;
 
       if (updatedQty > variant.stock) {
-        throw new BadRequestException(
-          'Quantity exceeds stock',
-        );
+        throw new BadRequestException('Quantity exceeds stock');
       }
 
       existingItem.quantity = updatedQty;
-
     } else {
-
       cart.items.push({
         product: new Types.ObjectId(productId),
         variant: new Types.ObjectId(variantId),
@@ -124,7 +146,6 @@ export class CartService {
   }
 
   async fetchUserCart(userId: string) {
-
     const cart = await this.cartModel
       .findOne({ user: userId })
       .populate({
@@ -149,15 +170,12 @@ export class CartService {
   }
 
   async clearUserCart(userId: string) {
-
     const cart = await this.cartModel.findOne({
       user: userId,
     });
 
     if (!cart) {
-      throw new NotFoundException(
-        'Cart not found',
-      );
+      throw new NotFoundException('Cart not found');
     }
 
     cart.items = [];
@@ -169,35 +187,25 @@ export class CartService {
     };
   }
 
-  async removeItemFromCart(
-    userId: string,
-    variantId: string,
-  ) {
-
+  async removeItemFromCart(userId: string, variantId: string) {
     const cart = await this.cartModel.findOne({
       user: userId,
     });
 
     if (!cart) {
-      throw new NotFoundException(
-        'Cart not found',
-      );
+      throw new NotFoundException('Cart not found');
     }
 
     const existingItem = cart.items.find(
-      (item) =>
-        item.variant.toString() === variantId,
+      (item) => item.variant.toString() === variantId,
     );
 
     if (!existingItem) {
-      throw new NotFoundException(
-        'Item not found in cart',
-      );
+      throw new NotFoundException('Item not found in cart');
     }
 
     cart.items = cart.items.filter(
-      (item) =>
-        item.variant.toString() !== variantId,
+      (item) => item.variant.toString() !== variantId,
     );
 
     await cart.save();
@@ -210,46 +218,313 @@ export class CartService {
     variantId: string,
     quantity: number = 1,
   ) {
-
     if (quantity <= 0) {
-      throw new BadRequestException(
-        'Quantity must be greater than 0',
-      );
+      throw new BadRequestException('Quantity must be greater than 0');
     }
 
     const cart = await this.cartModel.findOne({
-      user: userId,
+      user: new Types.ObjectId(userId),
     });
 
     if (!cart) {
-      throw new NotFoundException(
-        'Cart not found',
-      );
+      throw new NotFoundException('Cart not found');
     }
 
+
     const cartItem = cart.items.find(
-      (item) =>
-        item.variant.toString() === variantId,
+      (item) => item.variant.toString() === variantId,
     );
 
     if (!cartItem) {
-      throw new NotFoundException(
-        'Item not found in cart',
-      );
+      throw new NotFoundException('Item not found in cart');
     }
 
     cartItem.quantity -= quantity;
 
     if (cartItem.quantity <= 0) {
-
       cart.items = cart.items.filter(
-        (item) =>
-          item.variant.toString() !== variantId,
+        (item) => item.variant.toString() !== variantId,
       );
     }
 
     await cart.save();
 
     return await this.fetchUserCart(userId);
+  }
+
+  async estimateCartSummary(userId: string, addressId: string) {
+    const address = await this.addressModel
+      .findOne({
+        user: new Types.ObjectId(userId),
+        _id: new Types.ObjectId(addressId),
+      })
+      .lean();
+
+    if (!address) {
+      throw new NotFoundException('Address Not Found');
+    }
+
+  
+    const userPinCode = address.pincode;
+    const cart = await this.cartModel
+      .findOne({
+        user: new Types.ObjectId(userId),
+      })
+      .lean();
+
+      
+   
+
+    if (!cart || !cart.items.length) {
+      return {
+        cartItems: [],
+        cartSummary: {
+          totalItems: 0,
+          subTotal: 0,
+          discount: 0,
+          shippingCharge: 0,
+          codCharge: 0,
+          finalTotal: 0,
+          estimatedDeliveryDays: 0,
+          estimatedDeliveryDate: null,
+        },
+        shippingSummary: [],
+        appliedCoupon: null,
+      };
+    }
+
+    const productIds = cart.items.map((item) => item.product);
+
+    const variantIds = cart.items.map((item) => item.variant);
+
+    const products = await this.productModel
+      .find({
+        _id: { $in: productIds },
+      })
+      .lean();
+
+    const variants = await this.productVariantModel
+      .find({
+        _id: { $in: variantIds },
+      }).populate({path:"thumbnail",select:"url"})
+      .lean();
+
+    const productsMap = new Map(products.map((p) => [p._id.toString(), p]));
+
+    const variantsMap = new Map(variants.map((v) => [v._id.toString(), v]));
+
+    const vendorIds = [
+      ...new Set(products.map((product) => product.vendorId.toString())),
+    ];
+
+    const vendors = await this.vendorModel
+      .find({
+        _id: { $in: vendorIds },
+      })
+      .lean();
+
+    const vendorMap = new Map(
+      vendors.map((vendor) => [vendor._id.toString(), vendor]),
+    );
+
+    const vendorsGroup = new Map<string, typeof cart.items>();
+
+    const cartItems: any[] = [];
+
+    let subTotal = 0;
+
+    for (const item of cart.items) {
+      const product = productsMap.get(item.product.toString());
+
+      const variant = variantsMap.get(item.variant.toString());
+
+      if (!product || !variant) {
+        continue;
+      }
+
+      const price =
+        variant.offeredPrice 
+
+      const totalPrice = price * item.quantity;
+
+      subTotal += totalPrice;
+
+      cartItems.push({
+        productId: product._id,
+        productName: product.name,
+
+        variantId: variant._id,
+
+        quantity: item.quantity,
+
+        thumbnail:variant.thumbnail,
+        attributes:variant.attributes,
+
+        unitPrice: price,
+
+        totalPrice,
+
+        shippingApplicable: product.isShippingApply,
+      });
+
+      // only group items which require shipping
+      if (!product.isShippingApply) {
+        continue;
+      }
+
+      const vendorId = product.vendorId.toString();
+
+      if (!vendorsGroup.has(vendorId)) {
+        vendorsGroup.set(vendorId, []);
+      }
+
+      vendorsGroup.get(vendorId)!.push(item);
+    }
+
+    const shippingSummary: any[] = [];
+
+    let totalShippingCharge = 0;
+    let totalCodCharge = 0;
+
+    for (const [vendorId, vendorItems] of vendorsGroup.entries()) {
+      const vendor = vendorMap.get(vendorId);
+
+      if (!vendor) {
+        continue;
+      }
+
+      let totalWeight = 0;
+      let declaredValue = 0;
+
+      let length = 0;
+      let width = 0;
+      let height = 0;
+
+      for (const item of vendorItems) {
+        const product = productsMap.get(item.product.toString());
+
+        const variant = variantsMap.get(item.variant.toString());
+
+        if (!product || !variant) {
+          continue;
+        }
+
+        const price =
+          variant.offeredPrice ?? variant.salesPrice ?? variant.costPrice;
+
+        declaredValue += price * item.quantity;
+
+        totalWeight += variant.weight * item.quantity;
+
+        length = Math.max(length, variant.length);
+
+        width = Math.max(width, variant.width);
+
+        height += variant.height * item.quantity;
+      }
+
+      const shipping = await this.shipRocketService.getShippingOptions({
+        pickupPincode: vendor.vendorPincode,
+
+        deliveryPincode: userPinCode,
+
+        weightKg: totalWeight,
+
+        declaredValue,
+
+        isCOD: 1,
+
+        length,
+        breadth: width,
+        height,
+      });
+
+      totalShippingCharge += shipping.shippingCharge;
+
+      totalCodCharge += shipping.codCharge;
+
+      shippingSummary.push({
+        vendorId: vendor._id,
+
+        vendorName: vendor.businessName,
+
+        courierName: shipping.courierName,
+
+        shippingCharge: shipping.shippingCharge,
+
+        codCharge: shipping.codCharge,
+
+        estimatedDays: shipping.estimatedDays,
+
+        estimatedDate: shipping.estimatedDate,
+
+        items: vendorItems.map((item) => {
+          const product = productsMap.get(item.product.toString());
+
+          const variant = variantsMap.get(item.variant.toString());
+
+          const unitPrice =
+            variant?.offeredPrice ??
+            variant?.salesPrice ??
+            variant?.costPrice ??
+            0;
+
+          return {
+            productId: product?._id,
+
+            productName: product?.name,
+
+            variantId: variant?._id,
+
+            quantity: item.quantity,
+
+            unitPrice,
+
+            totalPrice: unitPrice * item.quantity,
+
+            shippingApplicable: product?.isShippingApply,
+          };
+        }),
+      });
+    }
+
+    let estimatedDeliveryDays = 0;
+    let estimatedDeliveryDate: string | null = null;
+
+    if (shippingSummary.length) {
+      const slowestShipment = shippingSummary.reduce((prev, current) =>
+        current.estimatedDays > prev.estimatedDays ? current : prev,
+      );
+
+      estimatedDeliveryDays = slowestShipment.estimatedDays;
+
+      estimatedDeliveryDate = slowestShipment.estimatedDate;
+    }
+
+    return {
+      cartItems,
+
+      shippingSummary,
+
+      appliedCoupon: null,
+
+      cartSummary: {
+        totalItems: cart.items.length,
+
+        subTotal,
+
+        discount: 0,
+
+        shippingCharge: totalShippingCharge,
+
+        codCharge: totalCodCharge,
+
+        finalTotal: subTotal + totalShippingCharge + totalCodCharge,
+
+        estimatedDeliveryDays,
+
+        estimatedDeliveryDate,
+      },
+    };
   }
 }

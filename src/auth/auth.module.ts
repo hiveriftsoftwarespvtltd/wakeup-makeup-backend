@@ -23,7 +23,7 @@ import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
         return {
           secret,
           signOptions:{
-            expiresIn:'7d'
+            expiresIn:'30d'
           }
         }
       }

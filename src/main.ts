@@ -4,6 +4,7 @@ import { ResponseInterceptor } from './common/responses/response.interceptor';
 import { GlobalExceptionFilter } from './common/responses/exception-filter';
 import * as express from 'express';
 import { join } from 'path';
+import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -11,6 +12,12 @@ async function bootstrap() {
   app.setGlobalPrefix('/api/v1')
   app.useGlobalInterceptors(new ResponseInterceptor())
   app.useGlobalFilters(new GlobalExceptionFilter())
+  app.useGlobalPipes(
+  new ValidationPipe({
+    whitelist: true,
+    transform: true, // IMPORTANT
+  }),
+);
   app.enableCors()
   await app.listen(process.env.PORT ?? 3000);
 

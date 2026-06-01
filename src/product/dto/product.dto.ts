@@ -1,4 +1,5 @@
 import {
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -11,7 +12,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 import { ProductStatus } from '../schema/product.schema';
 
@@ -28,18 +29,44 @@ export class CreateVariantDto {
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  price!: number;
+  costPrice!: number;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   @Min(0)
-  salesPrice?: number;
+  salesPrice!: number;
+
+  @IsOptional()
+  @Type(()=>Number)
+  @IsNumber()
+  @Min(0)
+  offeredPrice!:number
 
   @Type(() => Number)
   @IsNumber()
   @Min(0)
   stock!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  weight!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  length!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  width!: number;
+
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  height!: number;
 
   // media ids after upload
 
@@ -80,6 +107,10 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
+  @IsBoolean()
+  isShippingApply?:boolean
+
   @IsMongoId()
   categoryId!: string;
 
@@ -99,6 +130,18 @@ export class CreateProductDto {
   @ValidateNested({ each: true })
   @Type(() => CreateVariantDto)
   variants!: CreateVariantDto[];
+
+   @IsOptional()
+    @Transform(({ value }) => {
+      if (typeof value === 'string') {
+        return JSON.parse(value);
+      }
+      return value;
+    })
+    @IsArray()
+    @ArrayUnique()
+    @IsString({ each: true })
+    tags?: string[];
 }
 
 

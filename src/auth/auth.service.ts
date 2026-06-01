@@ -31,100 +31,120 @@ import { Vendor } from 'src/vendor/schema/vendor.schema';
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
-    @InjectModel(Vendor.name) private vendorModel:Model<Vendor>,
+    @InjectModel(Vendor.name) private vendorModel: Model<Vendor>,
     private userService: UserService,
     private jwtService: JwtService,
   ) {}
 
   async register(dto: RegisterDTO) {
-  const existingUser = await this.userModel.findOne({
-    email: dto.email.toLowerCase(),
-  });
+    const existingUser = await this.userModel.findOne({
+      email: dto.email.toLowerCase(),
+    });
 
-  // block restricted roles
-  if(dto.role){
+    // block restricted roles
+    if (dto.role) {
+      if (
+        [UserRole.ADMIN, UserRole.INFLUENCER, UserRole.DISTRIBUTOR].includes(
+          dto.role,
+        )
+      ) {
+        throw new BadRequestException(
+          `You are not authorized to create ${dto.role} account`,
+        );
+      }
+    }
+
+    // verified user already exists
     if (
-    [UserRole.ADMIN, UserRole.INFLUENCER, UserRole.DISTRIBUTOR].includes(
-      dto.role,
-    )
-  ) {
-    throw new BadRequestException(
-      `You are not authorized to create ${dto.role} account`,
-    );
-  }
-  }
-  
+      existingUser &&
+      !existingUser.isDeleted &&
+      existingUser.isEmailVerified
+    ) {
+      throw new BadRequestException('Email already exists');
+    }
 
-  // verified user already exists
-  if (
-    existingUser &&
-    !existingUser.isDeleted &&
-    existingUser.isEmailVerified
-  ) {
-    throw new BadRequestException('Email already exists');
-  }
+    // generate otp
+    const otp = generateOTP();
 
-  // generate otp
-  const otp = generateOTP();
+    // expiry
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-  // expiry
-  const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
+    // resend otp if email not verified
+    if (
+      existingUser &&
+      !existingUser.isDeleted &&
+      !existingUser.isEmailVerified
+    ) {
+      existingUser.otp = otp;
+      existingUser.otpExpiresAt = otpExpiresAt;
 
-  // resend otp if email not verified
-  if (
-    existingUser &&
-    !existingUser.isDeleted &&
-    !existingUser.isEmailVerified
-  ) {
-    existingUser.otp = otp;
-    existingUser.otpExpiresAt = otpExpiresAt;
+      await existingUser.save();
 
-    await existingUser.save();
+      await sendMail(
+        existingUser.email,
+        'Verify Your Email',
+        verificationTemplate(existingUser.name, otp),
+      );
 
-    await sendMail(
-      existingUser.email,
-      'Verify Your Email',
-      verificationTemplate(existingUser.name, otp),
-    );
+      return ApiResponse.success(
+        'Verification OTP sent to your email',
+        otp,
+        200,
+      );
+    }
 
-    return ApiResponse.success(
-      'Verification OTP sent to your email',
+    // hash password only when needed
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    // restore deleted user
+    if (existingUser && existingUser.isDeleted) {
+      existingUser.name = dto.name;
+      existingUser.password = hashedPassword;
+      if (existingUser.phone) {
+        existingUser.phone = dto.phone;
+      }
+      if (dto.role) {
+        existingUser.role = dto.role;
+      }
+
+      existingUser.otp = otp;
+      existingUser.otpExpiresAt = otpExpiresAt;
+
+      existingUser.isDeleted = false;
+      existingUser.isEmailVerified = false;
+
+      existingUser.isActive = dto.role === UserRole.VENDOR ? false : true;
+
+      await existingUser.save();
+
+      await sendMail(
+        existingUser.email,
+        'Verify Your Email',
+        verificationTemplate(existingUser.name, otp),
+      );
+
+      return ApiResponse.success(
+        'Registration successful. OTP sent to email',
+        otp,
+        201,
+      );
+    }
+
+    // new user creation
+    const user = await this.userModel.create({
+      ...dto,
+      email: dto.email.toLowerCase(),
+      password: hashedPassword,
       otp,
-      200,
-    );
-  }
-
-  // hash password only when needed
-  const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-  // restore deleted user
-  if (existingUser && existingUser.isDeleted) {
-    existingUser.name = dto.name;
-    existingUser.password = hashedPassword;
-    if(existingUser.phone){
-      existingUser.phone = dto.phone;
-    }
-    if(dto.role){
-      existingUser.role = dto.role;
-    }
-    
-    
-
-    existingUser.otp = otp;
-    existingUser.otpExpiresAt = otpExpiresAt;
-
-    existingUser.isDeleted = false;
-    existingUser.isEmailVerified = false;
-
-    existingUser.isActive =
-      dto.role === UserRole.VENDOR ? false : true;
-
-    await existingUser.save();
+      otpExpiresAt,
+      isEmailVerified: false,
+      isActive: true,
+    });
 
     await sendMail(
-      existingUser.email,
+      user.email,
       'Verify Your Email',
-      verificationTemplate(existingUser.name, otp),
+      verificationTemplate(user.name, otp),
     );
 
     return ApiResponse.success(
@@ -134,53 +154,34 @@ export class AuthService {
     );
   }
 
-  // new user creation
-  const user = await this.userModel.create({
-    ...dto,
-    email: dto.email.toLowerCase(),
-    password: hashedPassword,
-    otp,
-    otpExpiresAt,
-    isEmailVerified: false,
-    isActive: true,
-  });
-
-  await sendMail(
-    user.email,
-    'Verify Your Email',
-    verificationTemplate(user.name, otp),
-  );
-
-  return ApiResponse.success(
-    'Registration successful. OTP sent to email',
-    otp,
-    201,
-  );
-}
-
-  async sendVerifyEmailOTP(email:string){
-    const user = await this.userModel.findOne({email})
-    if(!user){
-      throw new NotFoundException("User Not Found")
+  async sendVerifyEmailOTP(email: string) {
+    const user = await this.userModel.findOne({ email });
+    if (!user) {
+      throw new NotFoundException('User Not Found');
     }
 
-    if(user.isEmailVerified){
-      throw new ConflictException("This email is already verified")
+    if (user.isEmailVerified) {
+      throw new ConflictException('This email is already verified');
     }
 
     const otp = generateOTP();
 
-  // expiry
+    // expiry
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-    user.otp = otp
-    user.otpExpiresAt = otpExpiresAt
+    user.otp = otp;
+    user.otpExpiresAt = otpExpiresAt;
 
-    await user.save()
-    await sendMail(email,"Verify Your Email",verificationTemplate(user.name, otp))
-    return ApiResponse.success('Verification OTP successfully sent on your mail',otp)
+    await user.save();
+    await sendMail(
+      email,
+      'Verify Your Email',
+      verificationTemplate(user.name, otp),
+    );
+    return ApiResponse.success(
+      'Verification OTP successfully sent on your mail',
+      otp,
+    );
   }
-
-  
 
   async verifyEmail(dto: VerifyEmailDTO) {
     const user = await this.userModel.findOne({
@@ -216,7 +217,6 @@ export class AuthService {
   async login(dto: LoginDTO) {
     const user = await this.userModel.findOne({
       email: dto.email.toLowerCase(),
-      
     });
 
     if (!user) {
@@ -235,16 +235,15 @@ export class AuthService {
       throw new NotAcceptableException('Your account is not active');
     }
 
-    if(user.role === UserRole.VENDOR){
-      const vendor = await this.vendorModel.findOne({ownerId:user._id})
+    if (user.role === UserRole.VENDOR) {
+      const vendor = await this.vendorModel.findOne({ ownerId: user._id });
 
-      if(vendor?.status === "PENDING"){
-        throw new ConflictException("You account is not approved by admin")
-      }else if(vendor?.status === "REJECTED"){
-        throw new ConflictException("Your account is rejected by admin")
+      if (vendor?.status === 'PENDING') {
+        throw new ConflictException('You account is not approved by admin');
+      } else if (vendor?.status === 'REJECTED') {
+        throw new ConflictException('Your account is rejected by admin');
       }
     }
-
 
     const isMatch = await bcrypt.compare(dto.password, user.password);
 
@@ -267,13 +266,15 @@ export class AuthService {
     return ApiResponse.success(
       'OTP sent successfully',
       {
-        email: user.email,otp,
+        email: user.email,
+        otp,
       },
       200,
     );
   }
 
   async verifyLoginOtp(dto: VerifyLoginDTO) {
+   
     const user = await this.userModel.findOne({
       email: dto.email.toLowerCase(),
     });

@@ -36,12 +36,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if(!user?.isActive){
        throw new UnauthorizedException("User is not active")
     }
+    
 
     return {
       _id:user._id,
       email:user.email,
       role:user.role,
-      vendorId:user.vendorId
+      vendorId:user.vendorId,
+      influencerId:user.influencerId
     }
   }
 }

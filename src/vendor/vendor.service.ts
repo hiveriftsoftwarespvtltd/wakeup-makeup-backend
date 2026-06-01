@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectModel, MongooseModule } from '@nestjs/mongoose';
+import {
+  InjectConnection,
+  InjectModel,
+  MongooseModule,
+} from '@nestjs/mongoose';
 import { Vendor, VendorDocument } from './schema/vendor.schema';
 import { Model, Types } from 'mongoose';
 import { createVendorDTO } from './dto/create-vendor.dto';
@@ -14,19 +18,55 @@ import { DocumentService } from 'src/document/document.service';
 import { updateVendorDTO } from './dto/update-vendor-dto';
 import { Product, ProductDocument } from 'src/product/schema/product.schema';
 import { Category, CategoryDocument } from 'src/product/schema/category.schema';
-import { ProductVariant, ProductVariantDocument } from 'src/product/schema/product-variant.schema';
-import { Order, OrderDocument, OrderStatus } from 'src/order/schema/order.schema';
+import {
+  ProductVariant,
+  ProductVariantDocument,
+} from 'src/product/schema/product-variant.schema';
+import {
+  Order,
+  OrderDocument,
+  OrderStatus,
+  PaymentStatus,
+} from 'src/order/schema/order.schema';
 import { UpdateOrderDTO } from './dto/order.dto';
+import {
+  VendorOrder,
+  VendorOrderDocument,
+} from 'src/order/schema/vendor-order.schema';
+import {
+  VendorShipment,
+  VendorShipmentDocument,
+} from 'src/order/schema/vendor-shipment.schema';
+import { Connection } from 'mongoose';
+import {
+  CommissionStatus,
+  InfluencerCommission,
+  InfluencerCommissionDocument,
+} from 'src/influencer/schema/influencer-commision-rate.schema';
+import {
+  Influencer,
+  InfluencerDocument,
+} from 'src/influencer/schema/influencer.schema';
 
 @Injectable()
 export class VendorService {
   constructor(
     @InjectModel(Vendor.name) private vendorModel: Model<VendorDocument>,
     @InjectModel(User.name) private userModel: Model<UserDocument>,
-     @InjectModel(Product.name) private productModel: Model<ProductDocument>,
+    @InjectModel(Product.name) private productModel: Model<ProductDocument>,
     @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
-    @InjectModel(ProductVariant.name) private productVariantModel:Model<ProductVariantDocument>,
-     @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(ProductVariant.name)
+    private productVariantModel: Model<ProductVariantDocument>,
+    @InjectModel(Order.name) private orderModel: Model<OrderDocument>,
+    @InjectModel(VendorOrder.name)
+    private vendorOrderModel: Model<VendorOrderDocument>,
+    @InjectModel(VendorShipment.name)
+    private shipmentModel: Model<VendorShipmentDocument>,
+    @InjectModel(Influencer.name)
+    private influencerModel: Model<InfluencerDocument>,
+    @InjectModel(InfluencerCommission.name)
+    private influencerCommisionModel: Model<InfluencerCommissionDocument>,
+    @InjectConnection() private readonly connection: Connection,
     private documentService: DocumentService,
   ) {}
 
@@ -65,6 +105,9 @@ export class VendorService {
       ownerId: userId,
       businessName: dto.businessName,
       slug: dto.slug.toLowerCase().trim(),
+      vendorPincode: dto.vendorPincode,
+      city: dto.city,
+      state: dto.state,
     });
 
     let bannerImageId;
@@ -105,10 +148,12 @@ export class VendorService {
   }
 
   async getVendorDetails(userId: string, vendorId: string) {
-    if(!vendorId){
-      throw new ConflictException("Complete you onboarding to access this feature")
+    if (!vendorId) {
+      throw new ConflictException(
+        'Complete you onboarding to access this feature',
+      );
     }
-    return await this.vendorModel.findById(vendorId).lean()
+    return await this.vendorModel.findById(vendorId).lean();
   }
 
   async updateVendorDetails(
@@ -120,7 +165,6 @@ export class VendorService {
       logo?: Express.Multer.File[];
     },
   ) {
-    
     const vendor = await this.vendorModel.findOne({
       ownerId: userId,
       _id: vendorId,
@@ -145,11 +189,9 @@ export class VendorService {
       vendor.businessName = businessName;
     }
 
-  
     if (dto.slug !== undefined && dto.slug.trim() !== '') {
       const slug = dto.slug.toLowerCase().trim();
 
-    
       const existingSlug = await this.vendorModel.findOne({
         slug,
         _id: { $ne: vendorId },
@@ -174,13 +216,11 @@ export class VendorService {
       vendor.phone = dto.phone.trim();
     }
 
- 
     if (dto.email !== undefined && dto.email.trim() !== '') {
       vendor.email = dto.email.trim().toLowerCase();
     }
 
     if (files?.banner?.length) {
-
       if (vendor.banner) {
         await this.documentService.replace(
           String(vendor.banner),
@@ -201,13 +241,10 @@ export class VendorService {
       }
     }
 
-    
     if (files?.logo?.length) {
-    
       if (vendor.logo) {
         await this.documentService.replace(String(vendor.logo), files.logo[0]);
       } else {
-     
         const uploadedLogo = await this.documentService.upload(
           files.logo[0],
           'vendors/logo',
@@ -219,82 +256,1099 @@ export class VendorService {
       }
     }
 
-  
     await vendor.save();
 
     return ApiResponse.success('Vendor updated successfully', vendor);
   }
 
-  async vendorProducts(userId:string,vendorId:string){
-    if(!vendorId){
-      throw new ConflictException("Complete Your Onboarding to access this feature")
+  async vendorProducts(userId: string, vendorId: string) {
+    if (!vendorId) {
+      throw new ConflictException(
+        'Complete Your Onboarding to access this feature',
+      );
     }
-    return await this.productModel.find({createdBy:userId,vendorId:vendorId}).populate("variants").lean()
+    return await this.productModel
+      .find({ createdBy: userId, vendorId: vendorId })
+      .populate('variants')
+      .lean();
   }
 
-  async vendorCategories(userId:string,vendorId:string){
-    if(!vendorId){
-      throw new ConflictException("Complete Your Onboarding to access this feature")
+  async vendorCategories(userId: string, vendorId: string) {
+    if (!vendorId) {
+      throw new ConflictException(
+        'Complete Your Onboarding to access this feature',
+      );
     }
-    return await this.categoryModel.find({ownerId:userId,vendorId}).populate("image").lean()
+    return await this.categoryModel
+      .find({ ownerId: userId, vendorId })
+      .populate('image')
+      .lean();
   }
 
-  async vendorOrders(vendorId:string){
-    
-    return this.orderModel.find({vendorId:new Types.ObjectId(vendorId)}).find()
-      .populate('userId','-password')
+  // async vendorOrders(vendorId:string){
+
+  //   return this.vendorOrderModel.find({vendorId:new Types.ObjectId(vendorId)}).find()
+  //     .populate('userId','-password')
+  //     .populate('vendorId')
+  //     .populate('orderId')
+  //     .populate('items.productId')
+  //     .populate('items.variantId')
+  //     .sort({ createdAt: -1 })
+  //     .lean();
+  // }
+
+  // async orderDetails(vendorId:string,orderId:string){
+  //   const order = await this.orderModel.findOne({vendorId:new Types.ObjectId(vendorId),_id:new Types.ObjectId(orderId)}).populate('userId')
+  //     // .populate('vendorId')
+  //     .populate('addressId')
+  //     .populate('items.productId')
+  //     .populate('items.variantId')
+  //     .lean()
+
+  //     if(!order){
+  //       throw new NotFoundException("Order Not Found")
+  //     }
+  //     return ApiResponse.success("Order Details Fetched Successfully",order)
+  // }
+
+  // async updateOrder(dto:UpdateOrderDTO,orderId:string,vendorId:string){
+
+  //   const order = await this.orderModel.findOne({_id:new Types.ObjectId(orderId),vendorId:new Types.ObjectId(vendorId)})
+  //   if(!order){
+  //     throw new NotFoundException("Order Not Found")
+  //   }
+  //   if(order.orderStatus === OrderStatus.DELIVERED){
+  //     throw new ConflictException("You could not update delivered ordered")
+  //   }
+  //   const filteredData = Object.fromEntries(Object.entries(dto).filter(([_,value])=> value !== undefined && value !== null && value !== ''))
+  //   Object.assign(order,filteredData)
+  //   if(dto.orderStatus === "delivered" && dto.paymentStatus === "paid"){
+  //     order.deliveredAt = new Date()
+  //     order.vendorPaid = true
+  //     order.vendorPaidAt = new Date()
+  //     order.vendorPayoutAmount = order.subTotal
+  //   }
+  //   if(dto.orderStatus === 'cancelled'){
+  //     if(!dto.cancellationReason){
+  //       throw new ConflictException("Provide a reason to cancel this order")
+  //     }
+  //     const vendor = await this.vendorModel.findById(new Types.ObjectId(vendorId)).select("ownerId")
+  //     if(!vendor){
+  //       throw new NotFoundException("Vendor Not Found")
+  //     }
+  //     order.cancelledBy = vendor.ownerId
+  //     order.cancellationReason = dto.cancellationReason
+  //     order.cancelledAt=new Date()
+  //   }
+  //   await order.save()
+  //   return ApiResponse.success("Order Update Successfully",order)
+  // }
+
+  async vendorOrders(vendorId: string) {
+    const orders = await this.vendorOrderModel
+      .find({
+        vendorId: new Types.ObjectId(vendorId),
+      })
+      .populate('userId', '-password')
       .populate('vendorId')
-      .populate('addressId')
+      .populate('orderId')
+      .populate('shipment')
       .populate('items.productId')
       .populate('items.variantId')
       .sort({ createdAt: -1 })
       .lean();
+
+    return ApiResponse.success('Vendor Orders Fetched Successfully', orders);
   }
 
-  async orderDetails(vendorId:string,orderId:string){
-    const order = await this.orderModel.findOne({vendorId:new Types.ObjectId(vendorId),_id:new Types.ObjectId(orderId)}).populate('userId')
+  async orderDetails(vendorId: string, orderId: string) {
+    const order = await this.vendorOrderModel
+      .findOne({
+        _id: new Types.ObjectId(orderId),
+        vendorId: new Types.ObjectId(vendorId),
+      })
+      .populate('userId', '-password')
       .populate('vendorId')
-      .populate('addressId')
+      .populate('orderId')
+      .populate('shipment')
       .populate('items.productId')
       .populate('items.variantId')
-      .lean()
+      .lean();
 
-      if(!order){
-        throw new NotFoundException("Order Not Found")
-      }
-      return ApiResponse.success("Order Details Fetched Successfully",order)
+    if (!order) {
+      throw new NotFoundException('Order Not Found');
+    }
+
+    return ApiResponse.success('Order Details Fetched Successfully', order);
   }
 
-  async updateOrder(dto:UpdateOrderDTO,orderId:string,vendorId:string){
-    
-    const order = await this.orderModel.findOne({_id:new Types.ObjectId(orderId),vendorId:new Types.ObjectId(vendorId)})
-    if(!order){
-      throw new NotFoundException("Order Not Found")
-    }
-    if(order.orderStatus === OrderStatus.DELIVERED){
-      throw new ConflictException("You could not update delivered ordered")
-    }
-    const filteredData = Object.fromEntries(Object.entries(dto).filter(([_,value])=> value !== undefined && value !== null && value !== ''))
-    Object.assign(order,filteredData)
-    if(dto.orderStatus === "delivered" && dto.paymentStatus === "paid"){
-      order.deliveredAt = new Date()
-      order.vendorPaid = true
-      order.vendorPaidAt = new Date()
-      order.vendorPayoutAmount = order.subTotal
-    }
-    if(dto.orderStatus === 'cancelled'){
-      if(!dto.cancellationReason){
-        throw new ConflictException("Provide a reason to cancel this order")
+  // async updateOrder(
+  //   dto: UpdateOrderDTO,
+  //   orderId: string,
+  //   vendorId: string,
+  // ) {
+  //   const order = await this.vendorOrderModel.findOne({
+  //     _id: new Types.ObjectId(orderId),
+  //     vendorId: new Types.ObjectId(vendorId),
+  //   });
+
+  //   if (!order) {
+  //     throw new NotFoundException(
+  //       'Order Not Found',
+  //     );
+  //   }
+
+  //   if (
+  //     order.orderStatus ===
+  //     OrderStatus.DELIVERED
+  //   ) {
+  //     throw new ConflictException(
+  //       'Delivered order cannot be updated',
+  //     );
+  //   }
+
+  //   const filteredData = Object.fromEntries(
+  //     Object.entries(dto).filter(
+  //       ([_, value]) =>
+  //         value !== undefined &&
+  //         value !== null &&
+  //         value !== '',
+  //     ),
+  //   );
+
+  //   Object.assign(order, filteredData);
+
+  //   // Delivered
+  //   if (
+  //     dto.orderStatus ===
+  //     OrderStatus.DELIVERED
+  //   ) {
+  //     order.deliveredAt = new Date();
+
+  //     if (
+  //       dto.paymentStatus ===
+  //       PaymentStatus.PAID
+  //     ) {
+  //       order.paymentStatus =
+  //         PaymentStatus.PAID;
+  //     }
+  //   }
+
+  //   // Shipped
+  //   if (
+  //     dto.orderStatus ===
+  //     OrderStatus.SHIPPED
+  //   ) {
+  //     order.shippedAt = new Date();
+  //   }
+
+  //   // Cancelled
+  //   if (
+  //     dto.orderStatus ===
+  //     OrderStatus.CANCELLED
+  //   ) {
+  //     if (!dto.cancellationReason) {
+  //       throw new ConflictException(
+  //         'Provide cancellation reason',
+  //       );
+  //     }
+
+  //     order.cancelledAt = new Date();
+  //     order.cancellationReason =
+  //       dto.cancellationReason;
+  //   }
+
+  //   await order.save();
+
+  //   return ApiResponse.success(
+  //     'Order Updated Successfully',
+  //     order,
+  //   );
+  // }
+
+  // async updateOrder(
+  //   dto: UpdateOrderDTO,
+  //   orderId: string,
+  //   vendorId: string,
+  // ) {
+  //   const session =
+  //     await this.connection.startSession();
+
+  //   try {
+  //     session.startTransaction();
+
+  //     const vendorOrder =
+  //       await this.vendorOrderModel.findOne({
+  //         _id: new Types.ObjectId(orderId),
+  //         vendorId: new Types.ObjectId(vendorId),
+  //       });
+
+  //     if (!vendorOrder) {
+  //       throw new NotFoundException(
+  //         'Vendor Order Not Found',
+  //       );
+  //     }
+
+  //     // prevent updates after delivered
+  //     if (
+  //       vendorOrder.orderStatus ===
+  //       OrderStatus.DELIVERED
+  //     ) {
+  //       throw new ConflictException(
+  //         'Delivered order cannot be updated',
+  //       );
+  //     }
+
+  //     // ======================================================
+  //     // CLEAN DTO
+  //     // ======================================================
+
+  //     const filteredData = Object.fromEntries(
+  //       Object.entries(dto).filter(
+  //         ([_, value]) =>
+  //           value !== undefined &&
+  //           value !== null &&
+  //           value !== '',
+  //       ),
+  //     );
+
+  //     Object.assign(
+  //       vendorOrder,
+  //       filteredData,
+  //     );
+
+  //     // ======================================================
+  //     // DELIVERED
+  //     // ======================================================
+
+  //     if (
+  //       dto.orderStatus ===
+  //       OrderStatus.DELIVERED
+  //     ) {
+  //       vendorOrder.orderStatus =
+  //         OrderStatus.DELIVERED;
+
+  //       vendorOrder.deliveredAt =
+  //         dto.deliveredAt
+  //           ? new Date(dto.deliveredAt)
+  //           : new Date();
+  //     }
+
+  //     // ======================================================
+  //     // SHIPPED
+  //     // ======================================================
+
+  //     if (
+  //       dto.orderStatus ===
+  //       OrderStatus.SHIPPED
+  //     ) {
+  //       vendorOrder.orderStatus =
+  //         OrderStatus.SHIPPED;
+
+  //       vendorOrder.shippedAt =
+  //         new Date();
+  //     }
+
+  //     // ======================================================
+  //     // CANCELLED
+  //     // ======================================================
+
+  //     if (
+  //       dto.orderStatus ===
+  //       OrderStatus.CANCELLED
+  //     ) {
+  //       if (!dto.cancellationReason) {
+  //         throw new ConflictException(
+  //           'Provide cancellation reason',
+  //         );
+  //       }
+
+  //       vendorOrder.orderStatus =
+  //         OrderStatus.CANCELLED;
+
+  //       vendorOrder.cancelledAt =
+  //         dto.cancelledAt
+  //           ? new Date(dto.cancelledAt)
+  //           : new Date();
+
+  //       vendorOrder.cancellationReason =
+  //         dto.cancellationReason;
+  //     }
+
+  //     // payment update
+  //     if (dto.paymentStatus) {
+  //       vendorOrder.paymentStatus =
+  //         dto.paymentStatus;
+  //     }
+
+  //     await vendorOrder.save({
+  //       session,
+  //     });
+
+  //     // ======================================================
+  //     // FETCH ALL SIBLING VENDOR ORDERS
+  //     // ======================================================
+
+  //     const allVendorOrders =
+  //       await this.vendorOrderModel
+  //         .find({
+  //           orderId:
+  //             vendorOrder.orderId,
+  //         })
+  //         .session(session);
+
+  //     // ======================================================
+  //     // CHECK STATUSES
+  //     // ======================================================
+
+  //     const allDelivered =
+  //       allVendorOrders.every(
+  //         (item) =>
+  //           item.orderStatus ===
+  //           OrderStatus.DELIVERED,
+  //       );
+
+  //     const someDelivered =
+  //       allVendorOrders.some(
+  //         (item) =>
+  //           item.orderStatus ===
+  //           OrderStatus.DELIVERED,
+  //       );
+
+  //     const allPaid =
+  //       allVendorOrders.every(
+  //         (item) =>
+  //           item.paymentStatus ===
+  //           PaymentStatus.PAID,
+  //       );
+
+  //     // ======================================================
+  //     // PREPARE MAIN ORDER UPDATE
+  //     // ======================================================
+
+  //     const mainOrderUpdate: any = {};
+
+  //     // order status
+  //     if (allDelivered) {
+  //       mainOrderUpdate.orderStatus =
+  //         OrderStatus.DELIVERED;
+  //     } else if (someDelivered) {
+  //       mainOrderUpdate.orderStatus =
+  //         OrderStatus.PARTIALLY_DELIVERED;
+  //     }
+
+  //     // payment status
+  //     if (allPaid) {
+  //       mainOrderUpdate.paymentStatus =
+  //         PaymentStatus.PAID;
+  //     }
+
+  //     // ======================================================
+  //     // UPDATE MAIN ORDER
+  //     // ======================================================
+
+  //     if (
+  //       Object.keys(mainOrderUpdate)
+  //         .length > 0
+  //     ) {
+  //       await this.orderModel.findByIdAndUpdate(
+  //         vendorOrder.orderId,
+  //         mainOrderUpdate,
+  //         {
+  //           session,
+  //         },
+  //       );
+  //     }
+
+  //     await session.commitTransaction();
+
+  //     return ApiResponse.success(
+  //       'Order Updated Successfully',
+  //       vendorOrder,
+  //     );
+  //   } catch (error) {
+  //     await session.abortTransaction();
+  //     throw error;
+  //   } finally {
+  //     session.endSession();
+  //   }
+  // }
+
+  async updateOrder(dto: UpdateOrderDTO, orderId: string, vendorId: string) {
+    const session = await this.connection.startSession();
+
+    try {
+      session.startTransaction();
+
+      // ======================================================
+      // FIND VENDOR ORDER
+      // ======================================================
+
+      const vendorOrder = await this.vendorOrderModel.findOne({
+        _id: new Types.ObjectId(orderId),
+        vendorId: new Types.ObjectId(vendorId),
+      });
+
+      if (!vendorOrder) {
+        throw new NotFoundException('Vendor Order Not Found');
       }
-      const vendor = await this.vendorModel.findById(new Types.ObjectId(vendorId)).select("ownerId")
-      if(!vendor){
-        throw new NotFoundException("Vendor Not Found")
+
+      // ======================================================
+      // PREVENT UPDATE AFTER DELIVERED
+      // ======================================================
+
+      if (vendorOrder.orderStatus === OrderStatus.DELIVERED) {
+        throw new ConflictException('Delivered order cannot be updated');
       }
-      order.cancelledBy = vendor.ownerId
-      order.cancellationReason = dto.cancellationReason
-      order.cancelledAt=new Date()
+
+      // ======================================================
+      // CLEAN DTO
+      // ======================================================
+
+      const filteredData = Object.fromEntries(
+        Object.entries(dto).filter(
+          ([_, value]) => value !== undefined && value !== null && value !== '',
+        ),
+      );
+
+      Object.assign(vendorOrder, filteredData);
+
+      // ======================================================
+      // DELIVERED
+      // ======================================================
+
+      if (dto.orderStatus === OrderStatus.DELIVERED) {
+        vendorOrder.orderStatus = OrderStatus.DELIVERED;
+
+        vendorOrder.deliveredAt = dto.deliveredAt
+          ? new Date(dto.deliveredAt)
+          : new Date();
+      }
+
+      // ======================================================
+      // SHIPPED
+      // ======================================================
+
+      if (dto.orderStatus === OrderStatus.SHIPPED) {
+        vendorOrder.orderStatus = OrderStatus.SHIPPED;
+
+        vendorOrder.shippedAt = new Date();
+      }
+
+      // ======================================================
+      // CANCELLED
+      // ======================================================
+
+      if (dto.orderStatus === OrderStatus.CANCELLED) {
+        if (!dto.cancellationReason) {
+          throw new ConflictException('Provide cancellation reason');
+        }
+
+        vendorOrder.orderStatus = OrderStatus.CANCELLED;
+
+        vendorOrder.cancelledAt = dto.cancelledAt
+          ? new Date(dto.cancelledAt)
+          : new Date();
+
+        vendorOrder.cancellationReason = dto.cancellationReason;
+      }
+
+      // ======================================================
+      // PAYMENT STATUS
+      // ======================================================
+
+      if (dto.paymentStatus) {
+        vendorOrder.paymentStatus = dto.paymentStatus;
+      }
+
+      // ======================================================
+      // SAVE VENDOR ORDER
+      // ======================================================
+
+      await vendorOrder.save({
+        session,
+      });
+
+      // ======================================================
+      // UPDATE INFLUENCER COMMISSION
+      // ======================================================
+
+      const influencerCommission = await this.influencerCommisionModel.findOne({
+        vendorOrderId: vendorOrder._id,
+      });
+
+      if (influencerCommission) {
+        // ------------------------------------------
+        // DELIVERED + PAID
+        // ------------------------------------------
+
+        if (
+          vendorOrder.orderStatus === OrderStatus.DELIVERED &&
+          vendorOrder.paymentStatus === PaymentStatus.PAID
+        ) {
+          // prevent duplicate updates
+          if (!influencerCommission.isDelivered) {
+            influencerCommission.isDelivered = true;
+
+            influencerCommission.deliveredAt = new Date();
+
+            influencerCommission.status = CommissionStatus.APPROVED;
+
+            await influencerCommission.save({
+              session,
+            });
+
+            // update influencer stats
+            await this.influencerModel.findByIdAndUpdate(
+              influencerCommission.influencerId,
+              {
+                $inc: {
+                  totalSales: influencerCommission.finalOrderAmount,
+
+                  totalOrders: 1,
+                },
+              },
+              { session },
+            );
+          }
+        }
+
+        // ------------------------------------------
+        // CANCELLED
+        // ------------------------------------------
+
+        if (vendorOrder.orderStatus === OrderStatus.CANCELLED) {
+          influencerCommission.status = CommissionStatus.CANCELLED;
+
+          influencerCommission.notes =
+            dto.cancellationReason || 'Vendor order cancelled';
+
+          await influencerCommission.save({
+            session,
+          });
+        }
+      }
+
+      // ======================================================
+      // FETCH ALL RELATED VENDOR ORDERS
+      // ======================================================
+
+      const allVendorOrders = await this.vendorOrderModel
+        .find({
+          orderId: vendorOrder.orderId,
+        })
+        .session(session);
+
+      // ======================================================
+      // STATUS CHECKS
+      // ======================================================
+
+      const allDelivered = allVendorOrders.every(
+        (item) => item.orderStatus === OrderStatus.DELIVERED,
+      );
+
+      const someDelivered = allVendorOrders.some(
+        (item) => item.orderStatus === OrderStatus.DELIVERED,
+      );
+
+      const allCancelled = allVendorOrders.every(
+        (item) => item.orderStatus === OrderStatus.CANCELLED,
+      );
+
+      const someCancelled = allVendorOrders.some(
+        (item) => item.orderStatus === OrderStatus.CANCELLED,
+      );
+
+      const allPaid = allVendorOrders.every(
+        (item) => item.paymentStatus === PaymentStatus.PAID,
+      );
+
+      // ======================================================
+      // PREPARE MAIN ORDER UPDATE
+      // ======================================================
+
+      const mainOrderUpdate: any = {};
+
+      // ------------------------------------------
+      // ORDER STATUS
+      // ------------------------------------------
+
+      if (allDelivered) {
+        mainOrderUpdate.orderStatus = OrderStatus.DELIVERED;
+      } else if (allCancelled) {
+        mainOrderUpdate.orderStatus = OrderStatus.CANCELLED;
+      } else if (someDelivered && someCancelled) {
+        mainOrderUpdate.orderStatus = OrderStatus.PARTIALLY_DELIVERED;
+      } else if (someDelivered) {
+        mainOrderUpdate.orderStatus = OrderStatus.PARTIALLY_DELIVERED;
+      } else if (someCancelled) {
+        mainOrderUpdate.orderStatus = OrderStatus.PARTIALLY_CANCELLED;
+      }
+
+      // ------------------------------------------
+      // PAYMENT STATUS
+      // ------------------------------------------
+
+      if (allPaid) {
+        mainOrderUpdate.paymentStatus = PaymentStatus.PAID;
+      }
+
+      // ======================================================
+      // UPDATE MAIN ORDER
+      // ======================================================
+
+      if (Object.keys(mainOrderUpdate).length > 0) {
+        await this.orderModel.findByIdAndUpdate(
+          vendorOrder.orderId,
+          {
+            $set: mainOrderUpdate,
+          },
+          {
+            session,
+            new: true,
+          },
+        );
+      }
+
+      // ======================================================
+      // COMMIT TRANSACTION
+      // ======================================================
+
+      await session.commitTransaction();
+
+      return ApiResponse.success('Order Updated Successfully', vendorOrder);
+    } catch (error) {
+      await session.abortTransaction();
+
+      throw error;
+    } finally {
+      session.endSession();
     }
-    await order.save()
-    return ApiResponse.success("Order Update Successfully",order)
+  }
+  async deleteAllVendorProducts(vendorId: string) {
+    const session = await this.productModel.db.startSession();
+
+    try {
+      session.startTransaction();
+
+      const products = await this.productModel
+        .find({
+          vendorId: new Types.ObjectId(vendorId),
+        })
+        .session(session);
+
+      if (!products.length) {
+        throw new NotFoundException('No products found');
+      }
+
+      const productIds = products.map((product) => product._id);
+
+      const variants = await this.productVariantModel
+        .find({
+          productId: { $in: productIds },
+        })
+        .session(session);
+
+      const mediaIds: string[] = [];
+
+      for (const variant of variants) {
+        if (variant.thumbnail) {
+          mediaIds.push(variant.thumbnail.toString());
+        }
+
+        if (variant.images?.length) {
+          mediaIds.push(...variant.images.map((img) => img.toString()));
+        }
+      }
+
+      await this.productVariantModel.deleteMany(
+        {
+          productId: { $in: productIds },
+        },
+        { session },
+      );
+
+      await this.productModel.deleteMany(
+        {
+          _id: { $in: productIds },
+        },
+        { session },
+      );
+
+      await session.commitTransaction();
+
+      // Delete media after successful commit
+      await Promise.allSettled(
+        mediaIds.map((id) => this.documentService.deleteMedia(id)),
+      );
+
+      return ApiResponse.success('All vendor products deleted successfully');
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async overview(vendorId: string) {
+    const vendorObjectId = new Types.ObjectId(vendorId);
+
+    const [
+      totalOrders,
+      pendingOrders,
+      deliveredOrders,
+      cancelledOrders,
+      revenueData,
+    ] = await Promise.all([
+      this.vendorOrderModel.countDocuments({
+        vendorId: vendorObjectId,
+      }),
+
+      this.vendorOrderModel.countDocuments({
+        vendorId: vendorObjectId,
+        orderStatus: OrderStatus.PENDING,
+      }),
+
+      this.vendorOrderModel.countDocuments({
+        vendorId: vendorObjectId,
+        orderStatus: OrderStatus.DELIVERED,
+      }),
+
+      this.vendorOrderModel.countDocuments({
+        vendorId: vendorObjectId,
+        orderStatus: OrderStatus.CANCELLED,
+      }),
+
+      this.vendorOrderModel.aggregate([
+        {
+          $match: {
+            vendorId: vendorObjectId,
+            orderStatus: OrderStatus.DELIVERED,
+          },
+        },
+
+        {
+          $group: {
+            _id: null,
+
+            totalRevenue: {
+              $sum: '$grandTotal',
+            },
+
+            grossProfit: {
+              $sum: '$grossProfit',
+            },
+
+            netProfit: {
+              $sum: '$netProfit',
+            },
+
+            pendingPayout: {
+              $sum: {
+                $cond: [
+                  {
+                    $eq: ['$isVendorSettled', false],
+                  },
+                  '$payoutAmount',
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+    ]);
+
+    return ApiResponse.success('Dashboard Overview', {
+      totalOrders,
+
+      pendingOrders,
+
+      deliveredOrders,
+
+      cancelledOrders,
+
+      totalRevenue: revenueData[0]?.totalRevenue || 0,
+
+      grossProfit: revenueData[0]?.grossProfit || 0,
+
+      netProfit: revenueData[0]?.netProfit || 0,
+
+      pendingPayout: revenueData[0]?.pendingPayout || 0,
+    });
+  }
+
+  async topSellingProducts(vendorId: string) {
+    const data = await this.vendorOrderModel.aggregate([
+      {
+        $match: {
+          vendorId: new Types.ObjectId(vendorId),
+          orderStatus: OrderStatus.DELIVERED,
+        },
+      },
+
+      {
+        $unwind: '$items',
+      },
+
+      {
+        $group: {
+          _id: {
+            productId: '$items.productId',
+            variantId: '$items.variantId',
+            productName: '$items.productName',
+            sku: '$items.sku',
+          },
+
+          // total quantity sold
+          totalSold: {
+            $sum: '$items.quantity',
+          },
+
+          // actual customer paid amount
+          revenue: {
+            $sum: '$items.finalPrice',
+          },
+
+          // original selling amount before discount
+          grossRevenue: {
+            $sum: '$items.totalPrice',
+          },
+
+          // total discount given
+          totalDiscount: {
+            $sum: '$items.discountAmount',
+          },
+
+          // profit
+          profit: {
+            $sum: {
+              $subtract: [
+                '$items.finalPrice',
+                {
+                  $multiply: ['$items.costPrice', '$items.quantity'],
+                },
+              ],
+            },
+          },
+        },
+      },
+
+      {
+        $sort: {
+          totalSold: -1,
+        },
+      },
+
+      {
+        $limit: 10,
+      },
+    ]);
+
+    return ApiResponse.success('Top Selling Products', data);
+  }
+  async orderGraph(vendorId: string, days: number = 30) {
+    const startDate = new Date();
+
+    startDate.setDate(startDate.getDate() - days);
+
+    const data = await this.vendorOrderModel.aggregate([
+      {
+        $match: {
+          vendorId: new Types.ObjectId(vendorId),
+
+          createdAt: {
+            $gte: startDate,
+          },
+        },
+      },
+
+      {
+        $group: {
+          _id: {
+            day: {
+              $dateToString: {
+                format: '%Y-%m-%d',
+                date: '$createdAt',
+              },
+            },
+          },
+
+          totalOrders: {
+            $sum: 1,
+          },
+
+          deliveredOrders: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: ['$orderStatus', OrderStatus.DELIVERED],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+
+          revenue: {
+            $sum: '$grandTotal',
+          },
+
+          grossProfit: {
+            $sum: '$grossProfit',
+          },
+
+          netProfit: {
+            $sum: '$netProfit',
+          },
+        },
+      },
+
+      {
+        $sort: {
+          '_id.day': 1,
+        },
+      },
+    ]);
+
+    return ApiResponse.success('Order Graph Data', data);
+  }
+
+  async topCategories(vendorId: string) {
+    return this.vendorOrderModel.aggregate([
+      {
+        $match: {
+          vendorId: new Types.ObjectId(vendorId),
+          orderStatus: {
+            $ne: OrderStatus.CANCELLED,
+          },
+        },
+      },
+
+      {
+        $unwind: '$items',
+      },
+
+      {
+        $lookup: {
+          from: 'products',
+          localField: 'items.productId',
+          foreignField: '_id',
+          as: 'product',
+        },
+      },
+
+      {
+        $unwind: '$product',
+      },
+
+      {
+        $group: {
+          _id: '$product.categoryId',
+
+          totalSales: {
+            $sum: '$items.quantity',
+          },
+        },
+      },
+
+      {
+        $sort: {
+          totalSales: -1,
+        },
+      },
+    ]);
+  }
+
+  async orderComparison(vendorId: string) {
+    const vendorObjectId = new Types.ObjectId(vendorId);
+
+    const currentMonthStart = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      1,
+    );
+
+    const previousMonthStart = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth() - 1,
+      1,
+    );
+
+    const previousMonthEnd = new Date(
+      new Date().getFullYear(),
+      new Date().getMonth(),
+      0,
+    );
+
+    const [currentMonth, previousMonth] = await Promise.all([
+      this.vendorOrderModel.aggregate([
+        {
+          $match: {
+            vendorId: vendorObjectId,
+
+            createdAt: {
+              $gte: currentMonthStart,
+            },
+          },
+        },
+
+        {
+          $group: {
+            _id: null,
+
+            totalOrders: {
+              $sum: 1,
+            },
+
+            revenue: {
+              $sum: '$grandTotal',
+            },
+          },
+        },
+      ]),
+
+      this.vendorOrderModel.aggregate([
+        {
+          $match: {
+            vendorId: vendorObjectId,
+
+            createdAt: {
+              $gte: previousMonthStart,
+              $lte: previousMonthEnd,
+            },
+          },
+        },
+
+        {
+          $group: {
+            _id: null,
+
+            totalOrders: {
+              $sum: 1,
+            },
+
+            revenue: {
+              $sum: '$grandTotal',
+            },
+          },
+        },
+      ]),
+    ]);
+
+    return ApiResponse.success('Order Comparison Data', {
+      currentMonth: {
+        totalOrders: currentMonth[0]?.totalOrders || 0,
+
+        revenue: currentMonth[0]?.revenue || 0,
+      },
+
+      previousMonth: {
+        totalOrders: previousMonth[0]?.totalOrders || 0,
+
+        revenue: previousMonth[0]?.revenue || 0,
+      },
+    });
   }
 }

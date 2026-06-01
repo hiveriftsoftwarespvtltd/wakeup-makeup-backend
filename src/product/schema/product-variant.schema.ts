@@ -32,10 +32,13 @@ export class ProductVariant {
   sku!: string;
 
   @Prop({ required: true })
-  price!: number;
+  costPrice!: number;
 
   @Prop()
-  salesPrice?: number;
+  salesPrice!: number;
+
+  @Prop()
+  offeredPrice!: number;
 
   @Prop({
     required: true,
@@ -49,6 +52,19 @@ export class ProductVariant {
     default: {}
   })
   attributes!: Record<string, string>;
+
+  @Prop({required:true,min:0})
+  weight!:number
+
+  @Prop({required:true,min:0})
+  length!:number
+
+  @Prop({required:true,min:0})
+  width!:number
+
+  @Prop({required:true,min:0})
+  height!:number
+
 
   @Prop({ default: true })
   isActive!: boolean;

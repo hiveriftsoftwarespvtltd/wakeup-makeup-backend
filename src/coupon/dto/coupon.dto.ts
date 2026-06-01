@@ -3,6 +3,7 @@
 import {
   IsDateString,
   IsEnum,
+  IsMongoId,
   IsNumber,
   IsOptional,
   IsString,
@@ -68,3 +69,15 @@ export class CreateCouponDto {
 export class UpdateCouponDTO extends PartialType(
   CreateCouponDto
 ){}
+
+export class ApplyCouponDTO{
+  @IsString()
+  couponCode!:string
+
+  // @IsString()
+  // subTotal!:number
+
+  
+  // @IsString()
+  // vendorId!:string
+}

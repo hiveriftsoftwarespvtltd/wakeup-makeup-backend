@@ -1,22 +1,17 @@
-import {
-    IsDate,
-  IsDateString,
-  IsEnum,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
+
 import { OrderStatus, PaymentStatus } from 'src/order/schema/order.schema';
 
-
-
 export class UpdateOrderDTO {
+  // @IsString()
+  // orderId!:string
   @IsOptional()
   @IsEnum(OrderStatus)
   orderStatus?: OrderStatus;
 
   @IsOptional()
   @IsEnum(PaymentStatus)
-  paymentStatus?:PaymentStatus
+  paymentStatus?: PaymentStatus;
 
   @IsOptional()
   @IsString()
@@ -28,13 +23,13 @@ export class UpdateOrderDTO {
 
   @IsOptional()
   @IsDateString()
-  estimatedDeliveryDate?: Date;
+  estimatedDeliveryDate?: string;
 
   @IsOptional()
-  @IsDate()
-  cancelledAt?:string
+  @IsDateString()
+  cancelledAt?: string;
 
   @IsOptional()
-  @IsDate()
-  deliveredAt?:string
+  @IsDateString()
+  deliveredAt?: string;
 }

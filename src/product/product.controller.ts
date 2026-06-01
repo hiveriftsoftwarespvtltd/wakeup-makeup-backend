@@ -20,14 +20,14 @@ import {
 } from '@nestjs/platform-express';
 
 import { ProductService } from './product.service';
-import { CreateCategory } from './dto/create-category.dto';
+// import { CreateCategory } from './dto/create-category.dto';
 
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 
 import { UserRole } from 'src/user/schema/user.schema';
-import { UpdateCategoryDTO } from './dto/update-category.dto';
+// import { UpdateCategoryDTO } from './dto/update-category.dto';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -36,25 +36,25 @@ import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 export class ProductController {
   constructor(private productService: ProductService) {}
 
-  @Post('create-category')
-  @UseInterceptors(FileInterceptor('file'))
-  createCategory(
-    @UploadedFile()
-    file: Express.Multer.File,
+  // @Post('create-category')
+  // @UseInterceptors(FileInterceptor('file'))
+  // createCategory(
+  //   @UploadedFile()
+  //   file: Express.Multer.File,
 
-    @Req()
-    req: any,
+  //   @Req()
+  //   req: any,
 
-    @Body()
-    dto: CreateCategory,
-  ) {
-    return this.productService.CreateCategory(
-      dto,
-      file,
-      req.user._id,
-      req.user.vendorId,
-    );
-  }
+  //   @Body()
+  //   dto: CreateCategory,
+  // ) {
+  //   return this.productService.CreateCategory(
+  //     dto,
+  //     file,
+  //     req.user._id,
+  //     req.user.vendorId,
+  //   );
+  // }
 
   @Get('fetch-categories')
   fetchCategories(@Req() req: any) {
@@ -85,6 +85,7 @@ export class ProductController {
       metaDescription: body.metaDescription,
       status: body.status,
       variants: [],
+      tags:body.tags || []
     };
 
     const variantsMap = {};
@@ -124,22 +125,22 @@ export class ProductController {
     );
   }
 
-  @Put('update-category/:id')
-  @UseInterceptors(FileInterceptor('file'))
-  updateCategory(
-    @Param('id') id: string,
-    @UploadedFile() file: Express.Multer.File,
-    @Req() req: any,
-    @Body() dto: UpdateCategoryDTO,
-  ) {
-    return this.productService.updateCategory(
-      dto,
-      file,
-      req.user._id,
-      req.user.vendorId,
-      id,
-    );
-  }
+  // @Put('update-category/:id')
+  // @UseInterceptors(FileInterceptor('file'))
+  // updateCategory(
+  //   @Param('id') id: string,
+  //   @UploadedFile() file: Express.Multer.File,
+  //   @Req() req: any,
+  //   @Body() dto: UpdateCategoryDTO,
+  // ) {
+  //   return this.productService.updateCategory(
+  //     dto,
+  //     file,
+  //     req.user._id,
+  //     req.user.vendorId,
+  //     id,
+  //   );
+  // }
 
   @Delete('delete-category/:id')
   deleteCategory(@Param('id') id: string, @Req() req: any) {
@@ -165,6 +166,7 @@ export class ProductController {
       metaDescription: body.metaDescription,
       status: body.status,
       variants: [],
+      tags:body.tags || []
     };
 
     // =========================

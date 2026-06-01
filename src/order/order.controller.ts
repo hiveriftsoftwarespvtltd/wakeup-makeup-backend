@@ -10,8 +10,9 @@ import {
 } from '@nestjs/common';
 
 import { OrderService } from './order.service';
-import { CreateOrderDto } from './dto/order.dto';
+import { CreateOrderDto, UpdateUserOrderDTO } from './dto/order.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
+
 
 @UseGuards(JwtAuthGuard)
 @Controller('orders')
@@ -27,17 +28,21 @@ export class OrderController {
   allOrders(@Req() req: any) {
     return this.orderService.userOrders(req.user._id);
   }
-  @Get(' /:id')
+
+  
+  @Get('/:id')
   orderDetails(@Req() req: any, @Param('id') id: string) {
     return this.orderService.userOrderDetails(req.user._id, id);
   }
 
-  @Put('return-or-cancel-order/:id')
-  returnOrCancelOrder(
-    @Req() req: any,
-    @Param('id') id: string,
-    @Body('status') status: string,
-  ) {
-    return this.orderService.returnOrCancelOrder(req.user._id, id, status);
-  }
+  // @Put('return-or-cancel-order/:id')
+  // returnOrCancelOrder(
+  //   @Req() req: any,
+  //   @Param('id') id: string,
+  //   @Body() dto:UpdateUserOrderDTO,
+  // ) {
+  //   return this.orderService.returnOrCancelOrder(req.user._id, id, dto);
+  // }
+
+
 }

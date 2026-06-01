@@ -37,6 +37,13 @@ export class Product {
   createdBy!: Types.ObjectId;
 
   @Prop({
+    type:[String],
+    default:[],
+    lowercase:true
+  })
+  tags!:string[]
+
+  @Prop({
     type: Types.ObjectId,
     ref: "Category",
     required: true
@@ -70,6 +77,16 @@ export class Product {
 
   @Prop({ default: false })
   isDeleted!: boolean;
+
+
+  @Prop({default:true})
+  isShippingApply!:boolean
+
+  @Prop({ default: 0 })
+averageRating!: number;
+
+@Prop({ default: 0 })
+totalReviews!: number;
 }
 export const ProductSchema = SchemaFactory.createForClass(Product);
 

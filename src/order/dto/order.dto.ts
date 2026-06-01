@@ -10,7 +10,7 @@ import {
 } from 'class-validator';
 
 import { Type } from 'class-transformer';
-import { PaymentMethod } from '../schema/order.schema';
+import { OrderStatus, PaymentMethod } from '../schema/order.schema';
 
 export class CreateOrderItemDto {
   @IsMongoId()
@@ -45,4 +45,21 @@ export class CreateOrderDto {
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   items!: CreateOrderItemDto[];
+
+  // @IsString()
+  // vendorId!:string
+}
+
+export class UpdateUserOrderDTO{
+  @IsOptional()
+  @IsEnum(OrderStatus)
+  orderStatus!:OrderStatus
+
+  @IsOptional()
+  @IsString()
+  cancellationReason?:string
+
+  @IsOptional()
+  @IsString()
+  returnReason?:string
 }
