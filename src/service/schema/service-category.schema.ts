@@ -8,6 +8,9 @@ export class ServiceCategory {
   @Prop({ required: true, unique: true })
   name!: string;
 
+  @Prop({required:true,unique:true})
+  label!:string;
+
   @Prop()
   description!: string;
 
@@ -19,6 +22,9 @@ export class ServiceCategory {
 
   @Prop({ default: true })
   isActive!: boolean;
+
+  @Prop({default:false})
+  isDeleted!:boolean
 }
 
 export const ServiceCategorySchema = SchemaFactory.createForClass(ServiceCategory)

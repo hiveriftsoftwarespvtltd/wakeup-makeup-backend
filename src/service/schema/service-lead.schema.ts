@@ -8,7 +8,7 @@ export enum ServiceLeadStatus{
   EXPIRED="EXPIRED"
 }
 
-export type  LeadDocument = ServiceLead & Document
+export type  ServiceLeadDocument = ServiceLead & Document
 @Schema({ timestamps: true })
 export class ServiceLead {
 
