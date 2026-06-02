@@ -30,15 +30,21 @@ async fetchProducts(
   );
 }
 
-@Post('onboard-influencer')
-    create(@Body() dto: CreateInfluencerDto) {
-      return this.influencerService.create(dto);
-    }
-
 @Get('influencer-slabs')
 async influencerSlabs(){
   return await this.influencerService.getAllCommissionSlabs()
 }
+
+ @Get('test-500')
+  test500() {
+    const obj: any = undefined;
+
+    return obj.name;
+  }
+@Post('onboard-influencer')
+    create(@Body() dto: CreateInfluencerDto) {
+      return this.influencerService.create(dto);
+    }
 
   @Get('product-details/:id')
   async fetchProductdetails(@Req() req: any, @Param('id') id: string) {

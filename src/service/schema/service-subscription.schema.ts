@@ -8,6 +8,7 @@ export class ServiceSubscriptionPlan {
 
   @Prop({ required: true, unique: true })
   name!: string;
+  
 
   @Prop({ required: true })
   price!: number;
@@ -41,6 +42,9 @@ export class ServiceSubscriptionPlan {
 
   @Prop({ default: true })
   isActive!: boolean;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
 }
 
 export const ServiceSubscriptionPlanSchema = SchemaFactory.createForClass(ServiceSubscriptionPlan)

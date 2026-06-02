@@ -73,7 +73,6 @@ export class PayoutService {
       const month = dto.month || new Date().getMonth() + 1;
 
       const year = dto.year || new Date().getFullYear();
-      
 
       const vendorOrders = await this.vendorOrderModel.find({
         _id: {

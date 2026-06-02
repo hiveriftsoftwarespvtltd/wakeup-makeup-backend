@@ -153,10 +153,10 @@ export class AdminController {
     return await this.influencerService.sendInfluencerInvitationLink(email,name,req.user._id)
   }
 
-   @Post('onboard-influencer')
-    create(@Body() dto: CreateInfluencerDto) {
-      return this.influencerService.create(dto);
-    }
+  //  @Post('onboard-influencer')
+  //   create(@Body() dto: CreateInfluencerDto) {
+  //     return this.influencerService.create(dto);
+  //   }
 
   @Get('all-influencer-commission-slabs')
   getAllCommissionSlabs() {

@@ -21,10 +21,9 @@ export class CreateInfluencerDto {
 
   @IsString()
   password!: string;
-  
 
-  // @IsString()
-  // name!: string;
+  @IsString()
+  name!: string;
 
   // @IsString()
   // referralCode!: string;

@@ -41,3 +41,11 @@ export const sendMail = async (
     );
   }
 };
+
+export const toSlug = (str: string): string => {
+  return str
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, '_');
+};

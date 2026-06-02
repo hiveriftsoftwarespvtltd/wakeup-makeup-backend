@@ -45,6 +45,7 @@ import {
   ServiceSubscriptionPlanSchema,
 } from './schema/service-subscription.schema';
 import { Service, ServiceSchema } from './schema/service.schema';
+import { DocumentModule } from 'src/document/document.module';
 
 @Module({
   imports: [
@@ -69,8 +70,10 @@ import { Service, ServiceSchema } from './schema/service.schema';
       },
       { name: Service.name, schema: ServiceSchema },
     ]),
+     DocumentModule
   ],
   controllers: [ServiceController],
   providers: [ServiceService],
+  exports:[ServiceService]
 })
 export class ServiceModule {}
