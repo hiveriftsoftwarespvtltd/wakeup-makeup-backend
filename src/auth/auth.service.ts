@@ -11,7 +11,7 @@ import { UserService } from 'src/user/user.service';
 import * as bcrypt from 'bcryptjs';
 import { InjectModel } from '@nestjs/mongoose';
 import { User, UserRole } from 'src/user/schema/user.schema';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { RegisterDTO } from './dto/register.dto';
 import { ApiResponse } from 'src/common/responses/api-response';
 import { LoginDTO } from './dto/login.dto';
@@ -26,15 +26,17 @@ import { VerifyLoginDTO } from './dto/verify-login.dto';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { ForgotPasswordOTPDTO } from './dto/verify-forgot-password-otp.dto';
 import { Vendor } from 'src/vendor/schema/vendor.schema';
+import { ServiceProvider } from 'src/service/schema/service-provider.schema';
 
 @Injectable()
 export class AuthService {
   constructor(
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Vendor.name) private vendorModel: Model<Vendor>,
+    @InjectModel(ServiceProvider.name) private serviceProviderModel: Model<ServiceProvider>,
     private userService: UserService,
     private jwtService: JwtService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDTO) {
     const existingUser = await this.userModel.findOne({
@@ -245,6 +247,16 @@ export class AuthService {
       }
     }
 
+    if (user.role === UserRole.SERVICE_PROVIDER) {
+      const serviceProvider = await this.serviceProviderModel.findOne({ ownerId: new Types.ObjectId(user._id) });
+
+      if (serviceProvider?.verificationStatus === 'PENDING') {
+        throw new ConflictException('You account is not approved by admin');
+      } else if (serviceProvider?.verificationStatus === 'REJECTED') {
+        throw new ConflictException('Your account is rejected by admin');
+      }
+    }
+
     const isMatch = await bcrypt.compare(dto.password, user.password);
 
     if (!isMatch) {
@@ -274,7 +286,7 @@ export class AuthService {
   }
 
   async verifyLoginOtp(dto: VerifyLoginDTO) {
-   
+
     const user = await this.userModel.findOne({
       email: dto.email.toLowerCase(),
     });

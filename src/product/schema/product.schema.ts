@@ -37,11 +37,14 @@ export class Product {
   createdBy!: Types.ObjectId;
 
   @Prop({
-    type:[String],
-    default:[],
-    lowercase:true
+    type: [String],
+    default: [],
+    lowercase: true
   })
-  tags!:string[]
+  tags!: string[]
+
+  @Prop({ default: 'brandless' })
+  brand?: string
 
   @Prop({
     type: Types.ObjectId,
@@ -79,14 +82,14 @@ export class Product {
   isDeleted!: boolean;
 
 
-  @Prop({default:true})
-  isShippingApply!:boolean
+  @Prop({ default: true })
+  isShippingApply!: boolean
 
   @Prop({ default: 0 })
-averageRating!: number;
+  averageRating!: number;
 
-@Prop({ default: 0 })
-totalReviews!: number;
+  @Prop({ default: 0 })
+  totalReviews!: number;
 }
 export const ProductSchema = SchemaFactory.createForClass(Product);
 

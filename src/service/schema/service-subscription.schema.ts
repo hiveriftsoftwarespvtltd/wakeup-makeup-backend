@@ -8,7 +8,10 @@ export class ServiceSubscriptionPlan {
 
   @Prop({ required: true, unique: true })
   name!: string;
-  
+
+  @Prop({ required: true })
+  label!: string;
+
 
   @Prop({ required: true })
   price!: number;

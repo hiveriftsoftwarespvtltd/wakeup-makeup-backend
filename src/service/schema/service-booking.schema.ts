@@ -2,18 +2,19 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
 
-export enum BookingStatus{
-    PENDING="PENDING",
-    CONFIRMED="CONFIRMED",
-    ONGOING="ONGOING",
-    CANCELLED="CANCELLED",
-    COMPLETED="COMPLETED"
+export enum BookingStatus {
+  PENDING = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  ONGOING = "ONGOING",
+  CANCELLED = "CANCELLED",
+  COMPLETED = "COMPLETED",
+  RESCHEDULED = "RESCHEDULED"
 }
 
-export enum BookingPaymentStatus{
-  PENDING="PENDING",
-  PAID="PAID",
-  REFUNDED="REFUNDED"
+export enum BookingPaymentStatus {
+  PENDING = "PENDING",
+  PAID = "PAID",
+  REFUNDED = "REFUNDED"
 }
 
 export type ServiceBookingDocument = ServiceBooking & Document
@@ -26,8 +27,8 @@ export class ServiceBooking {
   @Prop({ type: Types.ObjectId, ref: 'ServiceProvider' })
   providerId!: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Staff' })
-  staffId!: Types.ObjectId;
+  @Prop({ type: Types.ObjectId, ref: 'ServiceStaff' })
+  staffId?: Types.ObjectId;
 
   @Prop({ type: Types.ObjectId, ref: 'Service' })
   serviceId!: Types.ObjectId;
@@ -64,6 +65,12 @@ export class ServiceBooking {
     default: BookingStatus.PENDING,
   })
   bookingStatus!: BookingStatus;
+
+  @Prop({ default: false })
+  isRescheduled!: boolean;
+
+  @Prop()
+  rescheduledAt?: Date;
 
   @Prop({
     enum: BookingPaymentStatus,

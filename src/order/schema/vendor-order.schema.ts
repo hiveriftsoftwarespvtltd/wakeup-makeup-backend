@@ -146,6 +146,9 @@ export class VendorOrder {
     ref: 'VendorPayout',
   })
   vendorPayoutId?: Types.ObjectId;
+
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export const VendorOrderSchema = SchemaFactory.createForClass(VendorOrder);

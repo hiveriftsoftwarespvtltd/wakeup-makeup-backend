@@ -2,15 +2,15 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
 
-export enum ServiceProviderType{
-  SALON="SALON",
-  INDIVIDUAL="INDIVIDUAL"
+export enum ServiceProviderType {
+  SALON = "SALON",
+  INDIVIDUAL = "INDIVIDUAL"
 }
 
-export enum ServiceProviderVerificationStatus{
-  PENDING="PENDING",
-  APPROVED="APPROVED",
-  REJECTED="REJECTED"
+export enum ServiceProviderVerificationStatus {
+  PENDING = "PENDING",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED"
 }
 export type ServiceProviderDocument = ServiceProvider & Document
 
@@ -110,4 +110,7 @@ export class ServiceProvider {
   isDeleted!: boolean;
 }
 
-export const ServiceProviderSchema = SchemaFactory.createForClass(ServiceProvider)
+export const ServiceProviderSchema = SchemaFactory.createForClass(ServiceProvider);
+
+// Add 2dsphere index for geospatial queries
+ServiceProviderSchema.index({ coordinates: '2dsphere' });

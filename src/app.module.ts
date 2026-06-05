@@ -20,6 +20,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { UserReviewModule } from './user-review/user-review.module';
 import { ServiceModule } from './service/service.module';
 import { PayoutModule } from './payout/payout.module';
+import { WalletModule } from './wallet/wallet.module';
 
 @Module({
   imports: [
@@ -54,7 +55,8 @@ import { PayoutModule } from './payout/payout.module';
     DashboardModule,
     UserReviewModule,
     ServiceModule,
-    PayoutModule
+    PayoutModule,
+    WalletModule
   ],
   controllers: [AppController],
   providers: [AppService],

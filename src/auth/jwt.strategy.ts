@@ -8,7 +8,7 @@ import { Model } from 'mongoose';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(configService: ConfigService,@InjectModel(User.name) private userModel:Model<UserDocument>) {
+  constructor(configService: ConfigService, @InjectModel(User.name) private userModel: Model<UserDocument>) {
     const secret = configService.get<string>('JWT_SECRET');
 
     if (!secret) {
@@ -24,26 +24,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
 
-    if(!payload.sub){
+    if (!payload.sub) {
       throw new UnauthorizedException()
     }
 
-    const user = await this.userModel.findById(payload.sub).select("email role isActive vendorId")
-    
-    if(!user){
+    const user = await this.userModel.findById(payload.sub).select("email role isActive vendorId serviceProviderId influencerId distributorId")
+
+    if (!user) {
       throw new UnauthorizedException("User not found")
     }
-    if(!user?.isActive){
-       throw new UnauthorizedException("User is not active")
+    if (!user?.isActive) {
+      throw new UnauthorizedException("User is not active")
     }
-    
+
 
     return {
-      _id:user._id,
-      email:user.email,
-      role:user.role,
-      vendorId:user.vendorId,
-      influencerId:user.influencerId
+      _id: user._id,
+      email: user.email,
+      role: user.role,
+      vendorId: user.vendorId,
+      influencerId: user.influencerId,
+      serviceProviderId: user.serviceProviderId,
+      distributorId: user.distributorId,
     }
   }
 }

@@ -16,5 +16,5 @@ export interface StorageProvider {
     folder: string,
   ): Promise<UploadResult>;
 
-  delete(publicId: string): Promise<void>;
-}
+  delete(publicId: string, resourceType?: string): Promise<void>;
+}

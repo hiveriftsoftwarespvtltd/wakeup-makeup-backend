@@ -12,6 +12,7 @@ import {
 import { Vendor, VendorDocument } from './schema/vendor.schema';
 import { Model, Types } from 'mongoose';
 import { createVendorDTO } from './dto/create-vendor.dto';
+import { DashboardFilterDTO } from './dto/vendor-analytics.dto';
 import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
 import { DocumentService } from 'src/document/document.service';
@@ -68,7 +69,7 @@ export class VendorService {
     private influencerCommisionModel: Model<InfluencerCommissionDocument>,
     @InjectConnection() private readonly connection: Connection,
     private documentService: DocumentService,
-  ) {}
+  ) { }
 
   async registerVendor(
     dto: createVendorDTO,
@@ -1350,5 +1351,182 @@ export class VendorService {
         revenue: previousMonth[0]?.revenue || 0,
       },
     });
+  }
+
+  // 1. Sales Performance Chart
+  async getSalesPerformance(vendorId: string, filter: DashboardFilterDTO) {
+    const { startDate, endDate } = this.getDateRange(filter);
+
+    const matchStage: any = {
+      vendorId: new Types.ObjectId(vendorId),
+      createdAt: { $gte: startDate, $lte: endDate },
+    };
+
+    if (filter.paymentStatus) matchStage.paymentStatus = filter.paymentStatus;
+    if (filter.orderStatus) matchStage.orderStatus = filter.orderStatus;
+
+    const data = await this.vendorOrderModel.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+          },
+          totalOrders: { $sum: 1 },
+          totalRevenue: { $sum: '$grandTotal' }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    return ApiResponse.success('Sales performance fetched', data);
+  }
+
+  // 2. Top Selling Products Report
+  async getTopSellingProducts(vendorId: string, filter: DashboardFilterDTO) {
+    const { startDate, endDate } = this.getDateRange(filter);
+
+    const matchStage: any = {
+      vendorId: new Types.ObjectId(vendorId),
+      createdAt: { $gte: startDate, $lte: endDate },
+    };
+
+    if (filter.paymentStatus) matchStage.paymentStatus = filter.paymentStatus;
+    if (filter.orderStatus) matchStage.orderStatus = filter.orderStatus;
+
+    const data = await this.vendorOrderModel.aggregate([
+      { $match: matchStage },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          productName: { $first: '$items.productName' },
+          totalQuantitySold: { $sum: '$items.quantity' },
+          totalRevenue: { $sum: '$items.totalPrice' }
+        }
+      },
+      { $sort: { totalRevenue: -1 } }
+    ]);
+
+    return ApiResponse.success('Top selling products fetched', data);
+  }
+
+  // 3. Percentage of Products in Sales (Pie Chart)
+  async getProductSalesPercentage(vendorId: string, filter: DashboardFilterDTO) {
+    const { startDate, endDate } = this.getDateRange(filter);
+
+    const matchStage: any = {
+      vendorId: new Types.ObjectId(vendorId),
+      createdAt: { $gte: startDate, $lte: endDate },
+    };
+
+    if (filter.paymentStatus) matchStage.paymentStatus = filter.paymentStatus;
+    if (filter.orderStatus) matchStage.orderStatus = filter.orderStatus;
+
+    const productsAggr = await this.vendorOrderModel.aggregate([
+      { $match: matchStage },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          productName: { $first: '$items.productName' },
+          totalQuantity: { $sum: '$items.quantity' }
+        }
+      }
+    ]);
+
+    const totalQuantity = productsAggr.reduce((acc, curr) => acc + curr.totalQuantity, 0);
+
+    const data = productsAggr.map(item => ({
+      ...item,
+      percentage: totalQuantity ? parseFloat(((item.totalQuantity / totalQuantity) * 100).toFixed(2)) : 0
+    }));
+
+    return ApiResponse.success('Product sales percentage fetched', data);
+  }
+
+  // 4. Customer Demographics Chart
+  async getCustomerDemographics(vendorId: string, filter: DashboardFilterDTO) {
+    const { startDate, endDate } = this.getDateRange(filter);
+
+    const matchStage: any = {
+      vendorId: new Types.ObjectId(vendorId),
+      createdAt: { $gte: startDate, $lte: endDate },
+    };
+
+    const data = await this.vendorOrderModel.aggregate([
+      { $match: matchStage },
+      {
+        $group: {
+          _id: {
+            city: '$shippingAddress.city',
+            state: '$shippingAddress.state',
+            pincode: '$shippingAddress.pincode'
+          },
+          orderCount: { $sum: 1 },
+          uniqueCustomers: { $addToSet: '$userId' }
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          orderCount: 1,
+          customerCount: { $size: '$uniqueCustomers' }
+        }
+      }
+    ]);
+
+    return ApiResponse.success('Customer demographics fetched', data);
+  }
+
+  // 5. Export Vendor Orders to CSV
+  async exportVendorOrders(vendorId: string, filter: DashboardFilterDTO) {
+    const { startDate, endDate } = this.getDateRange(filter);
+
+    const matchStage: any = {
+      vendorId: new Types.ObjectId(vendorId),
+      createdAt: { $gte: startDate, $lte: endDate },
+    };
+
+    const orders = await this.vendorOrderModel.find(matchStage)
+      .populate('userId', 'name email phone')
+      .lean();
+
+    if (!orders || orders.length === 0) {
+      throw new NotFoundException('No orders found for the given period');
+    }
+
+    const csvRows: any = [];
+    // Header
+    csvRows.push(['Order Number', 'Date', 'Customer Name', 'Customer Email', 'City', 'State', 'Order Status', 'Payment Status', 'Grand Total'].join(','));
+
+    // Rows
+    for (const order of orders) {
+      const user = order.userId as any;
+      csvRows.push([
+        order.orderNumber,
+        new Date(order?.createdAt as any).toISOString(),
+        user?.name || 'N/A',
+        user?.email || 'N/A',
+        order.shippingAddress?.city || 'N/A',
+        order.shippingAddress?.state || 'N/A',
+        order.orderStatus,
+        order.paymentStatus,
+        order.grandTotal
+      ].join(','));
+    }
+
+    return csvRows.join('\n');
+  }
+
+  private getDateRange(filter: DashboardFilterDTO) {
+    let startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 1); // Default last 1 month
+    let endDate = new Date();
+
+    if (filter.startDate) startDate = new Date(filter.startDate);
+    if (filter.endDate) endDate = new Date(filter.endDate);
+
+    return { startDate, endDate };
   }
 }

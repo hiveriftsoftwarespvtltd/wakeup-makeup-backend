@@ -2,10 +2,10 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Types } from "mongoose";
 
 
-export enum ServiceType{
-  HOME="HOME",
-  SALON="SALON",
-  BOTH="BOTH"
+export enum ServiceType {
+  HOME = "HOME",
+  SALON = "SALON",
+  BOTH = "BOTH"
 }
 
 export type ServiceDocument = Service & Document
@@ -36,10 +36,13 @@ export class Service {
   durationMinutes!: number;
 
   @Prop({ required: true })
-  price!: number;
+  costPrice!: number;
 
-  @Prop()
-  discountedPrice!: number;
+  @Prop({ required: true })
+  sellingPrice!: number;
+
+  @Prop({ required: true })
+  offeredPrice!: number
 
   @Prop({
     enum: ServiceType,

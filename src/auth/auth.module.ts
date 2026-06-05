@@ -8,30 +8,32 @@ import { ConfigService } from '@nestjs/config';
 import { Mongoose } from 'mongoose';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
+import { ServiceProvider, ServiceProviderSchema } from 'src/service/schema/service-provider.schema';
 
 @Module({
-  imports:[
+  imports: [
     UserModule,
-    
+
     JwtModule.registerAsync({
-      inject:[ConfigService],
-      useFactory:(configSercice:ConfigService)=>{
+      inject: [ConfigService],
+      useFactory: (configSercice: ConfigService) => {
         const secret = configSercice.get<string>('JWT_SECRET')
-        if(!secret){
+        if (!secret) {
           throw new Error("JWT_SECRET not defined in env")
         }
         return {
           secret,
-          signOptions:{
-            expiresIn:'30d'
+          signOptions: {
+            expiresIn: '30d'
           }
         }
       }
     }),
-    MongooseModule.forFeature([{name:Vendor.name,schema:VendorSchema}])
+    MongooseModule.forFeature([{ name: Vendor.name, schema: VendorSchema }, { name: ServiceProvider.name, schema: ServiceProviderSchema }]),
+
   ],
-  providers: [AuthService,JwtStrategy],
+  providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  exports:[AuthService]
+  exports: [AuthService]
 })
-export class AuthModule {}
+export class AuthModule { }

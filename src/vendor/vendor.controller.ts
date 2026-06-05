@@ -12,7 +12,9 @@ import {
   UploadedFiles,
   UseGuards,
   UseInterceptors,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { VendorService } from './vendor.service';
 import { createVendorDTO } from './dto/create-vendor.dto';
 // import { updateVendorDTO } from './dto/update-vendor.dto';
@@ -23,12 +25,13 @@ import { UserRole } from 'src/user/schema/user.schema';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { updateVendorDTO } from './dto/update-vendor-dto';
 import { UpdateOrderDTO } from './dto/order.dto';
+import { DashboardFilterDTO } from './dto/vendor-analytics.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.VENDOR)
 @Controller('vendor')
 export class VendorController {
-  constructor(private vendorService: VendorService) {}
+  constructor(private vendorService: VendorService) { }
 
   @UseInterceptors(
     FileFieldsInterceptor([
@@ -46,7 +49,7 @@ export class VendorController {
     },
     @Req() req: any,
   ) {
-    
+
     return this.vendorService.registerVendor(
       dto,
       req.user._id,
@@ -79,27 +82,27 @@ export class VendorController {
   }
 
   @Get('overview')
-  async dashboardOverview(@Req() req:any){
+  async dashboardOverview(@Req() req: any) {
     return this.vendorService.overview(req.user.vendorId)
   }
 
   @Get('top-products')
-  async dashboardRevenue(@Req() req:any){
+  async dashboardRevenue(@Req() req: any) {
     return this.vendorService.topSellingProducts(req.user.vendorId)
   }
 
   @Get('order-graph')
-  orderGraph(@Req() req:any,@Query('days') days:number){
-    return this.vendorService.orderGraph(req.user.vendorId,days)
+  orderGraph(@Req() req: any, @Query('days') days: number) {
+    return this.vendorService.orderGraph(req.user.vendorId, days)
   }
 
   @Get('top-categories')
-  topCategories(@Req() req:any){
+  topCategories(@Req() req: any) {
     return this.vendorService.topCategories(req.user.vendorId)
   }
 
   @Get('order-comparison')
-  orderComparison(@Req() req:any){
+  orderComparison(@Req() req: any) {
     return this.vendorService.orderComparison(req.user.vendorId)
   }
   @Get('vendor-details')
@@ -111,32 +114,62 @@ export class VendorController {
   }
 
   @Get('vendor-products')
-  async vendorProducts(@Req() req:any){
-    return await this.vendorService.vendorProducts(req.user._id,req.user.vendorId)
+  async vendorProducts(@Req() req: any) {
+    return await this.vendorService.vendorProducts(req.user._id, req.user.vendorId)
   }
 
   @Get('vendor-categories')
-  async vendorCategories(@Req() req:any){
-    return await this.vendorService.vendorCategories(req.user._id,req.user.vendorId)
+  async vendorCategories(@Req() req: any) {
+    return await this.vendorService.vendorCategories(req.user._id, req.user.vendorId)
   }
 
   @Get('vendor-orders')
-  async vendorOrders(@Req() req:any){
+  async vendorOrders(@Req() req: any) {
     return this.vendorService.vendorOrders(req.user.vendorId)
   }
 
   @Delete("delete-all-products")
-  async deleteAllProducts(@Req() req:any){
+  async deleteAllProducts(@Req() req: any) {
     return await this.vendorService.deleteAllVendorProducts(req.user.vendorId)
   }
 
   @Get('vendor-orders/:id')
-  async vendorOrdersDetails(@Req() req:any,@Param('id') id:string){
-    return this.vendorService.orderDetails(req.user.vendorId,id)
+  async vendorOrdersDetails(@Req() req: any, @Param('id') id: string) {
+    return this.vendorService.orderDetails(req.user.vendorId, id)
   }
 
   @Put('update-order/:id')
-  updateOrder(@Body() dto:UpdateOrderDTO,@Param('id') id:string,@Req() req:any){
-    return this.vendorService.updateOrder(dto,id,req.user.vendorId)
+  updateOrder(@Body() dto: UpdateOrderDTO, @Param('id') id: string, @Req() req: any) {
+    return this.vendorService.updateOrder(dto, id, req.user.vendorId)
+  }
+
+  // Analytics Endpoints
+
+  @Get('dashboard/sales-performance')
+  async getSalesPerformance(@Req() req: any, @Query() filter: DashboardFilterDTO) {
+    return this.vendorService.getSalesPerformance(req.user.vendorId, filter);
+  }
+
+  @Get('dashboard/top-products')
+  async getTopSellingProducts(@Req() req: any, @Query() filter: DashboardFilterDTO) {
+    return this.vendorService.getTopSellingProducts(req.user.vendorId, filter);
+  }
+
+  @Get('dashboard/product-sales-percentage')
+  async getProductSalesPercentage(@Req() req: any, @Query() filter: DashboardFilterDTO) {
+    return this.vendorService.getProductSalesPercentage(req.user.vendorId, filter);
+  }
+
+  @Get('dashboard/customer-demographics')
+  async getCustomerDemographics(@Req() req: any, @Query() filter: DashboardFilterDTO) {
+    return this.vendorService.getCustomerDemographics(req.user.vendorId, filter);
+  }
+
+  @Get('dashboard/export-orders')
+  async exportVendorOrders(@Req() req: any, @Query() filter: DashboardFilterDTO, @Res() res: any) {
+    const csvData = await this.vendorService.exportVendorOrders(req.user.vendorId, filter);
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename="vendor_orders.csv"');
+    return res.send(csvData);
   }
 }

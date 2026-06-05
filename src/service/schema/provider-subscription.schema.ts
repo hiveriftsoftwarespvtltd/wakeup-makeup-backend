@@ -1,10 +1,10 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Types } from "mongoose";
 
-export enum  ServiceSubscriptionStatus{
-  ACTIVE="ACTIVE",
-  EXPIRED="EXPIRED",
-  CANCELLED="CANCELLED"
+export enum ServiceSubscriptionStatus {
+  ACTIVE = "ACTIVE",
+  EXPIRED = "EXPIRED",
+  CANCELLED = "CANCELLED"
 }
 export type ProviderSubscriptionDocument = ProviderSubscription & Document
 @Schema({ timestamps: true })
@@ -28,7 +28,7 @@ export class ProviderSubscription {
   startDate!: Date;
 
   @Prop()
-  endDate!: Date;
+  endDate?: Date;
 
   @Prop()
   amountPaid!: number;
@@ -39,7 +39,7 @@ export class ProviderSubscription {
   })
   status!: ServiceSubscriptionStatus;
 
-  @Prop({ default: true })
+  @Prop({ default: false })
   autoRenew!: boolean;
 }
 

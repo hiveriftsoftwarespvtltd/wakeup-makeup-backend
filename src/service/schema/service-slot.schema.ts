@@ -8,7 +8,12 @@ export class ServiceSlot {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Staff',
+    ref: 'ServiceProvider',
+  })
+  providerId!: Types.ObjectId;
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'ServiceStaff',
   })
   staffId!: Types.ObjectId;
 

@@ -53,9 +53,9 @@ export class CloudinaryStorage implements StorageProvider {
     });
   }
 
-  async delete(publicId: string): Promise<void> {
+  async delete(publicId: string, resourceType?: string): Promise<void> {
     await cloudinary.uploader.destroy(publicId, {
-      resource_type: 'image', // ⚠️ safer default OR store type in DB
+      resource_type: resourceType || 'image', // Use the provided type or default to 'image'
     });
   }
 }

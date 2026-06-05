@@ -32,7 +32,7 @@ export class LocalStorage implements StorageProvider {
     };
   }
 
-  async delete(publicId: string): Promise<void> {
+  async delete(publicId: string, resourceType?: string): Promise<void> {
     const filePath = path.join(process.cwd(), 'uploads', publicId);
 
     if (fs.existsSync(filePath)) {

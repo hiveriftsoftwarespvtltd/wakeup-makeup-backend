@@ -1,6 +1,12 @@
 import { Module } from '@nestjs/common';
 import { ServiceController } from './service.controller';
 import { ServiceService } from './service.service';
+import { ServiceSearchController } from './service-search.controller';
+import { ServiceSearchService } from './service-search.service';
+import { ServiceBookingController } from './service-booking.controller';
+import { ServiceBookingService } from './service-booking.service';
+import { ServiceLeadController } from './service-lead.controller';
+import { ServiceLeadService } from './service-lead.service';
 import {
   ProviderSubscription,
   ProviderSubscriptionSchema,
@@ -46,6 +52,9 @@ import {
 } from './schema/service-subscription.schema';
 import { Service, ServiceSchema } from './schema/service.schema';
 import { DocumentModule } from 'src/document/document.module';
+import { User, UserSchema } from 'src/user/schema/user.schema';
+import { Coupon, CouponSchema } from 'src/coupon/schema/coupon.schema';
+import { CouponUsage, CouponUsageSchema } from 'src/coupon/schema/coupon-usage.schema';
 
 @Module({
   imports: [
@@ -69,11 +78,14 @@ import { DocumentModule } from 'src/document/document.module';
         schema: ServiceSubscriptionPlanSchema,
       },
       { name: Service.name, schema: ServiceSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Coupon.name, schema: CouponSchema },
+      { name: CouponUsage.name, schema: CouponUsageSchema },
     ]),
-     DocumentModule
+    DocumentModule,
   ],
-  controllers: [ServiceController],
-  providers: [ServiceService],
-  exports:[ServiceService]
+  controllers: [ServiceController, ServiceSearchController, ServiceBookingController, ServiceLeadController],
+  providers: [ServiceService, ServiceSearchService, ServiceBookingService, ServiceLeadService],
+  exports: [ServiceService, ServiceSearchService, ServiceBookingService, ServiceLeadService, MongooseModule],
 })
-export class ServiceModule {}
+export class ServiceModule { }

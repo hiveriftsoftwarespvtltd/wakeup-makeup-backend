@@ -1,7 +1,15 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
-
+export enum WeekDay {
+  SUNDAY = "SUNDAY",
+  MONDAY = "MONDAY",
+  TUESDAY = "TUESDAY",
+  WEDNESDAY = "WEDNESDAY",
+  THURSDAY = "THURSDAY",
+  FRIDAY = "FRIDAY",
+  SATURDAY = "SATURDAY",
+}
 export type ProviderAvailabilityDocument = ProviderAvailability & Document
 @Schema()
 export class ProviderAvailability {
@@ -12,8 +20,11 @@ export class ProviderAvailability {
   })
   providerId!: Types.ObjectId;
 
-  @Prop()
-  dayOfWeek!: number;
+  @Prop({
+    enum: WeekDay,
+    required: true,
+  })
+  dayOfWeek!: WeekDay;
 
   @Prop()
   startTime!: string;

@@ -122,7 +122,14 @@ async deleteMedia(id: string, session?: ClientSession) {
     throw new NotFoundException('Media not found');
   }
 
-  await this.storage.delete(media.publicId);
+  let resourceType = 'image';
+  if (media.type === DocumentType.VIDEO) {
+    resourceType = 'video';
+  } else if (media.type === DocumentType.DOCUMENT) {
+    resourceType = 'raw';
+  }
+
+  await this.storage.delete(media.publicId, resourceType);
   await media.deleteOne({ session });
 
   return ApiResponse.success('Media Deleted Successfully', 200);

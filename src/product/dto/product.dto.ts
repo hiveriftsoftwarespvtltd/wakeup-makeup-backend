@@ -38,10 +38,10 @@ export class CreateVariantDto {
   salesPrice!: number;
 
   @IsOptional()
-  @Type(()=>Number)
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
-  offeredPrice!:number
+  offeredPrice!: number
 
   @Type(() => Number)
   @IsNumber()
@@ -108,8 +108,12 @@ export class CreateProductDto {
   description?: string;
 
   @IsOptional()
+  @IsString()
+  brand?: string
+
+  @IsOptional()
   @IsBoolean()
-  isShippingApply?:boolean
+  isShippingApply?: boolean
 
   @IsMongoId()
   categoryId!: string;
@@ -131,17 +135,17 @@ export class CreateProductDto {
   @Type(() => CreateVariantDto)
   variants!: CreateVariantDto[];
 
-   @IsOptional()
-    @Transform(({ value }) => {
-      if (typeof value === 'string') {
-        return JSON.parse(value);
-      }
-      return value;
-    })
-    @IsArray()
-    @ArrayUnique()
-    @IsString({ each: true })
-    tags?: string[];
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    return value;
+  })
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  tags?: string[];
 }
 
 
@@ -149,4 +153,4 @@ export class CreateProductDto {
 
 export class UpdateProductDto extends PartialType(
   CreateProductDto,
-) {}
+) { }

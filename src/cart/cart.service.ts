@@ -23,6 +23,8 @@ import {
 import { ShiprocketService } from 'src/shiprocket/shiprocket.service';
 import { Vendor, VendorDocument } from 'src/vendor/schema/vendor.schema';
 import { Address, AddressDocument } from 'src/address/schema/address.schema';
+import { UserWallet, UserWalletDocument } from 'src/wallet/schema/user/user.wallet.schema';
+import { ApiResponse } from 'src/common/responses/api-response';
 
 export interface VendorShippingEstimate {
   vendorId: Types.ObjectId;
@@ -68,6 +70,9 @@ export class CartService {
 
     @InjectModel(Address.name)
     private addressModel: Model<AddressDocument>,
+
+    @InjectModel(UserWallet.name)
+    private userWalletModel: Model<UserWalletDocument>,
 
     private shipRocketService: ShiprocketService,
   ) {}
@@ -526,5 +531,108 @@ export class CartService {
         estimatedDeliveryDate,
       },
     };
+  }
+
+  async applyWallet(userId: string, dto: any) {
+    // =========================
+    // FETCH USER CART
+    // =========================
+    const cart = await this.cartModel.findOne({
+      user: new Types.ObjectId(userId),
+    });
+
+    if (!cart || !cart.items.length) {
+      throw new BadRequestException('Cart is empty');
+    }
+
+    // =========================
+    // CALCULATE SUBTOTAL
+    // =========================
+    let subTotal = 0;
+    const cartItems: any[] = [];
+
+    for (const item of cart.items) {
+      const product = await this.productModel.findById(item.product);
+
+      if (!product) {
+        throw new NotFoundException('Product not found');
+      }
+
+      if (!product.isActive || product.isDeleted) {
+        throw new BadRequestException(`${product.name} is unavailable`);
+      }
+
+      const variant = await this.productVariantModel.findById(item.variant)
+        .populate("images", "url publicId _id")
+        .populate("thumbnail", "url publicId _id");
+
+      if (!variant) {
+        throw new NotFoundException('Variant not found');
+      }
+
+      if (!variant.isActive) {
+        throw new BadRequestException(`${product.name} variant unavailable`);
+      }
+
+      if (
+        !product.variants.some((id) => id.toString() === variant._id.toString())
+      ) {
+        throw new BadRequestException('Invalid cart item');
+      }
+
+      if (variant.stock < item.quantity) {
+        throw new BadRequestException(`${product.name} is out of stock`);
+      }
+
+      const sellingPrice = variant.offeredPrice ?? variant.salesPrice ?? variant.costPrice ?? 0;
+      const totalPrice = sellingPrice * item.quantity;
+      subTotal += totalPrice;
+
+      cartItems.push({
+        productId: product,
+        variantId: variant,
+        quantity: item.quantity,
+        price: sellingPrice,
+        totalPrice,
+      });
+    }
+
+    // =========================
+    // APPLY WALLET BALANCE
+    // =========================
+    const wallet = await this.userWalletModel.findOne({ userId: new Types.ObjectId(userId) });
+    
+    if (!wallet) {
+      throw new BadRequestException('Wallet not found');
+    }
+
+    if (!wallet.isActive) {
+      throw new BadRequestException('Wallet is inactive');
+    }
+
+    let appliedWalletAmount = 0;
+    if (wallet.balance >= subTotal) {
+      appliedWalletAmount = subTotal;
+    } else {
+      appliedWalletAmount = wallet.balance;
+    }
+
+    const finalTotal = subTotal - appliedWalletAmount;
+
+    return ApiResponse.success('Wallet applied successfully', {
+      wallet: {
+        balance: wallet.balance,
+      },
+      cartSummary: {
+        totalItems: cart.items.length,
+        subTotal,
+        walletAmountUsed: appliedWalletAmount,
+        finalTotal,
+      },
+      appliedWallet: {
+        amount: appliedWalletAmount,
+      },
+      cartItems,
+    });
   }
 }

@@ -31,7 +31,7 @@ export class ProductService {
     @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
     @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
     private documentService: DocumentService,
-  ) {}
+  ) { }
 
   // async CreateCategory(
   //   dto: CreateCategory,
@@ -459,8 +459,9 @@ export class ProductService {
               metaDescription: dto.metaDescription,
               status: dto.status,
               hasVariants: dto.variants.length > 1,
-              tags:dto.tags,
-              isShippingApply:dto.isShippingApply
+              tags: dto.tags,
+              isShippingApply: dto.isShippingApply,
+              brand: dto.brand?.toLowerCase()
             },
           ],
           { session },
@@ -615,12 +616,20 @@ export class ProductService {
       product.slug = dto.slug;
     }
 
-    if(dto.tags !== undefined){
+    if (dto.tags !== undefined) {
       product.tags = dto.tags
     }
 
     if (dto.description !== undefined) {
       product.description = dto.description;
+    }
+
+    if (dto.brand !== undefined) {
+      product.brand = dto.brand.toLowerCase();
+    }
+
+    if (dto.isShippingApply !== undefined) {
+      product.isShippingApply = dto.isShippingApply;
     }
 
     if (dto.categoryId !== undefined) {

@@ -70,11 +70,27 @@ export class User {
   @Prop({ default: false })
   isVendorOnboardingCompleted!: boolean;
 
+  @Prop({ default: false })
+  isServiceProviderOnboardingCompleted!: boolean;
+
+  @Prop({ default: false })
+  isDistributorOnboardingCompleted!: boolean;
+
+  @Prop({ default: false })
+  isInfluencerOnboardingCompleted!: boolean;
+
   @Prop({
     type: Types.ObjectId,
     ref: 'ServiceProvider',
   })
   serviceProviderId?: Types.ObjectId;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Distributor',
+  })
+  distributorId?: Types.ObjectId;
+
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
