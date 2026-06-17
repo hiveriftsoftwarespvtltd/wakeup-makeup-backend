@@ -61,3 +61,39 @@ export class SettleInfluencerPayoutDto {
   @Min(2024)
   year?: number;
 }
+
+export class SettleVendorPendingBalanceDto {
+  @IsMongoId()
+  vendorId!: string;
+
+  @IsArray()
+  @IsMongoId({ each: true })
+  vendorOrderIds!: string[];
+}
+
+export class SettleInfluencerPendingBalanceDto {
+  @IsMongoId()
+  influencerId!: string;
+
+  @IsArray()
+  @IsMongoId({ each: true })
+  commissionIds!: string[];
+}
+
+export class SettleServiceProviderPendingBalanceDto {
+  @IsMongoId()
+  serviceProviderId!: string;
+
+  @IsArray()
+  @IsMongoId({ each: true })
+  serviceBookingIds!: string[];
+}
+
+export class SettleEducatorPendingBalanceDto {
+  @IsMongoId()
+  educatorId!: string;
+
+  @IsArray()
+  @IsMongoId({ each: true })
+  coursePurchaseIds!: string[];
+}

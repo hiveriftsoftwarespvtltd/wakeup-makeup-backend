@@ -13,7 +13,8 @@ export enum WalletTransactionReason {
     CASHBACK = 'CASHBACK',
     REFERRAL_BONUS = 'REFERRAL_BONUS',
     ADMIN_ADJUSTMENT = 'ADMIN_ADJUSTMENT',
-    ORDER_PAYMENT = 'ORDER_PAYMENT'
+    ORDER_PAYMENT = 'ORDER_PAYMENT',
+    COURSE_PAYMENT = 'COURSE_PAYMENT'
 }
 
 export type WalletTransactionDocument =
@@ -63,6 +64,12 @@ export class WalletTransaction {
         ref: 'Order',
     })
     orderId?: Types.ObjectId;
+
+    @Prop({
+        type: Types.ObjectId,
+        ref: 'CoursePurchase',
+    })
+    coursePurchaseId?: Types.ObjectId;
 
     @Prop()
     description?: string;

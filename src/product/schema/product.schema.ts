@@ -45,6 +45,12 @@ export class Product {
 
   @Prop({ default: 'brandless' })
   brand?: string
+  // @Prop({
+  //   type: Types.ObjectId,
+  //   ref: "Brand",
+  //   default: null
+  // })
+  // brand?: Types.ObjectId;
 
   @Prop({
     type: Types.ObjectId,

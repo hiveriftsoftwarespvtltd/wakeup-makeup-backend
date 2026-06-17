@@ -21,10 +21,10 @@ export class ServiceSlot {
   date!: Date;
 
   @Prop()
-  startTime!: string;
+  startTime!: Date;
 
   @Prop()
-  endTime!: string;
+  endTime!: Date;
 
   @Prop({ default: false })
   isBooked!: boolean;

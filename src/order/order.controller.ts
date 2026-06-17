@@ -35,14 +35,12 @@ export class OrderController {
     return this.orderService.userOrderDetails(req.user._id, id);
   }
 
-  // @Put('return-or-cancel-order/:id')
-  // returnOrCancelOrder(
-  //   @Req() req: any,
-  //   @Param('id') id: string,
-  //   @Body() dto:UpdateUserOrderDTO,
-  // ) {
-  //   return this.orderService.returnOrCancelOrder(req.user._id, id, dto);
-  // }
-
-
+  @Put('cancel-order/:id')
+  cancelOrder(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Body() dto: UpdateUserOrderDTO,
+  ) {
+    return this.orderService.cancelOrder(req.user._id, id, dto);
+  }
 }

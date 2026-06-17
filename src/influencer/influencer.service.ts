@@ -40,6 +40,7 @@ import {
 import { sendMail } from 'src/utils/helper';
 import { influencerInvitationTemplate } from 'src/utils/email.template';
 import { randomUUID } from 'crypto';
+import { InfluencerWalletService } from 'src/wallet/service/influencer/influencer.wallet.service';
 
 @Injectable()
 export class InfluencerService {
@@ -56,7 +57,8 @@ export class InfluencerService {
     private influencerPayoutModel: Model<InfluencerPayoutDocument>,
     @InjectModel(InfluencerInvitation.name)
     private influencerInvitationModel: Model<InfluencerInvitationDocument>,
-    @InjectConnection() private connection:Connection
+    @InjectConnection() private connection:Connection,
+    private influencerWalletService: InfluencerWalletService
   ) {}
 
   // async create(dto: CreateInfluencerDto, token: string) {
@@ -217,6 +219,8 @@ export class InfluencerService {
     );
 
     await session.commitTransaction();
+
+    await this.influencerWalletService.initializeWallet(influencer[0]._id.toString());
 
     return await this.influencerModel
       .findById(influencer[0]._id)

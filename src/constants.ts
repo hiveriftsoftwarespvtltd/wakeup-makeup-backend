@@ -5,4 +5,8 @@ export enum MediaFolderName {
   ServiceStaff = 'service-staff',
   Product = 'product',
   Category = 'category',
+  Educator = 'educator',
+  CourseCategories = 'course-categories',
+  CourseContent = 'course-content',
+
 }

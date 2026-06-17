@@ -1,19 +1,19 @@
 export const serviceBookingTemplate = (
-    name: string,
-    booking: {
-        serviceTitle: string;
-        providerName: string;
-        staffName?: string;
-        bookingDate: string;
-        slotStartTime: string;
-        slotEndTime: string;
-        serviceAddress: string;
-        totalAmount: number;
-        bookingStatus: string;
-        bookingId: string;
-    },
+  name: string,
+  booking: {
+    serviceTitle: string;
+    providerName: string;
+    staffName?: string;
+    bookingDate: string;
+    slotStartTime: string;
+    slotEndTime: string;
+    serviceAddress: string;
+    totalAmount: number;
+    bookingStatus: string;
+    bookingId: string;
+  },
 ) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -182,18 +182,18 @@ export const serviceBookingTemplate = (
 };
 
 export const bookingCancelledTemplate = (
-    name: string,
-    booking: {
-        serviceTitle: string;
-        providerName: string;
-        bookingDate: string;
-        slotStartTime: string;
-        slotEndTime: string;
-        bookingId: string;
-        cancellationReason?: string;
-    },
+  name: string,
+  booking: {
+    serviceTitle: string;
+    providerName: string;
+    bookingDate: string;
+    slotStartTime: string;
+    slotEndTime: string;
+    bookingId: string;
+    cancellationReason?: string;
+  },
 ) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -235,9 +235,9 @@ Your booking has been <strong>cancelled</strong>.
 </div>
 
 ${booking.cancellationReason
-            ? `<p style="margin-top:15px;color:#991b1b;"><strong>Reason:</strong> ${booking.cancellationReason}</p>`
-            : ''
-        }
+      ? `<p style="margin-top:15px;color:#991b1b;"><strong>Reason:</strong> ${booking.cancellationReason}</p>`
+      : ''
+    }
 
 <p style="margin-top:20px;color:#6b7280;">
 If any payment was made, refund (if applicable) will be processed as per policy.
@@ -260,18 +260,18 @@ If any payment was made, refund (if applicable) will be processed as per policy.
 };
 
 export const bookingRescheduledTemplate = (
-    name: string,
-    booking: {
-        serviceTitle: string;
-        providerName: string;
-        oldDate: string;
-        oldTime: string;
-        newDate: string;
-        newTime: string;
-        bookingId: string;
-    },
+  name: string,
+  booking: {
+    serviceTitle: string;
+    providerName: string;
+    oldDate: string;
+    oldTime: string;
+    newDate: string;
+    newTime: string;
+    bookingId: string;
+  },
 ) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -337,17 +337,17 @@ Please make sure to be available at the new scheduled time.
 
 
 export const bookingCompletedTemplate = (
-    name: string,
-    booking: {
-        serviceTitle: string;
-        providerName: string;
-        staffName?: string;
-        bookingDate: string;
-        bookingId: string;
-        totalAmount: number;
-    },
+  name: string,
+  booking: {
+    serviceTitle: string;
+    providerName: string;
+    staffName?: string;
+    bookingDate: string;
+    bookingId: string;
+    totalAmount: number;
+  },
 ) => {
-    return `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -423,7 +423,7 @@ Your trust means a lot to us.
 Book your next beauty appointment and keep glowing.
 </p>
 
-<a href="https://wakeup-makeup.com/services" style="
+<a href="https://wakeup-makeup.com/" style="
   display:inline-block;
   background:#ff4d6d;
   color:#ffffff;

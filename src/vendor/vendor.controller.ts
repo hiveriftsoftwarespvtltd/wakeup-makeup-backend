@@ -44,8 +44,8 @@ export class VendorController {
     @Body() dto: createVendorDTO,
     @UploadedFiles()
     files: {
-      logo?: Express.Multer.File[];
-      banner?: Express.Multer.File[];
+      logo?: any[];
+      banner?: any[];
     },
     @Req() req: any,
   ) {
@@ -68,8 +68,8 @@ export class VendorController {
     @Body() dto: updateVendorDTO,
     @UploadedFiles()
     files: {
-      logo?: Express.Multer.File[];
-      banner?: Express.Multer.File[];
+      logo?: any[];
+      banner?: any[];
     },
     @Req() req: any,
   ) {

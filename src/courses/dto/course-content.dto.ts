@@ -1,0 +1,101 @@
+import { Type } from "class-transformer";
+import { IsBoolean, IsMongoId, IsNumber, IsOptional, IsString, Min } from "class-validator";
+
+export class CreateCourseSectionDTO {
+    @IsMongoId()
+    courseId: string;
+
+    @IsString()
+    title: string;
+
+    @IsNumber()
+    @Type(() => Number)
+    @Min(0)
+    order: number;
+}
+
+export class UpdateCourseSectionDTO {
+    @IsOptional()
+    @IsString()
+    title?: string;
+
+    @IsOptional()
+    @Type(() => Number)
+    @Min(0)
+
+    @IsNumber()
+    order?: number;
+}
+
+export class CreateCourseLessonDTO {
+    @IsMongoId()
+    courseId: string;
+
+    @IsMongoId()
+    sectionId: string;
+
+    @IsString()
+    title: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsString()
+    videoUrl: string;
+
+    @IsOptional()
+    @IsString()
+    videoId?: string;
+
+    @IsOptional()
+    @Min(0)
+    @Type(() => Number)
+    @IsNumber()
+    durationInSeconds?: number;
+
+    @Min(0)
+    @Type(() => Number)
+    @IsNumber()
+    order: number;
+
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    isPreview?: boolean;
+}
+
+export class UpdateCourseLessonDTO {
+    @IsOptional()
+    @IsString()
+    title?: string;
+
+    @IsOptional()
+    @IsString()
+    description?: string;
+
+    @IsOptional()
+    @IsString()
+    videoUrl?: string;
+
+    @IsOptional()
+    @IsString()
+    videoId?: string;
+
+    @IsOptional()
+    @Min(0)
+    @Type(() => Number)
+    @IsNumber()
+    durationInSeconds?: number;
+
+    @IsOptional()
+    @Type(() => Number)
+    @Min(0)
+    @IsNumber()
+    order?: number;
+
+    @IsOptional()
+    @Type(() => Boolean)
+    @IsBoolean()
+    isPreview?: boolean;
+}

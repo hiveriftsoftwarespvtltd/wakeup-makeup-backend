@@ -8,6 +8,7 @@ export enum ServiceProviderWalletTransactionType {
 
 export enum ServiceProviderWalletTransactionReason {
     SERVICE_EARNING = 'SERVICE_EARNING',
+    QUOTATION_EARNING = 'QUOTATION_EARNING',
     WITHDRAWAL = 'WITHDRAWAL',
     REFUND_DEDUCTION = 'REFUND_DEDUCTION',
     ADMIN_ADJUSTMENT = 'ADMIN_ADJUSTMENT',
@@ -54,6 +55,12 @@ export class ServiceProviderWalletTransaction {
         ref: 'ServiceBooking',
     })
     bookingId?: Types.ObjectId;
+
+    @Prop({
+        type: Types.ObjectId,
+        ref: 'ServiceQuotation',
+    })
+    quotationId?: Types.ObjectId;
 
     @Prop()
     description?: string;

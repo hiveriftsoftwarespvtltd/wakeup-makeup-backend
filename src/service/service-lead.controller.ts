@@ -1,4 +1,4 @@
-import { Controller, Get, Delete, Param, UseGuards, Req, Post, Body } from '@nestjs/common';
+import { Controller, Get, Delete, Param, UseGuards, Req, Post, Body, Put } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
@@ -43,5 +43,26 @@ export class ServiceLeadController {
   @Roles(UserRole.SERVICE_PROVIDER)
   bookLead(@Req() req: any, @Param('id') leadId: string, @Body() dto: BookLeadDTO) {
     return this.serviceLeadService.bookLead(req.user._id, leadId, dto);
+  }
+
+  @Post('assign-staff/:leadBookingId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SERVICE_PROVIDER)
+  assignStaffToLeadBooking(@Req() req: any, @Param('leadBookingId') leadBookingId: string, @Body() dto: import('./dto/service.dto').AssignStaffToLeadBookingDTO) {
+    return this.serviceLeadService.assignStaffToLeadBooking(req.user.serviceProviderId, leadBookingId, dto);
+  }
+
+  @Delete('cancel-booking/:leadBookingId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  cancelLeadBooking(@Req() req: any, @Param('leadBookingId') leadBookingId: string) {
+    return this.serviceLeadService.cancelLeadBooking(req.user._id, leadBookingId);
+  }
+
+  @Put('reschedule-booking/:leadBookingId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER)
+  rescheduleLeadBooking(@Req() req: any, @Param('leadBookingId') leadBookingId: string, @Body() dto: import('./dto/service.dto').RescheduleLeadBookingDTO) {
+    return this.serviceLeadService.rescheduleLeadBooking(req.user._id, leadBookingId, dto);
   }
 }

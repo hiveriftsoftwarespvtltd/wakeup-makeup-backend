@@ -57,6 +57,10 @@ import {
 import { Vendor, VendorDocument } from 'src/vendor/schema/vendor.schema';
 import { VendorOrder, VendorOrderDocument } from './schema/vendor-order.schema';
 import { ShiprocketService } from 'src/shiprocket/shiprocket.service';
+import { UserWalletService } from 'src/wallet/service/user/user.wallet.service';
+import { WalletTransactionReason } from 'src/wallet/schema/user/user.wallet.transactions';
+import { UserReview, UserReviewDocument } from 'src/user-review/schema/user-review.schema';
+import { CashbackSlab, CashbackSlabDocument, CashbackType } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
 
 @Injectable()
 export class OrderService {
@@ -94,11 +98,19 @@ export class OrderService {
     @InjectModel(VendorOrder.name)
     private readonly vendorOrderModel: Model<VendorOrderDocument>,
 
+    @InjectModel(UserReview.name)
+    private readonly userReviewModel: Model<UserReviewDocument>,
+
     @InjectConnection()
     private readonly connection: Connection,
 
     private shiprocketService: ShiprocketService,
-  ) {}
+
+    private readonly userWalletService: UserWalletService,
+
+    @InjectModel(CashbackSlab.name)
+    private readonly cashbackSlabModel: Model<CashbackSlabDocument>,
+  ) { }
 
   // async placeOrder(dto: CreateOrderDto, userId: string) {
   //   const session = await this.connection.startSession();
@@ -573,8 +585,12 @@ export class OrderService {
       session.startTransaction();
 
       // ─────────────────────────────────────────────────────────────
-      // 1. Validate Address
+      // 1. Validate Address & Payment Method
       // ─────────────────────────────────────────────────────────────
+      if (dto.paymentMethod === PaymentMethod.WALLET_PLUS_COD) {
+        throw new BadRequestException('Wallet cannot be combined with Cash on Delivery');
+      }
+
       const address = await this.addressModel
         .findOne({
           _id: new Types.ObjectId(dto.addressId),
@@ -845,6 +861,9 @@ export class OrderService {
             height: bucket.height,
           });
 
+          console.log('shipping', shipping);
+
+
           shippingCharge = Number(shipping.shippingCharge) || 0;
 
           codCharge =
@@ -1017,7 +1036,7 @@ export class OrderService {
               commissionAmount: platformCommissionAmount,
               platformCommissionRate,
               platformCommissionAmount,
-              
+
 
               payoutAmount,
 
@@ -1108,7 +1127,7 @@ export class OrderService {
           }
         }
 
-      
+
         orderSubTotal += subTotal;
 
         orderDiscount += vendorDiscount;
@@ -1118,6 +1137,38 @@ export class OrderService {
         orderCodCharge += codCharge;
 
         orderGrandTotal += vendorGrandTotal;
+      }
+
+      // ─────────────────────────────────────────────────────────────
+      // 5.5 Deduct Wallet Balance
+      // ─────────────────────────────────────────────────────────────
+      let walletAmountUsed = 0;
+      let actualPaymentStatus = dto.paymentMethod === PaymentMethod.CASH_ON_DELIVERY ? PaymentStatus.PENDING : PaymentStatus.PAID;
+
+      if (dto.paymentMethod === PaymentMethod.WALLET || dto.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) {
+        const userWallet = await this.userWalletService.getBalance(userId);
+
+        if (dto.paymentMethod === PaymentMethod.WALLET) {
+          if (userWallet.balance < orderGrandTotal) {
+            throw new BadRequestException('Insufficient wallet balance to cover the entire order');
+          }
+          walletAmountUsed = orderGrandTotal;
+        } else if (dto.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) {
+          if (userWallet.balance <= 0) {
+            throw new BadRequestException('Insufficient wallet balance');
+          }
+          walletAmountUsed = Math.min(userWallet.balance, orderGrandTotal);
+        }
+
+        if (walletAmountUsed > 0) {
+          await this.userWalletService.deductBalance(
+            userId,
+            walletAmountUsed,
+            WalletTransactionReason.ORDER_PAYMENT,
+            `Payment for Order ${orderNumber}`,
+            session
+          );
+        }
       }
 
       // ─────────────────────────────────────────────────────────────
@@ -1163,6 +1214,10 @@ export class OrderService {
             tax: 0,
 
             grandTotal: orderGrandTotal,
+
+            walletAmountUsed: walletAmountUsed,
+
+            paidAmount: actualPaymentStatus === PaymentStatus.PAID ? orderGrandTotal : 0,
           },
         ],
         { session },
@@ -1187,7 +1242,7 @@ export class OrderService {
         const payloads = influencerCommissionPayloads.map((item) => ({
           ...item,
           orderId: order._id,
-          
+
 
         }));
 
@@ -1221,6 +1276,38 @@ export class OrderService {
           { session },
         );
       }
+      // ─────────────────────────────────────────────────────────────
+      // 9. CASHBACK CALCULATION
+      // ─────────────────────────────────────────────────────────────
+      if (actualPaymentStatus === PaymentStatus.PAID) {
+        const applicableSlab = await this.cashbackSlabModel.findOne({
+          isActive: true,
+          minValue: { $lte: orderGrandTotal },
+          maxValue: { $gte: orderGrandTotal }
+        }).session(session);
+
+        if (applicableSlab) {
+          let cashbackAmount = 0;
+          if (applicableSlab.cashbackType === CashbackType.PERCENTAGE) {
+            cashbackAmount = (orderGrandTotal * applicableSlab.cashbackValue) / 100;
+            if (applicableSlab.maxCashback && applicableSlab.maxCashback > 0 && cashbackAmount > applicableSlab.maxCashback) {
+              cashbackAmount = applicableSlab.maxCashback;
+            }
+          } else {
+            cashbackAmount = applicableSlab.cashbackValue;
+          }
+
+          if (cashbackAmount > 0) {
+            await this.userWalletService.addBalance(
+              userId,
+              cashbackAmount,
+              WalletTransactionReason.CASHBACK,
+              `Cashback for Order ${orderNumber}`,
+              session
+            );
+          }
+        }
+      }
 
       await session.commitTransaction();
 
@@ -1233,7 +1320,7 @@ export class OrderService {
     }
   }
 
-  
+
 
   async userOrders(userId: string) {
     const orders = await this.orderModel
@@ -1255,7 +1342,24 @@ export class OrderService {
       .sort({ createdAt: -1 })
       .lean();
 
-    return ApiResponse.success('Orders fetched successfully', orders);
+    const userReviews = await this.userReviewModel.find({ userId: new Types.ObjectId(userId), isDeleted: false }).lean();
+
+    const ordersWithReviews = orders.map((order: any) => {
+      if (order.vendorOrders) {
+        order.vendorOrders.forEach((vendorOrder: any) => {
+          if (vendorOrder.items) {
+            vendorOrder.items.forEach((item: any) => {
+              const review = userReviews.find(r => r.productId.toString() === (item.productId?._id?.toString() || item.productId?.toString()));
+              item.isReviewed = !!review;
+              item.reviewDetails = review || null;
+            });
+          }
+        });
+      }
+      return order;
+    });
+
+    return ApiResponse.success('Orders fetched successfully', ordersWithReviews);
   }
 
   async userOrderDetails(userId: string, orderId: string) {
@@ -1264,7 +1368,7 @@ export class OrderService {
         _id: new Types.ObjectId(orderId),
         userId: new Types.ObjectId(userId),
       })
-     .populate({
+      .populate({
         path: 'vendorOrders',
         populate: [
           {
@@ -1282,105 +1386,99 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
+    const userReviews = await this.userReviewModel.find({ userId: new Types.ObjectId(userId), isDeleted: false }).lean();
+
+    if (order.vendorOrders) {
+      order.vendorOrders.forEach((vendorOrder: any) => {
+        if (vendorOrder.items) {
+          vendorOrder.items.forEach((item: any) => {
+            const review = userReviews.find(r => r.productId.toString() === (item.productId?._id?.toString() || item.productId?.toString()));
+            item.isReviewed = !!review;
+            item.reviewDetails = review || null;
+          });
+        }
+      });
+    }
+
     return ApiResponse.success('Order details fetched successfully', order);
   }
 
-  // async returnOrCancelOrder(
-  //   userId: string,
-  //   orderId: string,
-  //   dto: UpdateUserOrderDTO,
-  // ) {
-  //   const order = await this.orderModel.findOne({
-  //     _id: new Types.ObjectId(orderId),
-  //     userId: new Types.ObjectId(userId),
-  //   });
+  async cancelOrder(userId: string, orderId: string, dto: UpdateUserOrderDTO) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
 
-  //   if (!order) {
-  //     throw new NotFoundException('Order Not Found');
-  //   }
+      const order = await this.orderModel.findOne({
+        _id: new Types.ObjectId(orderId),
+        userId: new Types.ObjectId(userId),
+      }).session(session);
 
-  //   // =========================
-  //   // RETURN ORDER
-  //   // =========================
-  //   if (dto.orderStatus === OrderStatus.RETURNED) {
-  //     // already returned
-  //     if (order.orderStatus === OrderStatus.RETURNED) {
-  //       throw new ConflictException('Order already returned');
-  //     }
+      if (!order) {
+        throw new NotFoundException('Order Not Found');
+      }
 
-  //     // only delivered orders can be returned
-  //     if (order.orderStatus !== OrderStatus.DELIVERED) {
-  //       throw new ConflictException('Only delivered orders can be returned');
-  //     }
+      // Check if order is already cancelled or delivered
+      if (order.orderStatus === OrderStatus.CANCELLED) {
+        throw new ConflictException('Order already cancelled');
+      }
+      if (order.orderStatus === OrderStatus.DELIVERED) {
+        throw new ConflictException('Delivered orders cannot be cancelled');
+      }
+      if (order.orderStatus === OrderStatus.RETURNED) {
+        throw new ConflictException('Returned orders cannot be cancelled');
+      }
 
-  //     if (!dto.returnReason) {
-  //       throw new ConflictException(
-  //         'Return reason should be provided for return',
-  //       );
-  //     }
+      if (!dto.cancellationReason) {
+        throw new ConflictException('Cancellation reason should be provided');
+      }
 
-  //     if (!order.deliveredAt) {
-  //       throw new ConflictException('Delivered date not found');
-  //     }
+      order.orderStatus = OrderStatus.CANCELLED;
+      order.cancellationReason = dto.cancellationReason;
+      order.cancelledAt = new Date();
+      // Refund wallet amount if it was used
+      let paymentStatusRefunded = false;
+      if (order.walletAmountUsed && order.walletAmountUsed > 0 && (!order.walletRefundedAmount || order.walletRefundedAmount === 0)) {
+        await this.userWalletService.addBalance(
+          userId,
+          order.walletAmountUsed,
+          WalletTransactionReason.REFUND,
+          `Refund for cancelled Order ${order.orderNumber}`,
+          session
+        );
+        order.walletRefundedAmount = order.walletAmountUsed;
+        order.paymentStatus = PaymentStatus.REFUNDED;
+        paymentStatusRefunded = true;
+      }
 
-  //     const deliveredDate = new Date(order.deliveredAt);
+      await order.save({ session });
 
-  //     const currentDate = new Date();
+      // Update VendorOrders
+      const vendorOrderUpdateData: any = {
+        orderStatus: OrderStatus.CANCELLED,
+        cancelledAt: new Date(),
+        cancellationReason: dto.cancellationReason,
+      };
 
-  //     const diffInMs = currentDate.getTime() - deliveredDate.getTime();
+      if (paymentStatusRefunded) {
+        vendorOrderUpdateData.paymentStatus = PaymentStatus.REFUNDED;
+      }
 
-  //     const diffInDays = diffInMs / (1000 * 60 * 60 * 24);
+      await this.vendorOrderModel.updateMany(
+        { orderId: order._id },
+        {
+          $set: vendorOrderUpdateData
+        },
+        { session }
+      );
 
-  //     if (diffInDays > 7) {
-  //       throw new ConflictException(
-  //         'Return window expired. Product can only be returned within 7 days of delivery',
-  //       );
-  //     }
+      await session.commitTransaction();
 
-  //     order.orderStatus = OrderStatus.RETURNED;
-
-  //     order.returnReason = dto.returnReason;
-
-  //     order.returnedAt = new Date();
-  //   }
-
-  //   // =========================
-  //   // CANCEL ORDER
-  //   // =========================
-  //   if (dto.orderStatus === OrderStatus.CANCELLED) {
-  //     // already cancelled
-  //     if (order.orderStatus === OrderStatus.CANCELLED) {
-  //       throw new ConflictException('Order already cancelled');
-  //     }
-
-  //     // delivered orders cannot be cancelled
-  //     if (order.orderStatus === OrderStatus.DELIVERED) {
-  //       throw new ConflictException('Delivered orders cannot be cancelled');
-  //     }
-
-  //     // returned orders cannot be cancelled
-  //     if (order.orderStatus === OrderStatus.RETURNED) {
-  //       throw new ConflictException('Returned orders cannot be cancelled');
-  //     }
-
-  //     if (!dto.cancellationReason) {
-  //       throw new ConflictException('Cancellation reason should be provided');
-  //     }
-
-  //     order.orderStatus = OrderStatus.CANCELLED;
-
-  //     order.cancellationReason = dto.cancellationReason;
-
-  //     order.cancelledAt = new Date();
-
-  //     order.cancelledBy = new Types.ObjectId(userId);
-  //   }
-
-  //   await order.save();
-
-  //   return ApiResponse.success(
-  //     `Order request raised for ${dto.orderStatus} successfully!`,
-  //     order,
-  //   );
-  // }
+      return ApiResponse.success('Order cancelled successfully!', order);
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
+  }
 }

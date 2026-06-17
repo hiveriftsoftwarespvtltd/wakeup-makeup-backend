@@ -28,6 +28,7 @@ import {
   OrderDocument,
   OrderStatus,
   PaymentStatus,
+  PaymentMethod,
 } from 'src/order/schema/order.schema';
 import { UpdateOrderDTO } from './dto/order.dto';
 import {
@@ -48,6 +49,13 @@ import {
   Influencer,
   InfluencerDocument,
 } from 'src/influencer/schema/influencer.schema';
+import { UserWalletService } from 'src/wallet/service/user/user.wallet.service';
+import { CashbackSlab, CashbackSlabDocument, CashbackType } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
+import { WalletTransactionReason } from 'src/wallet/schema/user/user.wallet.transactions';
+import { VendorWalletService } from 'src/wallet/service/vendor/vendor.wallet.service';
+import { VendorWalletTransactionReason } from 'src/wallet/schema/vendor/vendor.wallet.transactions';
+import { InfluencerWalletService } from 'src/wallet/service/influencer/influencer.wallet.service';
+import { InfluencerWalletTransactionReason } from 'src/wallet/schema/influencer/influencer.wallet.transactions';
 
 @Injectable()
 export class VendorService {
@@ -67,14 +75,19 @@ export class VendorService {
     private influencerModel: Model<InfluencerDocument>,
     @InjectModel(InfluencerCommission.name)
     private influencerCommisionModel: Model<InfluencerCommissionDocument>,
+    @InjectModel(CashbackSlab.name)
+    private cashbackSlabModel: Model<CashbackSlabDocument>,
     @InjectConnection() private readonly connection: Connection,
     private documentService: DocumentService,
+    private userWalletService: UserWalletService,
+    private vendorWalletService: VendorWalletService,
+    private influencerWalletService: InfluencerWalletService,
   ) { }
 
   async registerVendor(
     dto: createVendorDTO,
     userId: string,
-    files: { banner?: Express.Multer.File[]; logo?: Express.Multer.File[] },
+    files: { banner?: any[]; logo?: any[] },
   ) {
     const isOwnerExist = await this.vendorModel.findOne({ ownerId: userId });
     if (isOwnerExist) {
@@ -162,8 +175,8 @@ export class VendorService {
     userId: string,
     vendorId: string,
     files: {
-      banner?: Express.Multer.File[];
-      logo?: Express.Multer.File[];
+      banner?: any[];
+      logo?: any[];
     },
   ) {
     const vendor = await this.vendorModel.findOne({
@@ -763,6 +776,28 @@ export class VendorService {
       }
 
       // ======================================================
+      // SETTLE VENDOR WALLET
+      // ======================================================
+
+      if (
+        vendorOrder.orderStatus === OrderStatus.DELIVERED &&
+        vendorOrder.paymentStatus === PaymentStatus.PAID &&
+        !vendorOrder.isVendorSettled
+      ) {
+        vendorOrder.isVendorSettled = true;
+        vendorOrder.vendorSettledAt = new Date();
+
+        await this.vendorWalletService.addBalance(
+          vendorId,
+          vendorOrder.payoutAmount,
+          VendorWalletTransactionReason.PRODUCT_SALE_EARNING,
+          `Earnings for order ${vendorOrder.orderNumber}`,
+          vendorOrder.orderId?.toString(),
+          session
+        );
+      }
+
+      // ======================================================
       // SAVE VENDOR ORDER
       // ======================================================
 
@@ -811,6 +846,18 @@ export class VendorService {
               },
               { session },
             );
+
+            if (influencerCommission.commissionAmount && influencerCommission.commissionAmount > 0) {
+              await this.influencerWalletService.addBalance(
+                influencerCommission.influencerId.toString(),
+                influencerCommission.commissionAmount,
+                InfluencerWalletTransactionReason.COMMISSION_EARNING,
+                `Commission for order ${vendorOrder.orderNumber}`,
+                vendorOrder.orderId?.toString(),
+                undefined,
+                session
+              );
+            }
           }
         }
 
@@ -899,7 +946,7 @@ export class VendorService {
       // ======================================================
 
       if (Object.keys(mainOrderUpdate).length > 0) {
-        await this.orderModel.findByIdAndUpdate(
+        const updatedMainOrder = await this.orderModel.findByIdAndUpdate(
           vendorOrder.orderId,
           {
             $set: mainOrderUpdate,
@@ -909,6 +956,50 @@ export class VendorService {
             new: true,
           },
         );
+
+        // Calculate and add cashback if the main order just became DELIVERED and wallet was used
+        if (
+          allDelivered &&
+          updatedMainOrder &&
+          (updatedMainOrder.paymentMethod === PaymentMethod.WALLET || updatedMainOrder.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) &&
+          updatedMainOrder.walletAmountUsed > 0 &&
+          !updatedMainOrder.paymentMeta?.cashbackAwarded
+        ) {
+          // Fetch active slabs and sort descending by minValue to find the highest applicable slab
+          const slabs = await this.cashbackSlabModel.find({ isActive: true }).sort({ minValue: -1 }).session(session);
+          let awardedCashback = 0;
+
+          for (const slab of slabs) {
+            if (updatedMainOrder.grandTotal >= slab.minValue && updatedMainOrder.grandTotal <= slab.maxValue) {
+              if (slab.cashbackType === CashbackType.PERCENTAGE) {
+                awardedCashback = (updatedMainOrder.grandTotal * slab.cashbackValue) / 100;
+              } else {
+                awardedCashback = slab.cashbackValue;
+              }
+              if (slab.maxCashback > 0 && awardedCashback > slab.maxCashback) {
+                awardedCashback = slab.maxCashback;
+              }
+              break; // Found the matching slab
+            }
+          }
+
+          if (awardedCashback > 0) {
+            await this.userWalletService.addBalance(
+              updatedMainOrder.userId.toString(),
+              awardedCashback,
+              WalletTransactionReason.CASHBACK,
+              `Cashback for Order ${updatedMainOrder.orderNumber}`,
+              session
+            );
+
+            // Mark that cashback has been awarded
+            await this.orderModel.findByIdAndUpdate(
+              updatedMainOrder._id,
+              { $set: { "paymentMeta.cashbackAwarded": true } },
+              { session }
+            );
+          }
+        }
       }
 
       // ======================================================

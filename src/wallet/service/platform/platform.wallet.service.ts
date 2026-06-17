@@ -28,4 +28,8 @@ export class PlatformWalletService {
     async getTransactions() {
         return this.platformWalletTransactionModel.find().sort({ createdAt: -1 });
     }
+
+    async getAllWallets() {
+        return this.platformWalletModel.find().sort({ createdAt: -1 });
+    }
 }

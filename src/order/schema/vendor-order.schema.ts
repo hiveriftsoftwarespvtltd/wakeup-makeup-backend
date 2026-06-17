@@ -147,6 +147,9 @@ export class VendorOrder {
   })
   vendorPayoutId?: Types.ObjectId;
 
+  @Prop({ default: false })
+  isSettled!: boolean;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

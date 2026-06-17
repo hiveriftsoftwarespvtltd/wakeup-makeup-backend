@@ -26,6 +26,9 @@ import {
 } from 'src/wishlist/schema/wishlist.schema';
 import { ShiprocketService } from 'src/shiprocket/shiprocket.service';
 import { Address, AddressDocument } from 'src/address/schema/address.schema';
+import { VendorOrder, VendorOrderDocument } from 'src/order/schema/vendor-order.schema';
+import { Cart, CartDocument } from 'src/cart/schema/cart.schema';
+import { OrderStatus } from 'src/order/schema/order.schema';
 
 @Injectable()
 export class UserService {
@@ -39,6 +42,8 @@ export class UserService {
     private StorageFactory: StorageFactory,
     private addressService: AddressService,
     private shiprocketService: ShiprocketService,
+    @InjectModel(VendorOrder.name) private vendorOrderModel: Model<VendorOrderDocument>,
+    @InjectModel(Cart.name) private cartModel: Model<CartDocument>,
   ) { }
 
   async create(dto: CreateUserDto) {
@@ -98,7 +103,7 @@ export class UserService {
     return ApiResponse.success('Your Account deleted Successfully', null, 200);
   }
 
-  async uploadAvatar(userId: string, file: Express.Multer.File) {
+  async uploadAvatar(userId: string, file: any) {
     const user = await this.userModel.findById(userId);
     if (!user) {
       throw new NotFoundException('User not found');
@@ -1182,6 +1187,35 @@ export class UserService {
         $group: {
           _id: '$brand',
           totalProducts: { $sum: 1 },
+          firstVariantId: { $first: { $arrayElemAt: ['$variants', 0] } },
+        },
+      },
+      {
+        $lookup: {
+          from: 'productvariants',
+          localField: 'firstVariantId',
+          foreignField: '_id',
+          as: 'variantDetails',
+        },
+      },
+      {
+        $unwind: {
+          path: '$variantDetails',
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $lookup: {
+          from: 'media',
+          localField: 'variantDetails.thumbnail',
+          foreignField: '_id',
+          as: 'thumbnailMedia',
+        },
+      },
+      {
+        $unwind: {
+          path: '$thumbnailMedia',
+          preserveNullAndEmptyArrays: true,
         },
       },
       {
@@ -1189,6 +1223,7 @@ export class UserService {
           _id: 0,
           brand: '$_id',
           totalProducts: 1,
+          image: '$thumbnailMedia',
         },
       },
       {
@@ -1226,5 +1261,255 @@ export class UserService {
 
   async deleteAddress(userId: string, addressId: string) {
     return await this.addressService.deleteAddress(userId, addressId);
+  }
+
+  async getTopSellingProducts(limit: number = 10) {
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const matchStage = {
+      createdAt: { $gte: thirtyDaysAgo },
+      orderStatus: { $nin: [OrderStatus.CANCELLED, OrderStatus.PARTIALLY_CANCELLED, OrderStatus.RETURNED, OrderStatus.PARTIALLY_RETURNED] }
+    };
+
+    const topSelling = await this.vendorOrderModel.aggregate([
+      { $match: matchStage },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          totalQuantitySold: { $sum: '$items.quantity' }
+        }
+      },
+      { $sort: { totalQuantitySold: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: 'products',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $lookup: {
+          from: 'productvariants',
+          localField: 'product.variants',
+          foreignField: '_id',
+          as: 'product.variants'
+        }
+      },
+      {
+        $lookup: {
+          from: 'media',
+          localField: 'product.variants.thumbnail',
+          foreignField: '_id',
+          as: 'thumbnails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'media',
+          localField: 'product.variants.images',
+          foreignField: '_id',
+          as: 'images'
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalQuantitySold: 1,
+          product: {
+            _id: '$product._id',
+            name: '$product.name',
+            slug: '$product.slug',
+            description: '$product.description',
+            brand: '$product.brand',
+            averageRating: '$product.averageRating',
+            totalReviews: '$product.totalReviews',
+            isShippingApply: '$product.isShippingApply',
+            variants: {
+              $map: {
+                input: '$product.variants',
+                as: 'variant',
+                in: {
+                  _id: '$$variant._id',
+                  sku: '$$variant.sku',
+                  salesPrice: '$$variant.salesPrice',
+                  offeredPrice: '$$variant.offeredPrice',
+                  stock: '$$variant.stock',
+                  thumbnail: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: '$thumbnails',
+                          as: 'thumb',
+                          cond: { $eq: ['$$thumb._id', '$$variant.thumbnail'] }
+                        }
+                      },
+                      0
+                    ]
+                  },
+                  images: {
+                    $filter: {
+                      input: '$images',
+                      as: 'image',
+                      cond: { $in: ['$$image._id', '$$variant.images'] }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    return ApiResponse.success('Top selling products fetched successfully', topSelling);
+  }
+
+  async getTrendingProducts(limit: number = 10) {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const ordersQuery = [
+      {
+        $match: {
+          createdAt: { $gte: sevenDaysAgo },
+          orderStatus: { $nin: [OrderStatus.CANCELLED, OrderStatus.PARTIALLY_CANCELLED, OrderStatus.RETURNED, OrderStatus.PARTIALLY_RETURNED] }
+        }
+      },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.productId',
+          score: { $sum: { $multiply: ['$items.quantity', 3] } } // Weight purchases by 3
+        }
+      }
+    ];
+
+    const cartsQuery = [
+      {
+        $match: {
+          updatedAt: { $gte: sevenDaysAgo }
+        }
+      },
+      { $unwind: '$items' },
+      {
+        $group: {
+          _id: '$items.product',
+          score: { $sum: '$items.quantity' } // Weight cart adds by 1
+        }
+      }
+    ];
+
+    const [recentSales, recentCarts] = await Promise.all([
+      this.vendorOrderModel.aggregate(ordersQuery),
+      this.cartModel.aggregate(cartsQuery)
+    ]);
+
+    const productScores = new Map<string, number>();
+
+    recentSales.forEach(item => {
+      const id = item._id.toString();
+      productScores.set(id, (productScores.get(id) || 0) + item.score);
+    });
+
+    recentCarts.forEach(item => {
+      const id = item._id.toString();
+      productScores.set(id, (productScores.get(id) || 0) + item.score);
+    });
+
+    // Sort map by score descending
+    const sortedProducts = Array.from(productScores.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit)
+      .map(entry => ({ productId: entry[0], trendScore: entry[1] }));
+
+    if (sortedProducts.length === 0) {
+      return ApiResponse.success('Trending products fetched successfully', []);
+    }
+
+    const productIds = sortedProducts.map(p => new Types.ObjectId(p.productId));
+
+    const productsData = await this.productModel.aggregate([
+      { $match: { _id: { $in: productIds }, isDeleted: false, isActive: true, status: ProductStatus.ACTIVE } },
+      {
+        $lookup: {
+          from: 'productvariants',
+          localField: 'variants',
+          foreignField: '_id',
+          as: 'variants'
+        }
+      },
+      {
+        $lookup: {
+          from: 'media',
+          localField: 'variants.thumbnail',
+          foreignField: '_id',
+          as: 'thumbnails'
+        }
+      },
+      {
+        $lookup: {
+          from: 'media',
+          localField: 'variants.images',
+          foreignField: '_id',
+          as: 'images'
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          slug: 1,
+          description: 1,
+          brand: 1,
+          averageRating: 1,
+          totalReviews: 1,
+          isShippingApply: 1,
+          variants: {
+            $map: {
+              input: '$variants',
+              as: 'variant',
+              in: {
+                _id: '$$variant._id',
+                sku: '$$variant.sku',
+                salesPrice: '$$variant.salesPrice',
+                offeredPrice: '$$variant.offeredPrice',
+                stock: '$$variant.stock',
+                thumbnail: {
+                  $arrayElemAt: [
+                    {
+                      $filter: {
+                        input: '$thumbnails',
+                        as: 'thumb',
+                        cond: { $eq: ['$$thumb._id', '$$variant.thumbnail'] }
+                      }
+                    },
+                    0
+                  ]
+                },
+                images: {
+                  $filter: {
+                    input: '$images',
+                    as: 'image',
+                    cond: { $in: ['$$image._id', '$$variant.images'] }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    ]);
+
+    // Map back the scores to the products and order them
+    const trendingList = sortedProducts.map(sp => {
+      const prod = productsData.find(p => p._id.toString() === sp.productId);
+      return prod ? { ...prod, trendScore: sp.trendScore } : null;
+    }).filter(p => p !== null);
+
+    return ApiResponse.success('Trending products fetched successfully', trendingList);
   }
 }

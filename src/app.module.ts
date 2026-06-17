@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import {MongooseModule} from '@nestjs/mongoose'
+import { MongooseModule } from '@nestjs/mongoose'
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { UserModule } from './user/user.module';
 import { AuthModule } from './auth/auth.module';
@@ -21,22 +21,24 @@ import { UserReviewModule } from './user-review/user-review.module';
 import { ServiceModule } from './service/service.module';
 import { PayoutModule } from './payout/payout.module';
 import { WalletModule } from './wallet/wallet.module';
+import { CoursesModule } from './courses/courses.module';
+
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal:true
+      isGlobal: true
     }),
     MongooseModule.forRootAsync({
-      inject:[ConfigService],
-      useFactory:(configService:ConfigService)=>{
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
         const node_env = configService.get<string>('NODE_ENV');
 
         const uri = node_env === 'development' ? configService.get('LOCAL_MONGO_URI') : configService.get('MONGO_URI')
-        if(!uri){
+        if (!uri) {
           throw new Error("MNGO_URI NOT FOUND IN ENV")
         }
-        return {uri}
+        return { uri }
       }
     }),
     UserModule,
@@ -56,9 +58,10 @@ import { WalletModule } from './wallet/wallet.module';
     UserReviewModule,
     ServiceModule,
     PayoutModule,
-    WalletModule
+    WalletModule,
+    CoursesModule
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

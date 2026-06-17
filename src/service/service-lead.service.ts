@@ -6,6 +6,8 @@ import { ServiceProvider, ServiceProviderDocument } from './schema/service-provi
 import { ApiResponse } from 'src/common/responses/api-response';
 import { ServiceBooking, ServiceBookingDocument, BookingStatus } from './schema/service-booking.schema';
 import { Service, ServiceDocument } from './schema/service.schema';
+import { LeadBooking, LeadBookingDocument, LeadBookingStatus } from './schema/service-lead-booking.schema';
+import { StaffAllocation, StaffAllocationDocument, AllocationType, StaffAllocationStatus } from './schema/staff-allocation.schema';
 import { calculateEndTime } from 'src/utils/helper';
 import { BookLeadDTO } from './dto/service.dto';
 
@@ -16,13 +18,15 @@ export class ServiceLeadService {
     @InjectModel(ServiceProvider.name) private providerModel: Model<ServiceProviderDocument>,
     @InjectModel(ServiceBooking.name) private bookingModel: Model<ServiceBookingDocument>,
     @InjectModel(Service.name) private serviceModel: Model<ServiceDocument>,
+    @InjectModel(LeadBooking.name) private leadBookingModel: Model<LeadBookingDocument>,
+    @InjectModel(StaffAllocation.name) private staffAllocationModel: Model<StaffAllocationDocument>,
     @InjectConnection() private connection: Connection
   ) { }
 
   async getAllLeadsForAdmin() {
     return this.leadModel.find()
       .populate('userId', 'name email phone avatar')
-      .populate('categoryId', 'name label')
+      .populate('categoryIds', 'name label')
       .populate('assignedProviderId', 'businessName phone email')
       .sort({ createdAt: -1 })
       .exec();
@@ -42,7 +46,7 @@ export class ServiceLeadService {
 
     if (provider.coordinates && provider.coordinates.length === 2 && (provider.coordinates[0] !== 0 || provider.coordinates[1] !== 0)) {
       orConditions.push({
-        coordinates: {
+        location: {
           $geoWithin: {
             $centerSphere: [provider.coordinates, 50 / 6378.1] // 50km radius
           }
@@ -50,7 +54,7 @@ export class ServiceLeadService {
       });
     }
 
-    let query = {};
+    let query: any = {};
     if (orConditions.length > 0) {
       query = { $or: orConditions };
     } else {
@@ -60,8 +64,12 @@ export class ServiceLeadService {
       return [];
     }
 
+    if ((provider as any).providedGenderService !== 'BOTH') {
+      query.gender = (provider as any).providedGenderService === 'ONLY_MEN' ? 'MALE' : 'FEMALE';
+    }
+
     const leads = await this.leadModel.find(query)
-      .populate('categoryId', 'name label')
+      .populate('categoryIds', 'name label')
       .sort({ createdAt: -1 })
       .exec();
 
@@ -111,6 +119,14 @@ export class ServiceLeadService {
 
       if (lead.status !== ServiceLeadStatus.OPEN) {
         throw new BadRequestException('This lead is no longer open');
+      }
+
+      const providerAny = provider as any;
+      if (providerAny.providedGenderService !== 'BOTH') {
+        const expectedGender = providerAny.providedGenderService === 'ONLY_MEN' ? 'MALE' : 'FEMALE';
+        if (lead.gender !== expectedGender) {
+            throw new BadRequestException('Lead gender does not match your service gender');
+        }
       }
 
       lead.status = ServiceLeadStatus.ASSIGNED;
@@ -175,7 +191,14 @@ export class ServiceLeadService {
           {
             userId: lead.userId,
             providerId: provider._id,
-            serviceId: service._id,
+            items: [{
+              serviceId: service._id,
+              serviceName: service.title,
+              costPrice: service.costPrice,
+              sellingPrice: service.sellingPrice,
+              offeredPrice: service.offeredPrice,
+              total: subtotal
+            }],
             staffId: dto.staffId ? new Types.ObjectId(dto.staffId) : undefined,
             bookingDate,
             slotStartTime: dto.slotStartTime,
@@ -194,6 +217,138 @@ export class ServiceLeadService {
 
       await session.commitTransaction();
       return ApiResponse.success('Lead marked as booked and booking created successfully', booking);
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async assignStaffToLeadBooking(providerId: string, leadBookingId: string, dto: import('./dto/service.dto').AssignStaffToLeadBookingDTO) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+
+      const leadBooking = await this.leadBookingModel.findById(new Types.ObjectId(leadBookingId)).session(session);
+      if (!leadBooking) {
+        throw new NotFoundException('Lead booking not found');
+      }
+
+      if (leadBooking.serviceProviderId.toString() !== providerId) {
+        throw new BadRequestException('Lead booking does not belong to your provider account');
+      }
+
+      leadBooking.staffIds = dto.staffIds.map(id => new Types.ObjectId(id));
+      leadBooking.slotStartTime = new Date(dto.slotStartTime);
+      leadBooking.slotEndTime = new Date(dto.slotEndTime);
+      await leadBooking.save({ session });
+
+      // Create staff allocations
+      const allocations = dto.staffIds.map(staffId => ({
+        staffId: new Types.ObjectId(staffId),
+        serviceProviderId: new Types.ObjectId(providerId),
+        leadBookingId: leadBooking._id,
+        bookingDate: leadBooking.bookingDate,
+        slotStartTime: dto.slotStartTime,
+        slotEndTime: dto.slotEndTime,
+        status: StaffAllocationStatus.CONFIRMED,
+        allocationType: AllocationType.LEAD_BOOKING
+      }));
+
+      await this.staffAllocationModel.create(allocations, { session });
+
+      await session.commitTransaction();
+      return ApiResponse.success('Staff assigned to lead booking successfully', leadBooking);
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async cancelLeadBooking(userId: string, leadBookingId: string) {
+    const leadBooking = await this.leadBookingModel.findById(new Types.ObjectId(leadBookingId));
+    if (!leadBooking) {
+      throw new NotFoundException('Lead booking not found');
+    }
+
+    if (leadBooking.userId.toString() !== userId) {
+      throw new BadRequestException('You are not authorized to cancel this lead booking');
+    }
+
+    if (
+      leadBooking.leadBookingStatus === LeadBookingStatus.CANCELLED ||
+      leadBooking.leadBookingStatus === LeadBookingStatus.COMPLETED
+    ) {
+      throw new BadRequestException(`Cannot cancel booking in ${leadBooking.leadBookingStatus} status`);
+    }
+
+    leadBooking.leadBookingStatus = LeadBookingStatus.CANCELLED;
+    await leadBooking.save();
+
+    // Cancel the associated StaffAllocation
+    await this.staffAllocationModel.updateMany(
+      { leadBookingId: leadBooking._id },
+      { $set: { status: StaffAllocationStatus.CANCELLED } }
+    );
+
+    return ApiResponse.success('Lead booking cancelled successfully', leadBooking);
+  }
+
+  async rescheduleLeadBooking(userId: string, leadBookingId: string, dto: import('./dto/service.dto').RescheduleLeadBookingDTO) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+
+      const leadBooking = await this.leadBookingModel.findById(new Types.ObjectId(leadBookingId)).session(session);
+      if (!leadBooking) {
+        throw new NotFoundException('Lead booking not found');
+      }
+
+      if (leadBooking.userId.toString() !== userId) {
+        throw new BadRequestException('You are not authorized to reschedule this lead booking');
+      }
+
+      if (
+        leadBooking.leadBookingStatus === LeadBookingStatus.CANCELLED ||
+        leadBooking.leadBookingStatus === LeadBookingStatus.COMPLETED
+      ) {
+        throw new BadRequestException(`Cannot reschedule booking in ${leadBooking.leadBookingStatus} status`);
+      }
+
+      // Update booking properties
+      leadBooking.bookingDate = new Date(dto.bookingDate);
+      leadBooking.slotStartTime = new Date(dto.slotStartTime);
+      leadBooking.slotEndTime = new Date(dto.slotEndTime);
+      leadBooking.leadBookingStatus = LeadBookingStatus.RESCHEDULED;
+      await leadBooking.save({ session });
+
+      // Cancel old StaffAllocations
+      await this.staffAllocationModel.updateMany(
+        { leadBookingId: leadBooking._id },
+        { $set: { status: StaffAllocationStatus.CANCELLED } },
+        { session }
+      );
+
+      // Create new StaffAllocations if staff are assigned
+      if (leadBooking.staffIds && leadBooking.staffIds.length > 0) {
+        const newAllocations = leadBooking.staffIds.map(staffId => ({
+          staffId: staffId,
+          serviceProviderId: leadBooking.serviceProviderId,
+          leadBookingId: leadBooking._id,
+          bookingDate: leadBooking.bookingDate,
+          slotStartTime: dto.slotStartTime,
+          slotEndTime: dto.slotEndTime,
+          status: StaffAllocationStatus.CONFIRMED,
+          allocationType: AllocationType.LEAD_BOOKING
+        }));
+        await this.staffAllocationModel.create(newAllocations, { session });
+      }
+
+      await session.commitTransaction();
+      return ApiResponse.success('Lead booking rescheduled successfully', leadBooking);
     } catch (error) {
       await session.abortTransaction();
       throw error;

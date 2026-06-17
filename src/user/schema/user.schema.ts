@@ -10,6 +10,7 @@ export enum UserRole {
   SERVICE_PROVIDER = 'service_provider',
   DISTRIBUTOR = 'distributor',
   USER = 'user',
+  EDUCATOR = 'educator',
 }
 
 export enum AuthType {
@@ -90,6 +91,15 @@ export class User {
     ref: 'Distributor',
   })
   distributorId?: Types.ObjectId;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Educator',
+  })
+  educatorId?: Types.ObjectId;
+
+  @Prop({ default: false })
+  isEducatorOnboardingCompleted!: boolean;
 
 }
 

@@ -27,6 +27,7 @@ import { ResetPasswordDTO } from './dto/reset-password.dto';
 import { ForgotPasswordOTPDTO } from './dto/verify-forgot-password-otp.dto';
 import { Vendor } from 'src/vendor/schema/vendor.schema';
 import { ServiceProvider } from 'src/service/schema/service-provider.schema';
+import { UserWalletService } from 'src/wallet/service/user/user.wallet.service';
 
 @Injectable()
 export class AuthService {
@@ -36,6 +37,7 @@ export class AuthService {
     @InjectModel(ServiceProvider.name) private serviceProviderModel: Model<ServiceProvider>,
     private userService: UserService,
     private jwtService: JwtService,
+    private userWalletService: UserWalletService,
   ) { }
 
   async register(dto: RegisterDTO) {
@@ -212,6 +214,10 @@ export class AuthService {
     user.otpExpiresAt = undefined;
 
     await user.save();
+
+    if (user.role === UserRole.USER) {
+      await this.userWalletService.initializeWallet(user._id.toString());
+    }
 
     return ApiResponse.success('Email verified successfully', null, 200);
   }

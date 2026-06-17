@@ -7,12 +7,15 @@ import { UserWalletDocument, UserWallet } from '../../schema/user/user.wallet.sc
 import { VendorWalletDocument, VendorWallet } from '../../schema/vendor/vendor.wallet.schema';
 import { InfluencerWalletDocument, InfluencerWallet } from '../../schema/influencer/influencer.wallet.schema';
 import { ServiceProviderWalletDocument, ServiceProviderWallet } from '../../schema/service_provider/service_provider.wallet.schema';
+import { EducatorWalletDocument, EducatorWallet } from '../../schema/educator/educator.wallet.schema';
+import { PlatformWalletDocument, PlatformWallet } from '../../schema/platform/platform.wallet.schema';
 
 // Collection schemas
 import { UserDocument, User } from 'src/user/schema/user.schema';
 import { VendorDocument, Vendor } from 'src/vendor/schema/vendor.schema';
 import { InfluencerDocument, Influencer } from 'src/influencer/schema/influencer.schema';
 import { ServiceProviderDocument, ServiceProvider } from 'src/service/schema/service-provider.schema';
+import { EducatorDocument, Educator } from 'src/courses/schema/educator.schema';
 
 @Injectable()
 export class AdminWalletService {
@@ -21,12 +24,15 @@ export class AdminWalletService {
         @InjectModel(VendorWallet.name) private readonly vendorWalletModel: Model<VendorWalletDocument>,
         @InjectModel(InfluencerWallet.name) private readonly influencerWalletModel: Model<InfluencerWalletDocument>,
         @InjectModel(ServiceProviderWallet.name) private readonly serviceProviderWalletModel: Model<ServiceProviderWalletDocument>,
+        @InjectModel(EducatorWallet.name) private readonly educatorWalletModel: Model<EducatorWalletDocument>,
+        @InjectModel(PlatformWallet.name) private readonly platformWalletModel: Model<PlatformWalletDocument>,
 
         @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
         @InjectModel(Vendor.name) private readonly vendorModel: Model<VendorDocument>,
         @InjectModel(Influencer.name) private readonly influencerModel: Model<InfluencerDocument>,
         @InjectModel(ServiceProvider.name) private readonly serviceProviderModel: Model<ServiceProviderDocument>,
-    ) {}
+        @InjectModel(Educator.name) private readonly educatorModel: Model<EducatorDocument>,
+    ) { }
 
     async initializeUserWallet(userId: string) {
         const existingWallet = await this.userWalletModel.findOne({ userId: new Types.ObjectId(userId) });
@@ -51,6 +57,8 @@ export class AdminWalletService {
             vendorsCreated: 0,
             influencersCreated: 0,
             serviceProvidersCreated: 0,
+            educatorsCreated: 0,
+            platformWalletCreated: 0,
         };
 
         // Sync Users
@@ -91,6 +99,23 @@ export class AdminWalletService {
                 await this.serviceProviderWalletModel.create({ serviceProviderId: sp._id });
                 results.serviceProvidersCreated++;
             }
+        }
+
+        // Sync Educators
+        const educators = await this.educatorModel.find();
+        for (const educator of educators) {
+            const existing = await this.educatorWalletModel.findOne({ educatorId: educator._id });
+            if (!existing) {
+                await this.educatorWalletModel.create({ educatorId: educator._id });
+                results.educatorsCreated++;
+            }
+        }
+
+        // Sync Platform Wallet
+        const platformWallet = await this.platformWalletModel.findOne();
+        if (!platformWallet) {
+            await this.platformWalletModel.create({});
+            results.platformWalletCreated++;
         }
 
         return { message: 'Wallet sync completed successfully', results };

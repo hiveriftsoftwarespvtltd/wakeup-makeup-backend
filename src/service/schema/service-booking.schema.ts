@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
+import { PaymentMethod } from "src/order/schema/order.schema";
 
 
 export enum BookingStatus {
@@ -17,6 +18,37 @@ export enum BookingPaymentStatus {
   REFUNDED = "REFUNDED"
 }
 
+@Schema({ _id: false })
+export class BookingItem {
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Service',
+    required: true,
+  })
+  serviceId!: Types.ObjectId;
+
+
+  @Prop({ required: true })
+  serviceName!: string;
+
+  @Prop({ required: true })
+  costPrice!: number;
+
+  @Prop({ required: true })
+  sellingPrice!: number;
+
+  @Prop({ required: true })
+  offeredPrice!: number;
+
+
+
+  @Prop()
+  total!: number;
+}
+
+export const BookingItemSchema = SchemaFactory.createForClass(BookingItem)
+
 export type ServiceBookingDocument = ServiceBooking & Document
 @Schema({ timestamps: true })
 export class ServiceBooking {
@@ -30,17 +62,23 @@ export class ServiceBooking {
   @Prop({ type: Types.ObjectId, ref: 'ServiceStaff' })
   staffId?: Types.ObjectId;
 
-  @Prop({ type: Types.ObjectId, ref: 'Service' })
-  serviceId!: Types.ObjectId;
+  // @Prop({ type: Types.ObjectId, ref: 'Service' })
+  // serviceId!: Types.ObjectId;
+
+  @Prop({
+    type: [BookingItemSchema],
+    default: [],
+  })
+  items!: BookingItem[];
 
   @Prop()
   bookingDate!: Date;
 
   @Prop()
-  slotStartTime!: string;
+  slotStartTime!: Date;
 
   @Prop()
-  slotEndTime!: string;
+  slotEndTime!: Date;
 
   @Prop()
   serviceAddress!: string;
@@ -77,6 +115,21 @@ export class ServiceBooking {
     default: BookingPaymentStatus.PENDING,
   })
   paymentStatus!: string;
+
+  @Prop({ enum: PaymentMethod, default: PaymentMethod.CASH_ON_DELIVERY })
+  paymentMethod!: string;
+
+  @Prop({ default: 0 })
+  walletAmountUsed!: number;
+
+  @Prop({ default: 0 })
+  walletRefundedAmount!: number;
+
+  @Prop({ type: Object, default: {} })
+  paymentMeta!: any;
+
+  @Prop({ default: false })
+  isSettled!: boolean;
 }
 
 export const ServiceBookingSchema = SchemaFactory.createForClass(ServiceBooking)

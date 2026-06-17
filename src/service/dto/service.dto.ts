@@ -1,7 +1,10 @@
 import { Transform, Type } from "class-transformer";
 import { IsBoolean, IsNumber, IsOptional, IsString, IsArray, Min, Max, IsEnum, ValidateNested, IsDateString, ArrayMinSize, IsDate, ArrayMaxSize } from "class-validator";
-import { ServiceType } from "../schema/service.schema";
+import { ServiceType, ServiceGender } from "../schema/service.schema";
 import { WeekDay } from "../schema/service-availability.schema";
+import { ServiceProviderGender } from "../schema/service-provider.schema";
+import { GENDER } from "../schema/service-staff.schema";
+import { ServiceLeadGender } from "../schema/service-lead.schema";
 
 
 export class CreateServiceCategoryDTO {
@@ -132,6 +135,10 @@ export class CreateServiceProviderDTO {
   @IsOptional()
   @IsNumber()
   serviceRadiusKm?: number;
+
+  @IsOptional()
+  @IsEnum(ServiceProviderGender)
+  providedGenderService?: ServiceProviderGender;
 }
 
 export class UpdateServiceProviderDTO {
@@ -202,6 +209,10 @@ export class UpdateServiceProviderDTO {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEnum(ServiceProviderGender)
+  providedGenderService?: ServiceProviderGender;
 }
 
 export class CreateServiceDTO {
@@ -231,8 +242,11 @@ export class CreateServiceDTO {
   offeredPrice!: number;
 
   @IsEnum(ServiceType)
-
   serviceType?: ServiceType;
+
+  @IsOptional()
+  @IsEnum(ServiceGender)
+  serviceGender?: ServiceGender;
 }
 
 export class UpdateServiceDTO {
@@ -276,6 +290,10 @@ export class UpdateServiceDTO {
   @Transform((value) => Boolean(value))
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEnum(ServiceGender)
+  serviceGender?: ServiceGender;
 }
 
 export class CreateStaffDTO {
@@ -299,6 +317,14 @@ export class CreateStaffDTO {
   @IsArray()
   @IsString({ each: true })
   skills?: string[];
+
+  @IsEnum(GENDER)
+  gender!: GENDER;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  services?: string[];
 }
 
 export class UpdateStaffDTO {
@@ -327,6 +353,15 @@ export class UpdateStaffDTO {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsEnum(GENDER)
+  gender?: GENDER;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  services?: string[];
 }
 
 export class UpdateAvailabilityDTO {
@@ -359,6 +394,15 @@ export class UpdateAvailabilityListDTO {
   availabilities!: UpdateAvailabilityDTO[];
 }
 
+export class GetSlotsDTO {
+  @IsArray()
+  @IsString({ each: true })
+  serviceIds!: string[];
+
+  @IsString()
+  date!: string;
+}
+
 // export class CreateBookingDTO {
 //   @IsString()
 //   serviceId!: string;
@@ -384,17 +428,30 @@ export class UpdateAvailabilityListDTO {
 //   couponCode?: string;
 // }
 
-export class CreateBookingDTO {
+export class BookingItemInputDTO {
   @IsString()
   serviceId!: string;
+}
+
+import { PaymentMethod } from "src/order/schema/order.schema";
+
+export class CreateBookingDTO {
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => BookingItemInputDTO)
+  items?: BookingItemInputDTO[];
 
   @IsString()
   staffId!: string;
 
   @IsString()
+  serviceProviderId!: string;
+
+  @IsDateString()
   bookingDate!: string;
 
-  @IsString()
+  @IsDateString()
   slotStartTime!: string;
 
   @IsOptional()
@@ -404,6 +461,10 @@ export class CreateBookingDTO {
   @IsOptional()
   @IsString()
   couponCode?: string;
+
+  @IsOptional()
+  @IsEnum(PaymentMethod)
+  paymentMethod?: PaymentMethod;
 }
 
 export class UpdateBookingStatusDTO {
@@ -412,10 +473,10 @@ export class UpdateBookingStatusDTO {
 }
 
 export class RescheduleBookingDTO {
-  @IsString()
+  @IsDateString()
   bookingDate!: string;
 
-  @IsString()
+  @IsDateString()
   slotStartTime!: string;
 
   // @IsString()
@@ -446,17 +507,22 @@ class LocationDTO {
 }
 
 export class CreateLeadDTO {
-  @IsString()
-  categoryId!: string;
+  @IsArray()
+  @IsString({ each: true })
+  categoryIds!: string[];
 
   @IsString()
   requirement!: string;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number;
 
 
   @IsNumber()
   budget!: number;
 
-  @IsString()
+  @IsDateString()
   preferredDate!: string;
 
   @IsString()
@@ -472,36 +538,52 @@ export class CreateLeadDTO {
   state!: string;
 
   @IsOptional()
-  @IsArray()
-  coordinates?: number[];
+  @ValidateNested()
+  @Type(() => LocationDTO)
+  location?: LocationDTO;
 
   @IsString()
   phoneNumber!: string;
+
+  @IsEnum(ServiceLeadGender)
+  gender!: ServiceLeadGender;
 }
 
-
-export class RequestPayoutDTO {
-  @IsNumber()
-  @Min(1)
-  amount!: number;
-}
-
-export class ProcessPayoutDTO {
-  @IsString()
-  transactionId!: string;
-}
 
 export class BookLeadDTO {
   @IsString()
   serviceId!: string;
 
-  @IsString()
+  @IsDateString()
   bookingDate!: string;
 
-  @IsString()
+  @IsDateString()
   slotStartTime!: string;
 
   @IsOptional()
   @IsString()
   staffId?: string;
+}
+
+export class AssignStaffToLeadBookingDTO {
+  @IsArray()
+  @IsString({ each: true })
+  staffIds!: string[];
+
+  @IsDateString()
+  slotStartTime!: string;
+
+  @IsDateString()
+  slotEndTime!: string;
+}
+
+export class RescheduleLeadBookingDTO {
+  @IsDateString()
+  bookingDate!: string;
+
+  @IsDateString()
+  slotStartTime!: string;
+
+  @IsDateString()
+  slotEndTime!: string;
 }

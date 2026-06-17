@@ -36,7 +36,7 @@ export class ServiceSearchService {
     }
 
     // 1. GeoNear aggregation to find nearby approved providers
-    console.log("lat", lat, lng, maxDistanceKm)
+
     const providers = await this.providerModel.aggregate([
       {
         $geoNear: {
@@ -96,12 +96,14 @@ export class ServiceSearchService {
       if (servicesByProvider.has(pId)) {
         // Fetch slots
         let slots: any[] = [];
+        let earliestSlot: any = null;
         try {
           const providerServices = servicesByProvider.get(pId) || [];
           if (providerServices.length > 0) {
             const firstServiceId = providerServices[0]._id.toString();
-            const slotsRes = await this.serviceService.getAvailableSlots(pId, firstServiceId, targetDate);
-            slots = (slotsRes.data as any[]) || [];
+            const slotsRes = await this.serviceService.getAvailableSlots(pId, { serviceIds: [firstServiceId], date: targetDate });
+            slots = slotsRes.data?.slots || [];
+            earliestSlot = slotsRes.data?.earliestSlot || null;
           }
         } catch (error) {
           // Ignore slot fetch errors for individual providers to avoid failing the whole search
@@ -121,6 +123,7 @@ export class ServiceSearchService {
           },
           services: servicesByProvider.get(pId),
           availableSlots: slots,
+          earliestSlot: earliestSlot,
         });
       }
     }

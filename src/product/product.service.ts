@@ -35,7 +35,7 @@ export class ProductService {
 
   // async CreateCategory(
   //   dto: CreateCategory,
-  //   file: Express.Multer.File,
+  //   file: any,
   //   userId: string,
   //   vendorId: string,
   // ) {
@@ -76,7 +76,7 @@ export class ProductService {
 
   // async updateCategory(
   //   dto: UpdateCategoryDTO,
-  //   file: Express.Multer.File,
+  //   file: any,
   //   userId: string,
   //   vendorId: string,
   //   categoryId: string,
@@ -202,7 +202,7 @@ export class ProductService {
 
   // async createProduct(
   //   dto: CreateProductDto,
-  //   files: Express.Multer.File[],
+  //   files: any[],
   //   userId: string,
   //   vendorId: string,
   // ) {
@@ -345,7 +345,7 @@ export class ProductService {
 
   async createProduct(
     dto: CreateProductDto,
-    files: Express.Multer.File[],
+    files: any[],
     userId: string,
     vendorId: string,
   ) {
@@ -474,11 +474,11 @@ export class ProductService {
           const media = variantMediaData[i];
 
           if (
-            variant.costPrice > variant.salesPrice ||
-            variant.salesPrice < variant.offeredPrice
+            variant.costPrice >= variant.salesPrice ||
+            variant.salesPrice >= variant.offeredPrice
           ) {
             throw new BadRequestException(
-              'Cost Price should be smaller than sales price and sales price should be greater than offered price',
+              'Cost Price should be less than sales price and sales price should be less than offered price',
             );
           }
 
@@ -556,7 +556,7 @@ export class ProductService {
 
   async updateProduct(
     dto: UpdateProductDto,
-    files: Express.Multer.File[],
+    files: any[],
     userId: string,
     vendorId: string,
     productId: string,
@@ -822,11 +822,11 @@ export class ProductService {
             }
 
             if (
-              variant.costPrice < variant.salesPrice ||
-              variant.salesPrice < variant.offeredPrice
+              variant.costPrice >= variant.salesPrice ||
+              variant.salesPrice >= variant.offeredPrice
             ) {
               throw new BadRequestException(
-                'Cost Price should be greater than sales price and sales price should be greater than offered price',
+                'Cost Price should be less than sales price and sales price should be less than offered price',
               );
             }
 

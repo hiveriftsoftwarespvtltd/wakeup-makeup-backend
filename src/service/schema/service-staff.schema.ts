@@ -1,7 +1,10 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
-
+export enum GENDER {
+  MALE = "MALE",
+  FEMALE = "FEMALE",
+}
 
 export type ServiceStaffDocument = ServiceStaff & Document
 @Schema({ timestamps: true })
@@ -26,8 +29,18 @@ export class ServiceStaff {
   @Prop()
   experienceYears!: number;
 
+  @Prop({ enum: GENDER, default: GENDER.FEMALE })
+  gender!: GENDER;
+
   @Prop([String])
   skills!: string[];
+
+  @Prop({
+    type: [Types.ObjectId],
+    ref: "Service",
+    default: []
+  })
+  services!: Types.ObjectId[];
 
   @Prop({
     type: Types.ObjectId,

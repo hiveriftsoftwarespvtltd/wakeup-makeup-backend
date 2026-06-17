@@ -35,7 +35,7 @@ export class DocumentService {
   }
 
   async upload(
-    file: Express.Multer.File,
+    file: any,
     folder: string,
     userId?: string,
     vendorId?: string,
@@ -73,7 +73,7 @@ export class DocumentService {
   }
 
   async uploadMultiplFiles(
-    files: Express.Multer.File[],
+    files: any[],
     folder: string,
     userId?: string,
   ) {
@@ -98,42 +98,43 @@ export class DocumentService {
     return ApiResponse.success('Files Uploaded Successfully', uploadMedia);
   }
 
-//   async deleteMedia(id: string,) {
-//     const media = await this.mediaModel.findById(id);
-//     if (!media) {
-//       throw new NotFoundException('Media not found');
-//     }
-//     await this.storage.delete(media.publicId);
-//     await media.deleteOne();
+  //   async deleteMedia(id: string,) {
+  //     const media = await this.mediaModel.findById(id);
+  //     if (!media) {
+  //       throw new NotFoundException('Media not found');
+  //     }
+  //     await this.storage.delete(media.publicId);
+  //     await media.deleteOne();
 
-//     return ApiResponse.success('Media Deleted Successfully', 200);
-//   }
+  //     return ApiResponse.success('Media Deleted Successfully', 200);
+  //   }
 
-async deleteMedia(id: string, session?: ClientSession) {
-  const query = this.mediaModel.findById(id);
+  async deleteMedia(id: string, session?: ClientSession) {
+    console.log("Category Id in deleteMedia", id);
+    const query = this.mediaModel.findById(id);
 
-  if (session) {
-    query.session(session);
+    if (session) {
+      query.session(session);
+    }
+
+    const media = await query;
+
+    if (!media) {
+      throw new NotFoundException('Media not found');
+    }
+
+    let resourceType = 'image';
+    if (media.type === DocumentType.VIDEO) {
+      resourceType = 'video';
+    } else if (media.type === DocumentType.DOCUMENT) {
+      resourceType = 'raw';
+    }
+
+    await this.storage.delete(media.publicId, resourceType);
+    await media.deleteOne({ session });
+
+    return ApiResponse.success('Media Deleted Successfully', 200);
   }
-
-  const media = await query;
-
-  if (!media) {
-    throw new NotFoundException('Media not found');
-  }
-
-  let resourceType = 'image';
-  if (media.type === DocumentType.VIDEO) {
-    resourceType = 'video';
-  } else if (media.type === DocumentType.DOCUMENT) {
-    resourceType = 'raw';
-  }
-
-  await this.storage.delete(media.publicId, resourceType);
-  await media.deleteOne({ session });
-
-  return ApiResponse.success('Media Deleted Successfully', 200);
-}
   async findAll() {
     const media = await this.mediaModel.find().sort({ createdAt: -1 });
     return ApiResponse.success('Media fetched Successfully', media);
@@ -147,48 +148,48 @@ async deleteMedia(id: string, session?: ClientSession) {
     return ApiResponse.success('Media Fetched Successfully', media);
   }
 
-//   async replace(id: string, file: Express.Multer.File) {
-//     const media = await this.mediaModel.findById(id).session();
-//     if (!media) {
-//       throw new NotFoundException('Media Not Found');
-//     }
+  //   async replace(id: string, file: any) {
+  //     const media = await this.mediaModel.findById(id).session();
+  //     if (!media) {
+  //       throw new NotFoundException('Media Not Found');
+  //     }
 
-//     await this.storage.delete(media.publicId);
+  //     await this.storage.delete(media.publicId);
 
-//     const uploaded = await this.storage.upload(file, media.folder);
+  //     const uploaded = await this.storage.upload(file, media.folder);
 
-//     Object.assign(media, uploaded);
+  //     Object.assign(media, uploaded);
 
-//     await media.save();
+  //     await media.save();
 
-//     return ApiResponse.success('Media Updated Successfully', media);
-//   }
+  //     return ApiResponse.success('Media Updated Successfully', media);
+  //   }
 
-async replace(
-  id: string,
-  file: Express.Multer.File,
-  session?: ClientSession,
-) {
-  const query = this.mediaModel.findById(id);
+  async replace(
+    id: string,
+    file: any,
+    session?: ClientSession,
+  ) {
+    const query = this.mediaModel.findById(id);
 
-  if (session) {
-    query.session(session);
+    if (session) {
+      query.session(session);
+    }
+
+    const media = await query;
+
+    if (!media) {
+      throw new NotFoundException('Media Not Found');
+    }
+
+    await this.storage.delete(media.publicId);
+
+    const uploaded = await this.storage.upload(file, media.folder);
+
+    Object.assign(media, uploaded);
+
+    await media.save({ session });
+
+    return ApiResponse.success('Media Updated Successfully', media);
   }
-
-  const media = await query;
-
-  if (!media) {
-    throw new NotFoundException('Media Not Found');
-  }
-
-  await this.storage.delete(media.publicId);
-
-  const uploaded = await this.storage.upload(file, media.folder);
-
-  Object.assign(media, uploaded);
-
-  await media.save({ session });
-
-  return ApiResponse.success('Media Updated Successfully', media);
-}
 }

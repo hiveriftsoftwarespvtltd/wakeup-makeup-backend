@@ -22,7 +22,7 @@ export class CloudinaryStorage implements StorageProvider {
   }
 
   async upload(
-    file: Express.Multer.File,
+    file: any,
     folder: string,
   ): Promise<UploadResult> {
     const resourceType = this.getResourceType(file.mimetype);

@@ -1,4 +1,5 @@
 import { PartialType } from '@nestjs/mapped-types';
+import { Type } from 'class-transformer';
 import {
   IsArray,
   IsMongoId,
@@ -14,6 +15,7 @@ export class CreateReviewDto {
   productId!: string;
 
   @IsNumber()
+  @Type(() => Number)
   @Min(1)
   @Max(5)
   rating!: number;
@@ -26,12 +28,9 @@ export class CreateReviewDto {
   @IsString()
   review?: string;
 
-  @IsOptional()
-  @IsArray()
-  @IsMongoId({ each: true })
-  images?: string[];
+
 }
 
 export class UpdateReviewDto extends PartialType(
   CreateReviewDto,
-) {}
+) { }

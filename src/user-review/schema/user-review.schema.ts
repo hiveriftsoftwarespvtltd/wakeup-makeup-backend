@@ -27,6 +27,13 @@ export class UserReview {
   vendorOrderId?: Types.ObjectId;
 
   @Prop({
+    type: Types.ObjectId,
+    ref: 'Order',
+    required: false,
+  })
+  orderId?: Types.ObjectId;
+
+  @Prop({
     min: 1,
     max: 5,
     required: true,

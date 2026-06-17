@@ -9,6 +9,7 @@ import { Mongoose } from 'mongoose';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
 import { ServiceProvider, ServiceProviderSchema } from 'src/service/schema/service-provider.schema';
+import { WalletModule } from 'src/wallet/wallet.module';
 
 @Module({
   imports: [
@@ -30,7 +31,7 @@ import { ServiceProvider, ServiceProviderSchema } from 'src/service/schema/servi
       }
     }),
     MongooseModule.forFeature([{ name: Vendor.name, schema: VendorSchema }, { name: ServiceProvider.name, schema: ServiceProviderSchema }]),
-
+    WalletModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

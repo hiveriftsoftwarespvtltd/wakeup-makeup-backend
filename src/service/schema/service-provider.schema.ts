@@ -12,6 +12,12 @@ export enum ServiceProviderVerificationStatus {
   APPROVED = "APPROVED",
   REJECTED = "REJECTED"
 }
+
+export enum ServiceProviderGender {
+  ONLY_MEN = "ONLY_MEN",
+  ONLY_WOMEN = "ONLY_WOMEN",
+  BOTH = "BOTH",
+}
 export type ServiceProviderDocument = ServiceProvider & Document
 
 @Schema({ timestamps: true })
@@ -24,6 +30,8 @@ export class ServiceProvider {
     unique: true,
   })
   userId!: Types.ObjectId;
+
+
 
   @Prop({ required: true })
   businessName!: string;
@@ -63,6 +71,12 @@ export class ServiceProvider {
     default: ServiceProviderType.INDIVIDUAL,
   })
   providerType!: string;
+
+  @Prop({
+    enum: ServiceProviderGender,
+    default: ServiceProviderGender.ONLY_WOMEN,
+  })
+  providedGenderService!: string;
 
   @Prop({
     enum: ServiceProviderVerificationStatus,
@@ -112,5 +126,5 @@ export class ServiceProvider {
 
 export const ServiceProviderSchema = SchemaFactory.createForClass(ServiceProvider);
 
-// Add 2dsphere index for geospatial queries
+
 ServiceProviderSchema.index({ coordinates: '2dsphere' });

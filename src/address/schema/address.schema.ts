@@ -4,8 +4,8 @@ import { Document, Types } from 'mongoose';
 
 export type AddressDocument = Address & Document
 @Schema({ timestamps: true })
-export class Address  {
-  
+export class Address {
+
   @Prop({ type: Types.ObjectId, ref: 'User', required: true })
   user!: Types.ObjectId;
 
@@ -49,7 +49,12 @@ export class Address  {
   @Prop({ required: true })
   state!: string;
 
-  
+  @Prop({ default: true })
+  isActive!: boolean;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
+
 }
 
 export const AddressSchema = SchemaFactory.createForClass(Address);

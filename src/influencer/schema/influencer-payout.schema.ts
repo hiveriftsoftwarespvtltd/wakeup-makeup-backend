@@ -81,6 +81,9 @@ commissionIds!: Types.ObjectId[];
 
 @Prop()
 settledAt?: Date;
+
+@Prop({ default: false })
+isSettled!: boolean;
 }
 
 export const InfluencerPayoutSchema =

@@ -35,9 +35,9 @@ import {
     UpdateBookingStatusDTO,
     CreateReviewDTO,
     CreateLeadDTO,
-    RequestPayoutDTO,
-    ProcessPayoutDTO,
     CreateProviderAvailabilityDTO,
+    BookLeadDTO,
+    GetSlotsDTO
 } from './dto/service.dto';
 import { ServiceProviderVerificationStatus } from './schema/service-provider.schema';
 
@@ -54,7 +54,7 @@ export class ServiceController {
     @Roles(UserRole.ADMIN)
     @UseInterceptors(FileInterceptor('file'))
     createCategory(
-        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile() file: any,
         @Req() req: any,
         @Body() dto: CreateServiceCategoryDTO,
     ) {
@@ -67,7 +67,7 @@ export class ServiceController {
     @UseInterceptors(FileInterceptor('file'))
     updateCategory(
         @Param('id') id: string,
-        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile() file: any,
         @Req() req: any,
         @Body() dto: UpdateServiceCategoryDTO,
     ) {
@@ -140,7 +140,7 @@ export class ServiceController {
     registerProvider(
         @Req() req: any,
         @Body() dto: CreateServiceProviderDTO,
-        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile() file: any,
     ) {
         return this.serviceService.registerServiceProvider(
             req.user._id,
@@ -194,7 +194,7 @@ export class ServiceController {
     createService(
         @Req() req: any,
         @Body() dto: CreateServiceDTO,
-        @UploadedFiles() files: Express.Multer.File[],
+        @UploadedFiles() files: any[],
     ) {
         return this.serviceService.createService(req.user._id, dto, files);
     }
@@ -207,7 +207,7 @@ export class ServiceController {
         @Param('id') id: string,
         @Req() req: any,
         @Body() dto: UpdateServiceDTO,
-        @UploadedFiles() files: Express.Multer.File[],
+        @UploadedFiles() files: any[],
     ) {
         return this.serviceService.updateService(req.user._id, id, dto, files);
     }
@@ -232,6 +232,11 @@ export class ServiceController {
         return this.serviceService.listServices(categoryId, providerId);
     }
 
+    @Get('get-all-services/:providerId')
+    listServicesByProvider(@Param('providerId') providerId: string) {
+        return this.serviceService.listServices(undefined, providerId);
+    }
+
     // ===================================================
     // STAFF
     // ===================================================
@@ -243,7 +248,7 @@ export class ServiceController {
     addStaff(
         @Req() req: any,
         @Body() dto: CreateStaffDTO,
-        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile() file: any,
     ) {
         return this.serviceService.addStaff(req.user._id, dto, file);
     }
@@ -256,7 +261,7 @@ export class ServiceController {
         @Param('id') id: string,
         @Req() req: any,
         @Body() dto: UpdateStaffDTO,
-        @UploadedFile() file: Express.Multer.File,
+        @UploadedFile() file: any,
     ) {
         return this.serviceService.updateStaff(req.user._id, id, dto, file);
     }
@@ -304,16 +309,14 @@ export class ServiceController {
         return this.serviceService.getAvailability(providerId);
     }
 
-    @Get('slots/:providerId/:serviceId')
+    @Post('slots/:providerId')
     getAvailableSlots(
         @Param('providerId') providerId: string,
-        @Param('serviceId') serviceId: string,
-        @Query('date') date: string,
+        @Body() dto: GetSlotsDTO,
     ) {
         return this.serviceService.getAvailableSlots(
             providerId,
-            serviceId,
-            date,
+            dto,
         );
     }
 
@@ -325,12 +328,12 @@ export class ServiceController {
     // REVIEWS
     // ===================================================
 
-    @Post('review')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.USER)
-    createReview(@Req() req: any, @Body() dto: CreateReviewDTO) {
-        return this.serviceService.createReview(req.user._id, dto);
-    }
+    // @Post('review')
+    // @UseGuards(JwtAuthGuard, RolesGuard)
+    // @Roles(UserRole.USER)
+    // createReview(@Req() req: any, @Body() dto: CreateReviewDTO) {
+    //     return this.serviceService.createReview(req.user._id, dto);
+    // }
 
     // ===================================================
     // LEADS
@@ -351,28 +354,5 @@ export class ServiceController {
 
 
 
-    // ===================================================
-    // WALLET & PAYOUT
-    // ===================================================
 
-    @Get('wallet')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.SERVICE_PROVIDER)
-    getWallet(@Req() req: any) {
-        return this.serviceService.getWallet(req.user._id);
-    }
-
-    @Post('payout/request')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.SERVICE_PROVIDER)
-    requestPayout(@Req() req: any, @Body() dto: RequestPayoutDTO) {
-        return this.serviceService.requestPayout(req.user._id, dto);
-    }
-
-    @Put('payout/:id/process')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
-    processPayout(@Param('id') id: string, @Body() dto: ProcessPayoutDTO) {
-        return this.serviceService.processPayout(id, dto);
-    }
 }

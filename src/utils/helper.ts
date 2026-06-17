@@ -98,21 +98,20 @@ export const toTimeString = (minutes: number): string => {
 }
 
 export const calculateEndTime = (
-  startTime: string,
+  startTime: Date | string,
   durationMinutes: number,
-): string => {
-  const [hours, minutes] = startTime.split(':').map(Number);
-
-  const totalMinutes = hours * 60 + minutes + durationMinutes;
-
-  const endHours = Math.floor(totalMinutes / 60);
-  const endMinutes = totalMinutes % 60;
-
-  return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+): Date => {
+  const date = new Date(startTime);
+  if (isNaN(date.getTime())) {
+    throw new BadRequestException('Invalid start time');
+  }
+  return new Date(date.getTime() + durationMinutes * 60000);
 };
 
 
-export const geocodePincode = async (pincode: string): Promise<{ lat: number; lng: number }> => {
+export const geocodePincode = async (
+  pincode: string,
+): Promise<{ lat: number; lng: number } | null> => {
   try {
     const response = await axios.get(
       'https://maps.googleapis.com/maps/api/geocode/json',
@@ -124,10 +123,11 @@ export const geocodePincode = async (pincode: string): Promise<{ lat: number; ln
       },
     );
 
-    const location = response.data.results[0]?.geometry?.location;
+    const location = response.data.results?.[0]?.geometry?.location;
 
     if (!location) {
-      throw new BadRequestException('Invalid pincode');
+      console.warn(`No geocode result for pincode: ${pincode}`);
+      return null;
     }
 
     return {
@@ -135,6 +135,11 @@ export const geocodePincode = async (pincode: string): Promise<{ lat: number; ln
       lng: location.lng,
     };
   } catch (error) {
-    throw new BadRequestException('Failed to fetch location');
+    console.error('Geocoding failed:', error?.message || error);
+    return null;
   }
 };
+
+export const filteredObject = (dto: any) => {
+  return Object.fromEntries(Object.entries(dto).filter(([key, value]) => (value !== null && value !== undefined && (typeof value !== 'string' || value.trim().length > 0))))
+}

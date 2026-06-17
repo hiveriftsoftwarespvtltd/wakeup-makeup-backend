@@ -59,4 +59,14 @@ export class PublicUserController {
   async getBrands() {
     return this.userService.getBrands();
   }
+
+  @Get('top-selling-products')
+  async getTopSellingProducts(@Query('limit') limit = 10) {
+    return this.userService.getTopSellingProducts(Number(limit));
+  }
+
+  @Get('trending-products')
+  async getTrendingProducts(@Query('limit') limit = 10) {
+    return this.userService.getTrendingProducts(Number(limit));
+  }
 }

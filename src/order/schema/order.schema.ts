@@ -685,6 +685,12 @@ export class Order {
     default: false,
   })
   isDeleted!: boolean;
+
+  @Prop()
+  cancelledAt?: Date;
+
+  @Prop()
+  cancellationReason?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order)

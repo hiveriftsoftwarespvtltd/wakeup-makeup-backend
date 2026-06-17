@@ -24,7 +24,7 @@ async function bootstrap() {
   app.enableCors();
   await app.listen(process.env.PORT ?? 3000);
 
-  console.log(`backedn running on ${process.env.PORT ?? 3000}`);
+  console.log(`backend running on http://localhost:${process.env.PORT ?? 3000}`);
 }
 
 process.on('unhandledRejection', (reason: any) => {
@@ -33,9 +33,9 @@ process.on('unhandledRejection', (reason: any) => {
     reason:
       reason instanceof Error
         ? {
-            message: reason.message,
-            stack: reason.stack,
-          }
+          message: reason.message,
+          stack: reason.stack,
+        }
         : reason,
   });
 });

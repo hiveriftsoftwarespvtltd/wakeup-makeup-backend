@@ -57,6 +57,26 @@ import {
 } from 'src/influencer/schema/influencer-commission-slab';
 import { Influencer, InfluencerDocument } from 'src/influencer/schema/influencer.schema';
 import { InfluencerPayout, InfluencerPayoutDocument } from 'src/influencer/schema/influencer-payout.schema';
+import { VendorWalletService } from 'src/wallet/service/vendor/vendor.wallet.service';
+import { Cart, CartDocument } from 'src/cart/schema/cart.schema';
+import { VendorWallet, VendorWalletDocument } from 'src/wallet/schema/vendor/vendor.wallet.schema';
+import { ServiceBooking, ServiceBookingDocument } from 'src/service/schema/service-booking.schema';
+import { CoursePurchase, CoursePurchaseDocument } from 'src/courses/schema/course-purchase.schema';
+import { UserWallet, UserWalletDocument } from 'src/wallet/schema/user/user.wallet.schema';
+import { Wishlist, WishlistDocument } from 'src/wishlist/schema/wishlist.schema';
+import { WalletTransaction, WalletTransactionDocument } from 'src/wallet/schema/user/user.wallet.transactions';
+import { InfluencerWallet, InfluencerWalletDocument } from 'src/wallet/schema/influencer/influencer.wallet.schema';
+import { Educator, EducatorDocument } from 'src/courses/schema/educator.schema';
+import { EducatorWallet, EducatorWalletDocument } from 'src/wallet/schema/educator/educator.wallet.schema';
+import { Course, CourseDocument } from 'src/courses/schema/course.schema';
+import { CourseEnrollment, CourseEnrollmentDocument } from 'src/courses/schema/course-enrollement.schema';
+import { ServiceProvider, ServiceProviderDocument } from 'src/service/schema/service-provider.schema';
+import { ServiceProviderWallet, ServiceProviderWalletDocument } from 'src/wallet/schema/service_provider/service_provider.wallet.schema';
+import { ServiceQuotation, ServiceQuotationDocument } from 'src/service/schema/service-quotation.schema';
+import { ProviderSubscription, ProviderSubscriptionDocument } from 'src/service/schema/provider-subscription.schema';
+import { ServiceReview, ServiceReviewDocument } from 'src/service/schema/service-review.schema';
+import { Service, ServiceDocument } from 'src/service/schema/service.schema';
+import { ServiceStaff, ServiceStaffDocument } from 'src/service/schema/service-staff.schema';
 
 @Injectable()
 export class AdminService {
@@ -82,9 +102,29 @@ export class AdminService {
     private vendorPayoutModel: Model<VendorPayoutDocument>,
     @InjectModel(influencerCommissonSlab.name)
     private influencerCommissionSlabModel: Model<InfluencerCommissionSlabDocument>,
-    @InjectModel(Influencer.name) private influencerModel:Model<InfluencerDocument>,
-    @InjectModel(InfluencerPayout.name) private influencerPayoutModel:Model<InfluencerPayoutDocument>
-  ) {}
+    @InjectModel(Influencer.name) private influencerModel: Model<InfluencerDocument>,
+    @InjectModel(InfluencerPayout.name) private influencerPayoutModel: Model<InfluencerPayoutDocument>,
+    @InjectModel(Cart.name) private cartModel: Model<CartDocument>,
+    @InjectModel(VendorWallet.name) private vendorWalletModel: Model<VendorWalletDocument>,
+    @InjectModel(ServiceBooking.name) private serviceBookingModel: Model<ServiceBookingDocument>,
+    @InjectModel(CoursePurchase.name) private coursePurchaseModel: Model<CoursePurchaseDocument>,
+    @InjectModel(UserWallet.name) private userWalletModel: Model<UserWalletDocument>,
+    @InjectModel(Wishlist.name) private wishlistModel: Model<WishlistDocument>,
+    @InjectModel(WalletTransaction.name) private walletTransactionModel: Model<WalletTransactionDocument>,
+    @InjectModel(InfluencerWallet.name) private influencerWalletModel: Model<InfluencerWalletDocument>,
+    @InjectModel(Educator.name) private educatorModel: Model<EducatorDocument>,
+    @InjectModel(EducatorWallet.name) private educatorWalletModel: Model<EducatorWalletDocument>,
+    @InjectModel(Course.name) private courseModel: Model<CourseDocument>,
+    @InjectModel(CourseEnrollment.name) private courseEnrollmentModel: Model<CourseEnrollmentDocument>,
+    @InjectModel(ServiceProvider.name) private serviceProviderModel: Model<ServiceProviderDocument>,
+    @InjectModel(ServiceProviderWallet.name) private serviceProviderWalletModel: Model<ServiceProviderWalletDocument>,
+    @InjectModel(ServiceQuotation.name) private serviceQuotationModel: Model<ServiceQuotationDocument>,
+    @InjectModel(ProviderSubscription.name) private providerSubscriptionModel: Model<ProviderSubscriptionDocument>,
+    @InjectModel(ServiceReview.name) private serviceReviewModel: Model<ServiceReviewDocument>,
+    @InjectModel(Service.name) private serviceModel: Model<ServiceDocument>,
+    @InjectModel(ServiceStaff.name) private serviceStaffModel: Model<ServiceStaffDocument>,
+    private vendorWalletService: VendorWalletService
+  ) { }
 
   async fetchAllVendors() {
     return await this.userModel
@@ -139,44 +179,494 @@ export class AdminService {
   }
 
   async deleteUser(userId: string) {
-    const user = await this.userModel.findById(userId).select('-password');
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
 
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // delete avatar media if exists
-    if (user.avatar) {
-      try {
-        await this.documentService.deleteMedia(user.avatar.toString());
-      } catch (error: any) {
-        console.log('Failed to delete avatar media:', error.message);
+      const user = await this.userModel.findById(userId, null, { session }).select('-password');
+      if (!user) {
+        throw new NotFoundException('User not found');
       }
+
+      // Check essential data
+      const ordersCount = await this.orderModel.countDocuments({ userId: user._id }).session(session);
+      const bookingsCount = await this.serviceBookingModel.countDocuments({ userId: user._id }).session(session);
+      const coursesCount = await this.coursePurchaseModel.countDocuments({ learnerId: user._id }).session(session);
+
+      let hasWalletTxs = false;
+      const wallet = await this.userWalletModel.findOne({ userId: user._id }, null, { session });
+      if (wallet && (wallet.totalCredits > 0 || wallet.totalDebits > 0)) {
+        hasWalletTxs = true;
+      } else {
+        const txsCount = await this.walletTransactionModel.countDocuments({ userId: user._id }).session(session);
+        if (txsCount > 0) hasWalletTxs = true;
+      }
+
+      if (ordersCount > 0 || bookingsCount > 0 || coursesCount > 0 || hasWalletTxs) {
+        // Soft delete
+        user.isDeleted = true;
+        user.isActive = false;
+        await user.save({ session });
+
+        if (!user.isVendorOnboardingCompleted && user.vendorId) {
+          await this.vendorModel.findByIdAndUpdate(user.vendorId, { isDeleted: true, isActive: false }, { session });
+        }
+        if (!user.isServiceProviderOnboardingCompleted && user.serviceProviderId) {
+          await this.serviceProviderModel.findByIdAndUpdate(user.serviceProviderId, { isDeleted: true, isActive: false }, { session });
+        }
+        if (!user.isInfluencerOnboardingCompleted && user.influencerId) {
+          await this.influencerModel.findByIdAndUpdate(user.influencerId, { isDeleted: true, isActive: false }, { session });
+        }
+        if (!user.isEducatorOnboardingCompleted && user.educatorId) {
+          await this.educatorModel.findByIdAndUpdate(user.educatorId, { isDeleted: true, isActive: false }, { session });
+        }
+
+        await session.commitTransaction();
+        return { message: 'User soft deleted successfully due to existing essential data' };
+      } else {
+        // Hard delete
+        await this.cartModel.deleteMany({ userId: user._id }, { session });
+        await this.wishlistModel.deleteMany({ userId: user._id }, { session });
+
+        if (!user.isVendorOnboardingCompleted && user.vendorId) {
+          await this.vendorModel.findByIdAndDelete(user.vendorId, { session });
+        }
+        if (!user.isServiceProviderOnboardingCompleted && user.serviceProviderId) {
+          await this.serviceProviderModel.findByIdAndDelete(user.serviceProviderId, { session });
+        }
+        if (!user.isInfluencerOnboardingCompleted && user.influencerId) {
+          await this.influencerModel.findByIdAndDelete(user.influencerId, { session });
+        }
+        if (!user.isEducatorOnboardingCompleted && user.educatorId) {
+          await this.educatorModel.findByIdAndDelete(user.educatorId, { session });
+        }
+
+        await user.deleteOne({ session });
+        await session.commitTransaction();
+
+        if (user.avatar) {
+          try {
+            await this.documentService.deleteMedia(user.avatar.toString());
+          } catch (error: any) {
+            console.log('Failed to delete avatar media:', error.message);
+          }
+        }
+        return { message: 'User hard deleted successfully' };
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
     }
-
-    await user.deleteOne();
-
-    return {
-      message: 'User deleted successfully',
-    };
   }
 
   async deleteVendor(vendorId: string) {
-    const vendor = await this.vendorModel.findById(vendorId);
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
 
-    if (!vendor) {
-      throw new NotFoundException('Vendor not found');
+      const vendor = await this.vendorModel.findById(vendorId, null, { session });
+      if (!vendor) {
+        throw new NotFoundException('Vendor not found');
+      }
+
+      // Check vendor essential data
+      const vendorOrdersCount = await this.vendorOrderModel.countDocuments({ vendorId: vendor._id }).session(session);
+      const payoutsCount = await this.vendorPayoutModel.countDocuments({ vendorId: vendor._id }).session(session);
+
+      let hasVendorWalletTxs = false;
+      const vendorWallet = await this.vendorWalletModel.findOne({ vendorId: vendor._id }, null, { session });
+      if (vendorWallet && (vendorWallet.totalEarnings > 0 || vendorWallet.totalWithdrawn > 0)) {
+        hasVendorWalletTxs = true;
+      }
+
+      if (vendorOrdersCount > 0 || payoutsCount > 0 || hasVendorWalletTxs) {
+        // Soft delete vendor
+        vendor.isDeleted = true;
+        vendor.isActive = false;
+        await vendor.save({ session });
+
+        // Soft delete linked user
+        const linkedUser = await this.userModel.findOne({ vendorId: vendor._id }, null, { session });
+        if (linkedUser) {
+          linkedUser.isDeleted = true;
+          linkedUser.isActive = false;
+          await linkedUser.save({ session });
+        }
+
+        // Soft delete related products and variants
+        await this.productModel.updateMany(
+          { vendorId: vendor._id },
+          { $set: { isDeleted: true, isActive: false } },
+          { session }
+        );
+        const products = await this.productModel.find({ vendorId: vendor._id }, null, { session });
+        const productIds = products.map(p => p._id);
+        if (productIds.length > 0) {
+          await this.productVariantModel.updateMany(
+            { productId: { $in: productIds } },
+            { $set: { isDeleted: true, isActive: false } },
+            { session }
+          );
+        }
+
+        await session.commitTransaction();
+        return { message: 'Vendor and linked user soft deleted successfully due to existing essential data' };
+      } else {
+        // Hard delete vendor
+        const mediaIdsToDelete: string[] = [];
+
+        // 1. Delete vendor's products, product variants and their media
+        const products = await this.productModel.find({ vendorId: vendor._id }, null, { session });
+        for (const product of products) {
+          const variants = await this.productVariantModel.find({ productId: product._id }, null, { session });
+          for (const variant of variants) {
+            if (variant.thumbnail) {
+              mediaIdsToDelete.push(variant.thumbnail.toString());
+            }
+            if (variant.images?.length) {
+              mediaIdsToDelete.push(...variant.images.map(img => img.toString()));
+            }
+            await variant.deleteOne({ session });
+          }
+          await product.deleteOne({ session });
+        }
+
+        // 2. Delete vendor's logo and banner
+        if (vendor.logo) {
+          mediaIdsToDelete.push(vendor.logo.toString());
+        }
+        if (vendor.banner) {
+          mediaIdsToDelete.push(vendor.banner.toString());
+        }
+
+        // 3. Delete vendor document
+        await vendor.deleteOne({ session });
+
+        // 4. Handle linked user
+        const linkedUser = await this.userModel.findOne({ vendorId: vendor._id }, null, { session });
+        if (linkedUser) {
+          // Check if linked user has their own essential data
+          const ordersCount = await this.orderModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const bookingsCount = await this.serviceBookingModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const coursesCount = await this.coursePurchaseModel.countDocuments({ learnerId: linkedUser._id }).session(session);
+
+          let hasWalletTxs = false;
+          const wallet = await this.userWalletModel.findOne({ userId: linkedUser._id }, null, { session });
+          if (wallet && (wallet.totalCredits > 0 || wallet.totalDebits > 0)) {
+            hasWalletTxs = true;
+          } else {
+            const txsCount = await this.walletTransactionModel.countDocuments({ userId: linkedUser._id }).session(session);
+            if (txsCount > 0) hasWalletTxs = true;
+          }
+
+          if (ordersCount > 0 || bookingsCount > 0 || coursesCount > 0 || hasWalletTxs) {
+            linkedUser.isDeleted = true;
+            await linkedUser.save({ session });
+          } else {
+            // Hard delete linked user
+            await this.cartModel.deleteMany({ userId: linkedUser._id }, { session });
+            await this.wishlistModel.deleteMany({ userId: linkedUser._id }, { session });
+            if (linkedUser.avatar) {
+              mediaIdsToDelete.push(linkedUser.avatar.toString());
+            }
+            await linkedUser.deleteOne({ session });
+          }
+        }
+
+        await session.commitTransaction();
+
+        // Delete media outside of transaction
+        await Promise.allSettled(
+          mediaIdsToDelete.map((id) => this.documentService.deleteMedia(id).catch(() => { }))
+        );
+
+        return { message: 'Vendor and linked user hard deleted successfully' };
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
     }
+  }
 
-    // Delete the user linked with this vendor
-    await this.userModel.deleteOne({ vendorId: vendor._id });
+  async deleteInfluencer(influencerId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
 
-    // Delete vendor
-    await vendor.deleteOne();
+      const influencer = await this.influencerModel.findById(influencerId, null, { session });
+      if (!influencer) {
+        throw new NotFoundException('Influencer not found');
+      }
 
-    return {
-      message: 'Vendor and linked user deleted successfully',
-    };
+      let hasEssentialData = false;
+      const payoutsCount = await this.influencerPayoutModel.countDocuments({ influencerId: influencer._id }).session(session);
+      if (payoutsCount > 0) hasEssentialData = true;
+
+      const orderCount = await this.orderModel.countDocuments({
+        'appliedCoupon.influencerId': influencer._id,
+        orderStatus: { $ne: OrderStatus.CANCELLED }
+      }).session(session);
+      if (orderCount > 0) hasEssentialData = true;
+
+      const wallet = await this.influencerWalletModel.findOne({ influencerId: influencer._id }, null, { session });
+      if (wallet && (wallet.totalEarnings > 0 || wallet.totalWithdrawn > 0)) hasEssentialData = true;
+
+      if (hasEssentialData) {
+        influencer.isDeleted = true;
+        influencer.isActive = false;
+        await influencer.save({ session });
+
+        const linkedUser = await this.userModel.findById(influencer.userId, null, { session });
+        if (linkedUser) {
+          linkedUser.isDeleted = true;
+          linkedUser.isActive = false;
+          await linkedUser.save({ session });
+        }
+        await session.commitTransaction();
+        return { message: 'Influencer and linked user soft deleted successfully due to existing essential data' };
+      } else {
+        await influencer.deleteOne({ session });
+
+        const linkedUser = await this.userModel.findById(influencer.userId, null, { session });
+        if (linkedUser) {
+          const userOrders = await this.orderModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const userBookings = await this.serviceBookingModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const userCourses = await this.coursePurchaseModel.countDocuments({ learnerId: linkedUser._id }).session(session);
+          let userWalletTxs = false;
+          const uWallet = await this.userWalletModel.findOne({ userId: linkedUser._id }, null, { session });
+          if (uWallet && (uWallet.totalCredits > 0 || uWallet.totalDebits > 0)) {
+            userWalletTxs = true;
+          } else {
+            const txsCount = await this.walletTransactionModel.countDocuments({ userId: linkedUser._id }).session(session);
+            if (txsCount > 0) userWalletTxs = true;
+          }
+
+          if (userOrders > 0 || userBookings > 0 || userCourses > 0 || userWalletTxs) {
+            linkedUser.isDeleted = true;
+            await linkedUser.save({ session });
+          } else {
+            await this.cartModel.deleteMany({ userId: linkedUser._id }, { session });
+            await this.wishlistModel.deleteMany({ userId: linkedUser._id }, { session });
+            const mediaToDelete: string[] = [];
+            if (linkedUser.avatar) mediaToDelete.push(linkedUser.avatar.toString());
+            await linkedUser.deleteOne({ session });
+
+            await session.commitTransaction();
+            await Promise.allSettled(
+              mediaToDelete.map(id => this.documentService.deleteMedia(id).catch(() => { }))
+            );
+            return { message: 'Influencer and linked user hard deleted successfully' };
+          }
+        }
+        await session.commitTransaction();
+        return { message: 'Influencer hard deleted successfully' };
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async deleteEducator(educatorId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+
+      const educator = await this.educatorModel.findById(educatorId, null, { session });
+      if (!educator) {
+        throw new NotFoundException('Educator not found');
+      }
+
+      let hasEssentialData = false;
+      const wallet = await this.educatorWalletModel.findOne({ educatorId: educator._id }, null, { session });
+      if (wallet && (wallet.totalEarnings > 0 || wallet.totalWithdrawn > 0)) hasEssentialData = true;
+
+      const courses = await this.courseModel.find({ educatorId: educator._id }, null, { session });
+      const courseIds = courses.map(c => c._id);
+
+      if (courseIds.length > 0) {
+        const enrollmentsCount = await this.courseEnrollmentModel.countDocuments({ courseId: { $in: courseIds } }).session(session);
+        const purchasesCount = await this.coursePurchaseModel.countDocuments({ courseId: { $in: courseIds } }).session(session);
+        if (enrollmentsCount > 0 || purchasesCount > 0) hasEssentialData = true;
+      }
+
+      if (hasEssentialData) {
+        educator.isDeleted = true;
+        educator.isActive = false;
+        await educator.save({ session });
+
+        const linkedUser = await this.userModel.findById(educator.userId, null, { session });
+        if (linkedUser) {
+          linkedUser.isDeleted = true;
+          linkedUser.isActive = false;
+          await linkedUser.save({ session });
+        }
+
+        await this.courseModel.updateMany(
+          { educatorId: educator._id },
+          { $set: { isDeleted: true, isActive: false } },
+          { session }
+        );
+
+        await session.commitTransaction();
+        return { message: 'Educator and linked user soft deleted successfully due to existing essential data' };
+      } else {
+        const mediaToDelete: string[] = [];
+
+        for (const course of courses) {
+          if (course.thumbnail) mediaToDelete.push(course.thumbnail.toString());
+          await course.deleteOne({ session });
+        }
+
+        if (educator.profileImage) mediaToDelete.push(educator.profileImage.toString());
+        await educator.deleteOne({ session });
+
+        const linkedUser = await this.userModel.findById(educator.userId, null, { session });
+        if (linkedUser) {
+          const userOrders = await this.orderModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const userBookings = await this.serviceBookingModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const userCourses = await this.coursePurchaseModel.countDocuments({ learnerId: linkedUser._id }).session(session);
+          let userWalletTxs = false;
+          const uWallet = await this.userWalletModel.findOne({ userId: linkedUser._id }, null, { session });
+          if (uWallet && (uWallet.totalCredits > 0 || uWallet.totalDebits > 0)) {
+            userWalletTxs = true;
+          } else {
+            const txsCount = await this.walletTransactionModel.countDocuments({ userId: linkedUser._id }).session(session);
+            if (txsCount > 0) userWalletTxs = true;
+          }
+
+          if (userOrders > 0 || userBookings > 0 || userCourses > 0 || userWalletTxs) {
+            linkedUser.isDeleted = true;
+            linkedUser.isActive = false;
+            await linkedUser.save({ session });
+          } else {
+            await this.cartModel.deleteMany({ userId: linkedUser._id }, { session });
+            await this.wishlistModel.deleteMany({ userId: linkedUser._id }, { session });
+            if (linkedUser.avatar) mediaToDelete.push(linkedUser.avatar.toString());
+            await linkedUser.deleteOne({ session });
+          }
+        }
+
+        await session.commitTransaction();
+
+        await Promise.allSettled(
+          mediaToDelete.map(id => this.documentService.deleteMedia(id).catch(() => { }))
+        );
+        return { message: 'Educator and linked user hard deleted successfully' };
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async deleteServiceProvider(serviceProviderId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+
+      const provider = await this.serviceProviderModel.findById(serviceProviderId, null, { session });
+      if (!provider) {
+        throw new NotFoundException('Service provider not found');
+      }
+
+      let hasEssentialData = false;
+      const subsCount = await this.providerSubscriptionModel.countDocuments({ providerId: provider._id }).session(session);
+      const quotesCount = await this.serviceQuotationModel.countDocuments({ providerId: provider._id }).session(session);
+      const bookingsCount = await this.serviceBookingModel.countDocuments({ providerId: provider._id }).session(session);
+      const reviewsCount = await this.serviceReviewModel.countDocuments({ serviceProviderId: provider._id }).session(session);
+
+      if (subsCount > 0 || quotesCount > 0 || bookingsCount > 0 || reviewsCount > 0) hasEssentialData = true;
+
+      const wallet = await this.serviceProviderWalletModel.findOne({ providerId: provider._id }, null, { session });
+      if (wallet && (wallet.totalEarnings > 0 || wallet.totalWithdrawn > 0)) hasEssentialData = true;
+
+      if (hasEssentialData) {
+        provider.isDeleted = true;
+        provider.isActive = false;
+        await provider.save({ session });
+
+        const linkedUser = await this.userModel.findById(provider.userId, null, { session });
+        if (linkedUser) {
+          linkedUser.isDeleted = true;
+          linkedUser.isActive = false;
+          await linkedUser.save({ session });
+        }
+
+        await this.serviceModel.updateMany(
+          { providerId: provider._id },
+          { $set: { isDeleted: true, isActive: false } },
+          { session }
+        );
+
+        await session.commitTransaction();
+        return { message: 'Service Provider and linked user soft deleted successfully due to existing essential data' };
+      } else {
+        const mediaToDelete: string[] = [];
+
+        const services = await this.serviceModel.find({ providerId: provider._id }, null, { session });
+        for (const service of services) {
+          if (service.images && service.images.length > 0) {
+            mediaToDelete.push(...service.images.map(i => i.toString()));
+          }
+          await service.deleteOne({ session });
+        }
+
+        const staffMembers = await this.serviceStaffModel.find({ providerId: provider._id }, null, { session });
+        for (const staff of staffMembers) {
+          if (staff.image) mediaToDelete.push(staff.image.toString());
+          await staff.deleteOne({ session });
+        }
+
+        await provider.deleteOne({ session });
+
+        const linkedUser = await this.userModel.findById(provider.userId, null, { session });
+        if (linkedUser) {
+          const userOrders = await this.orderModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const userBookings = await this.serviceBookingModel.countDocuments({ userId: linkedUser._id }).session(session);
+          const userCourses = await this.coursePurchaseModel.countDocuments({ learnerId: linkedUser._id }).session(session);
+          let userWalletTxs = false;
+          const uWallet = await this.userWalletModel.findOne({ userId: linkedUser._id }, null, { session });
+          if (uWallet && (uWallet.totalCredits > 0 || uWallet.totalDebits > 0)) {
+            userWalletTxs = true;
+          } else {
+            const txsCount = await this.walletTransactionModel.countDocuments({ userId: linkedUser._id }).session(session);
+            if (txsCount > 0) userWalletTxs = true;
+          }
+
+          if (userOrders > 0 || userBookings > 0 || userCourses > 0 || userWalletTxs) {
+            linkedUser.isDeleted = true;
+            linkedUser.isActive = false;
+            await linkedUser.save({ session });
+          } else {
+            await this.cartModel.deleteMany({ userId: linkedUser._id }, { session });
+            await this.wishlistModel.deleteMany({ userId: linkedUser._id }, { session });
+            if (linkedUser.avatar) mediaToDelete.push(linkedUser.avatar.toString());
+            await linkedUser.deleteOne({ session });
+          }
+        }
+
+        await session.commitTransaction();
+
+        await Promise.allSettled(
+          mediaToDelete.map(id => this.documentService.deleteMedia(id).catch(() => { }))
+        );
+        return { message: 'Service Provider and linked user hard deleted successfully' };
+      }
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
   }
 
   async toggleActiveUser(userId: string) {
@@ -191,9 +681,8 @@ export class AdminService {
     await user.save();
 
     return {
-      message: `User ${
-        user.isActive ? 'activated' : 'deactivated'
-      } successfully`,
+      message: `User ${user.isActive ? 'activated' : 'deactivated'
+        } successfully`,
       user,
     };
   }
@@ -274,7 +763,9 @@ export class AdminService {
     // }
 
     vendor.status = 'APPROVED';
-    vendor.save();
+    await vendor.save();
+
+    await this.vendorWalletService.initializeWallet(vendor._id.toString());
 
     return vendor;
   }
@@ -456,7 +947,7 @@ export class AdminService {
   }
 
   async updateVendorDetails(dto: UpdateVendorDTO, vendorId: string) {
-   
+
     const filteredObject = Object.fromEntries(
       Object.entries(dto).filter(
         ([_, value]) =>
@@ -599,7 +1090,7 @@ export class AdminService {
 
   async createCategory(
     dto: CreateCategoryDTO,
-    file: Express.Multer.File,
+    file: any,
     userId: string,
   ) {
     const existingCategory = await this.categoryModel.findOne({
@@ -643,7 +1134,7 @@ export class AdminService {
 
   async updateCategory(
     dto: UpdateCategoryDTO,
-    file: Express.Multer.File,
+    file: any,
     userId: string,
     categoryId: string,
   ) {
@@ -729,6 +1220,8 @@ export class AdminService {
   async deleteCategory(categoryId: string) {
     const session = await this.connection.startSession();
 
+
+
     try {
       session.startTransaction();
 
@@ -744,6 +1237,7 @@ export class AdminService {
         throw new NotFoundException('Category not found');
       }
 
+
       const productExists = await this.productModel.exists({
         categoryId: category._id,
         isDeleted: false,
@@ -752,6 +1246,7 @@ export class AdminService {
       // Products are using this category
       if (productExists) {
         category.isDeleted = true;
+        category.isActive = false;
 
         await category.save({ session });
 
@@ -926,144 +1421,7 @@ export class AdminService {
     });
   }
 
-  // async payVendorPayouts(
-  //   adminId: string,
-  //   vendorId: string,
-  //   dto: vendorPayDTO,
-  //   // payoutIds: string[],
-  //   // paymentReference?: string,
-  //   // transactionId?: string,
-  //   // notes?: string,
-  // ) {
-  //   const { payoutIds, paymentReference, transactionId, notes, paymentMethod } =
-  //     dto;
-  //   const session = await this.connection.startSession();
 
-  //   try {
-  //     session.startTransaction();
-
-  //     // validate vendor
-  //     const vendor = await this.vendorModel
-  //       .findById(new Types.ObjectId(vendorId))
-  //       .session(session);
-
-  //     if (!vendor) {
-  //       throw new NotFoundException('Vendor not found');
-  //     }
-
-  //     // fetch payouts
-  //     const payouts = await this.vendorPayoutModel
-  //       .find({
-  //         _id: {
-  //           $in: payoutIds.map((id) => new Types.ObjectId(id)),
-  //         },
-
-  //         vendorId: new Types.ObjectId(vendorId),
-  //       })
-  //       .populate('vendorOrderId', 'orderNumber orderStatus grandTotal')
-  //       .session(session);
-
-  //     if (!payouts.length) {
-  //       throw new NotFoundException('No payouts found');
-  //     }
-
-  //     // validate payouts
-  //     for (const payout of payouts) {
-  //       // already paid
-
-  //       if (payout.status === VendorPayoutStatus.PAID) {
-  //         throw new BadRequestException(
-  //           `Order payout already paid for order ${(payout.vendorOrderId as any)?.orderNumber}`,
-  //         );
-  //       }
-
-  //       // cancelled
-  //       if (payout.status === VendorPayoutStatus.CANCELLED) {
-  //         throw new BadRequestException(
-  //           `Cancelled payout cannot be paid for order ${(payout.vendorOrderId as any)?.orderNumber}`,
-  //         );
-  //       }
-
-  //       // reversed
-  //       if (payout.status === VendorPayoutStatus.REVERSED) {
-  //         throw new BadRequestException(
-  //           `Reversed payout cannot be paid for order ${(payout.vendorOrderId as any)?.orderNumber}`,
-  //         );
-  //       }
-
-  //       // only approved
-  //       if (payout.status !== VendorPayoutStatus.APPROVED) {
-  //         throw new BadRequestException(
-  //           `Only approved payouts can be paid for order ${(payout.vendorOrderId as any)?.orderNumber}`,
-  //         );
-  //       }
-  //     }
-
-  //     // calculate total amount
-  //     const totalAmount = payouts.reduce(
-  //       (acc, item) => acc + item.payoutAmount,
-  //       0,
-  //     );
-
-  //     // update payouts
-  //     for (const payout of payouts) {
-  //       payout.status = VendorPayoutStatus.PAID;
-
-  //       payout.isSettled = true;
-
-  //       payout.paidAt = new Date();
-
-  //       payout.settledAt = new Date();
-
-  //       payout.paymentReference = paymentReference;
-
-  //       payout.transactionId = transactionId;
-  //       payout.paymentMethod = paymentMethod ?? PaymentMethod.BANK_TRANSFER;
-
-  //       payout.notes = notes;
-  //       payout.paidBy = new Types.ObjectId(adminId);
-
-  //       await payout.save({
-  //         session,
-  //       });
-  //     }
-
-  //     await session.commitTransaction();
-
-  //     return ApiResponse.success('Vendor payouts paid successfully', {
-  //       vendor: {
-  //         _id: vendor._id,
-  //         businessName: vendor.businessName,
-  //       },
-
-  //       totalOrders: payouts.length,
-
-  //       totalAmount,
-
-  //       paymentReference,
-
-  //       transactionId,
-
-  //       payouts: payouts.map((item) => ({
-  //         payoutId: item._id,
-
-  //         orderId: item.orderId,
-
-  //         vendorOrderId: item.vendorOrderId,
-
-  //         payoutAmount: item.payoutAmount,
-
-  //         status: item.status,
-  //       })),
-  //     });
-  //   } catch (error) {
-  //     await session.abortTransaction();
-
-  //     throw error;
-  //   } finally {
-  //     session.endSession();
-  //   }
-  // }
 
   async updateVendorPayoutStatus(vendorId: string, dto: updateVendorPayoutDTO) {
     const vendor = await this.vendorModel.findById(
@@ -1275,10 +1633,10 @@ export class AdminService {
 
         slab: slab
           ? {
-              minSales: slab.minSales,
-              maxSales: slab.maxSales,
-              commissionRate: slab.commissionRate,
-            }
+            minSales: slab.minSales,
+            maxSales: slab.maxSales,
+            commissionRate: slab.commissionRate,
+          }
           : null,
 
         settledCount: item.settledCount,
@@ -1660,7 +2018,7 @@ export class AdminService {
       commissions
         .filter((x) => x.isSettled)
         .reduce((sum, item) => sum + (item.platformCommissionAmount || 0), 0) *
-        (commissionRate / 100),
+      (commissionRate / 100),
     );
 
     const pendingAmount = Number((calculatedPayout - settledAmount).toFixed(2));
@@ -1716,12 +2074,12 @@ export class AdminService {
 
       slab: slab
         ? {
-            minSales: slab.minSales,
+          minSales: slab.minSales,
 
-            maxSales: slab.maxSales,
+          maxSales: slab.maxSales,
 
-            commissionRate: slab.commissionRate,
-          }
+          commissionRate: slab.commissionRate,
+        }
         : null,
 
       payouts: payoutHistory,
@@ -1730,7 +2088,185 @@ export class AdminService {
     });
   }
 
-  async sendInfluencerInvitationLink(email:string,name:string){
-    
+  async sendInfluencerInvitationLink(email: string, name: string) {
+  }
+
+  async restoreUser(userId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+      const user = await this.userModel.findById(userId, null, { session });
+      if (!user) throw new NotFoundException('User not found');
+
+      user.isDeleted = false;
+      user.isActive = true;
+      await user.save({ session });
+
+      await session.commitTransaction();
+      return { message: 'User restored successfully' };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async restoreVendor(vendorId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+      const vendor = await this.vendorModel.findById(vendorId, null, { session });
+      if (!vendor) throw new NotFoundException('Vendor not found');
+
+      vendor.isDeleted = false;
+      vendor.isActive = true;
+      await vendor.save({ session });
+
+      const user = await this.userModel.findOne({ vendorId: vendor._id }, null, { session });
+      if (user) {
+        user.isDeleted = false;
+        user.isActive = true;
+        await user.save({ session });
+      }
+
+      await this.productModel.updateMany(
+        { vendorId: vendor._id },
+        { $set: { isDeleted: false, isActive: true } },
+        { session }
+      );
+      const products = await this.productModel.find({ vendorId: vendor._id }, null, { session });
+      const productIds = products.map(p => p._id);
+      if (productIds.length > 0) {
+        await this.productVariantModel.updateMany(
+          { productId: { $in: productIds } },
+          { $set: { isDeleted: false, isActive: true } },
+          { session }
+        );
+      }
+
+      await session.commitTransaction();
+      return { message: 'Vendor and related products restored successfully' };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async restoreEducator(educatorId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+      const educator = await this.educatorModel.findById(educatorId, null, { session });
+      if (!educator) throw new NotFoundException('Educator not found');
+
+      educator.isDeleted = false;
+      educator.isActive = true;
+      await educator.save({ session });
+
+      const user = await this.userModel.findById(educator.userId, null, { session });
+      if (user) {
+        user.isDeleted = false;
+        user.isActive = true;
+        await user.save({ session });
+      }
+
+      await this.courseModel.updateMany(
+        { educatorId: educator._id },
+        { $set: { isDeleted: false, isActive: true } },
+        { session }
+      );
+
+      await session.commitTransaction();
+      return { message: 'Educator and related courses restored successfully' };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async restoreServiceProvider(providerId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+      const provider = await this.serviceProviderModel.findById(providerId, null, { session });
+      if (!provider) throw new NotFoundException('Service Provider not found');
+
+      provider.isDeleted = false;
+      provider.isActive = true;
+      await provider.save({ session });
+
+      const user = await this.userModel.findById(provider.userId, null, { session });
+      if (user) {
+        user.isDeleted = false;
+        user.isActive = true;
+        await user.save({ session });
+      }
+
+      await this.serviceModel.updateMany(
+        { providerId: provider._id },
+        { $set: { isDeleted: false, isActive: true } },
+        { session }
+      );
+
+      await session.commitTransaction();
+      return { message: 'Service Provider and related services restored successfully' };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async restoreInfluencer(influencerId: string) {
+    const session = await this.connection.startSession();
+    try {
+      session.startTransaction();
+      const influencer = await this.influencerModel.findById(influencerId, null, { session });
+      if (!influencer) throw new NotFoundException('Influencer not found');
+
+      influencer.isDeleted = false;
+      influencer.isActive = true;
+      await influencer.save({ session });
+
+      const user = await this.userModel.findById(influencer.userId, null, { session });
+      if (user) {
+        user.isDeleted = false;
+        user.isActive = true;
+        await user.save({ session });
+      }
+
+      await session.commitTransaction();
+      return { message: 'Influencer restored successfully' };
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  async getCloudinaryStorageSize() {
+    const MediaModel = this.connection.model('Media');
+    const result = await MediaModel.aggregate([
+      { $match: { storage: 'cloudinary' } },
+      { $group: { _id: null, totalSize: { $sum: '$size' } } }
+    ]);
+
+    const totalSizeBytes = result.length > 0 ? result[0].totalSize : 0;
+    const totalSizeMB = (totalSizeBytes / (1024 * 1024)).toFixed(2);
+    const totalSizeGB = (totalSizeBytes / (1024 * 1024 * 1024)).toFixed(2);
+
+    return {
+      storageType: 'cloudinary',
+      totalSizeBytes,
+      totalSizeMB: parseFloat(totalSizeMB),
+      totalSizeGB: parseFloat(totalSizeGB),
+    };
   }
 }

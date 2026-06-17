@@ -10,9 +10,8 @@ import { UserReview, UserReviewDocument } from './schema/user-review.schema';
 import { Product, ProductDocument } from 'src/product/schema/product.schema';
 import { VendorOrder, VendorOrderDocument } from 'src/order/schema/vendor-order.schema';
 import { CreateReviewDto, UpdateReviewDto } from './dto/reviewDTO';
-import { OrderStatus } from 'src/order/schema/order.schema';
-
-
+import { OrderStatus, PaymentStatus } from 'src/order/schema/order.schema';
+import { DocumentService } from 'src/document/document.service';
 
 @Injectable()
 export class ReviewService {
@@ -25,11 +24,14 @@ export class ReviewService {
 
     @InjectModel(VendorOrder.name)
     private vendorOrderModel: Model<VendorOrderDocument>,
-  ) {}
+
+    private documentService: DocumentService,
+  ) { }
 
   async createReview(
     userId: string,
     dto: CreateReviewDto,
+    files?: any[]
   ) {
     const product = await this.productModel.findById(
       dto.productId,
@@ -56,17 +58,32 @@ export class ReviewService {
     const vendorOrder = await this.vendorOrderModel.findOne({
       userId: new Types.ObjectId(userId),
       orderStatus: OrderStatus.DELIVERED,
+      paymentStatus: PaymentStatus.PAID,
       'items.productId': new Types.ObjectId(dto.productId),
     });
 
+    if (!vendorOrder) {
+      throw new BadRequestException(
+        'You can only review products that have been delivered and paid for',
+      );
+    }
+
+    const imageIds: Types.ObjectId[] = [];
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const uploaded = await this.documentService.upload(file, 'reviews', userId);
+        imageIds.push(new Types.ObjectId(uploaded._id as any));
+      }
+    }
+
     const review = await this.reviewModel.create({
-      userId,
-      productId: dto.productId,
+      userId: new Types.ObjectId(userId),
+      productId: new Types.ObjectId(dto.productId),
       rating: dto.rating,
       title: dto.title,
       review: dto.review,
-      images: dto.images || [],
-      vendorOrderId: vendorOrder?._id,
+      images: imageIds,
+      vendorOrderId: new Types.ObjectId(vendorOrder?._id),
       isVerifiedPurchase: !!vendorOrder,
     });
 
@@ -79,6 +96,7 @@ export class ReviewService {
     userId: string,
     reviewId: string,
     dto: UpdateReviewDto,
+    files?: any[]
   ) {
     const review = await this.reviewModel.findOne({
       _id: new Types.ObjectId(reviewId),
@@ -90,7 +108,18 @@ export class ReviewService {
       throw new NotFoundException('Review not found');
     }
 
-    Object.assign(review, dto);
+    if (dto.rating !== undefined) review.rating = dto.rating;
+    if (dto.title !== undefined) review.title = dto.title;
+    if (dto.review !== undefined) review.review = dto.review;
+
+    if (files && files.length > 0) {
+      const imageIds: Types.ObjectId[] = [];
+      for (const file of files) {
+        const uploaded = await this.documentService.upload(file, 'reviews', userId);
+        imageIds.push(new Types.ObjectId(uploaded._id as any));
+      }
+      review.images = imageIds;
+    }
 
     await review.save();
 
@@ -102,12 +131,10 @@ export class ReviewService {
   }
 
   async deleteReview(
-    userId: string,
     reviewId: string,
   ) {
     const review = await this.reviewModel.findOne({
       _id: new Types.ObjectId(reviewId),
-      userId: new Types.ObjectId(userId),
       isDeleted: false,
     });
 
@@ -128,8 +155,8 @@ export class ReviewService {
     };
   }
 
-  async getProductReviews(productId: string) {
-    return await this.reviewModel
+  async getProductReviews(productId: string, userId?: string) {
+    const reviews = await this.reviewModel
       .find({
         productId: new Types.ObjectId(productId),
         isDeleted: false,
@@ -139,6 +166,22 @@ export class ReviewService {
       .populate('images')
       .sort({ createdAt: -1 })
       .lean();
+
+    let isReviewed = false;
+    let userReview: any = null;
+
+    if (userId) {
+      userReview = reviews.find(r => r.userId?._id?.toString() === userId.toString()) || null;
+      if (userReview) {
+        isReviewed = true;
+      }
+    }
+
+    return {
+      isReviewed,
+      userReview,
+      reviews,
+    };
   }
 
   async updateProductRating(productId: string) {

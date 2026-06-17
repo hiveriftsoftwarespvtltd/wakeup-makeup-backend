@@ -12,7 +12,7 @@ export type UploadResult = {
 
 export interface StorageProvider {
   upload(
-    file: Express.Multer.File,
+    file: any,
     folder: string,
   ): Promise<UploadResult>;
 

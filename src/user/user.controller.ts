@@ -39,7 +39,7 @@ export class UserController {
 
   @Post('avatar')
   @UseInterceptors(FileInterceptor('file'))
-  uploadAvatar(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
+  uploadAvatar(@UploadedFile() file: any, @Req() req: any) {
     return this.userService.uploadAvatar(req.user._id, file);
   }
 

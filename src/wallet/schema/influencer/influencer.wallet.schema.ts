@@ -25,6 +25,13 @@ export class InfluencerWallet {
         default: 0,
         min: 0,
     })
+    pendingBalance!: number;
+
+    @Prop({
+        type: Number,
+        default: 0,
+        min: 0,
+    })
     totalEarnings!: number;
 
     @Prop({

@@ -9,7 +9,7 @@ import { StorageProvider, UploadResult } from './storage.interface';
 
 export class LocalStorage implements StorageProvider {
   async upload(
-    file: Express.Multer.File,
+    file: any,
     folder: string,
   ): Promise<UploadResult> {
     const uploadDir = path.join(process.cwd(), 'uploads', folder);

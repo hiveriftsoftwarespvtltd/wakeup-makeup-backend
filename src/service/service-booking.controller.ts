@@ -15,6 +15,7 @@ import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { UserRole } from 'src/user/schema/user.schema';
 import { CreateBookingDTO, RescheduleBookingDTO } from './dto/service.dto';
+import { BookingPaymentStatus, BookingStatus } from './schema/service-booking.schema';
 
 @Controller('service-booking')
 export class ServiceBookingController {
@@ -67,5 +68,13 @@ export class ServiceBookingController {
       startDate,
       endDate,
     );
+  }
+
+  @Put('update-service-booking/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SERVICE_PROVIDER)
+  updateServiceBooking(@Req() req: any, @Param('id') bookingId: string, @Body('bookingStatus') bookingStatus?: BookingStatus, @Body('paymentStatus') paymentStatus?: BookingPaymentStatus) {
+    console.log("Service provider Id", req.user.serviceProviderId)
+    return this.serviceBookingService.updateServiceBooking(req.user.serviceProviderId, bookingId, bookingStatus, paymentStatus);
   }
 }
