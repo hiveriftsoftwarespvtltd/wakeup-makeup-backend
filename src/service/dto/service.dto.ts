@@ -1,3 +1,4 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import { Transform, Type } from "class-transformer";
 import { IsBoolean, IsNumber, IsOptional, IsString, IsArray, Min, Max, IsEnum, ValidateNested, IsDateString, ArrayMinSize, IsDate, ArrayMaxSize } from "class-validator";
 import { ServiceType, ServiceGender } from "../schema/service.schema";
@@ -20,6 +21,7 @@ export class CreateServiceCategoryDTO {
 
   @IsOptional()
   @Transform(({ value }) => value === 'true')
+  @ToBoolean()
   @IsBoolean()
   isActive?: boolean
 }
@@ -33,36 +35,58 @@ export class CreateServiceSubscriptionPlanDTO {
   @IsString()
   label!: string
 
+  @ToNumber()
+
   @IsNumber()
   durationDays!: number
+
+  @ToNumber()
 
   @IsNumber()
   price!: number
 
+  @ToNumber()
+
   @IsNumber()
   maxServices!: number
+
+  @ToNumber()
 
   @IsNumber()
   maxStaff!: number
 
+  @ToNumber()
+
   @IsNumber()
   monthlyLeadLimit!: number
+
+  @ToNumber()
 
   @IsNumber()
   commissionPercentage!: number
 
+  @ToBoolean()
+
   @IsBoolean()
   featuredListing!: boolean
 
+  @ToBoolean()
+
   @IsBoolean()
   prioritySupport!: boolean
+
+  @ToBoolean()
 
   @IsBoolean()
   analyticsAccess!: boolean
 
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   isActive?: boolean
+
+
+  @ToNumber()
 
 
   @IsNumber()
@@ -79,6 +103,9 @@ export class CreateServiceProviderDTO {
 
   @IsString()
   description?: string;
+
+
+  @ToNumber()
 
 
   @IsNumber()
@@ -121,10 +148,12 @@ export class CreateServiceProviderDTO {
   providerType?: string;
 
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   homeServiceAvailable?: boolean;
 
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   salonVisitAvailable?: boolean;
 
@@ -133,6 +162,7 @@ export class CreateServiceProviderDTO {
   coordinates?: number[];
 
   @IsOptional()
+  @ToNumber()
   @IsNumber()
   serviceRadiusKm?: number;
 
@@ -151,6 +181,7 @@ export class UpdateServiceProviderDTO {
   description?: string;
 
   @IsOptional()
+  @ToNumber()
   @IsNumber()
   experienceYears?: number;
 
@@ -191,10 +222,12 @@ export class UpdateServiceProviderDTO {
   providerType?: string;
 
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   homeServiceAvailable?: boolean;
 
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   salonVisitAvailable?: boolean;
 
@@ -203,10 +236,12 @@ export class UpdateServiceProviderDTO {
   coordinates?: number[];
 
   @IsOptional()
+  @ToNumber()
   @IsNumber()
   serviceRadiusKm?: number;
 
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   isActive?: boolean;
 
@@ -226,18 +261,18 @@ export class CreateServiceDTO {
   @IsString()
   description?: string;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   durationMinutes!: number;
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   costPrice!: number;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   sellingPrice!: number;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   offeredPrice!: number;
 
@@ -263,22 +298,22 @@ export class UpdateServiceDTO {
   description?: string;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   durationMinutes?: number;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   costPrice?: number;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   sellingPrice?: number;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   offeredPrice?: number;
 
@@ -288,6 +323,7 @@ export class UpdateServiceDTO {
 
   @IsOptional()
   @Transform((value) => Boolean(value))
+  @ToBoolean()
   @IsBoolean()
   isActive?: boolean;
 
@@ -309,7 +345,7 @@ export class CreateStaffDTO {
   email?: string;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   experienceYears?: number;
 
@@ -341,7 +377,7 @@ export class UpdateStaffDTO {
   email?: string;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   experienceYears?: number;
 
@@ -351,6 +387,7 @@ export class UpdateStaffDTO {
   skills?: string[];
 
   @IsOptional()
+  @ToBoolean()
   @IsBoolean()
   isActive?: boolean;
 
@@ -435,6 +472,8 @@ export class BookingItemInputDTO {
 
 import { PaymentMethod } from "src/order/schema/order.schema";
 
+
+
 export class CreateBookingDTO {
   @IsOptional()
   @IsArray()
@@ -487,6 +526,8 @@ export class CreateReviewDTO {
   @IsString()
   bookingId!: string;
 
+  @ToNumber()
+
   @IsNumber()
   @Min(1)
   @Max(5)
@@ -515,8 +556,12 @@ export class CreateLeadDTO {
   requirement!: string;
 
   @IsOptional()
+  @ToNumber()
   @IsNumber()
   quantity?: number;
+
+
+  @ToNumber()
 
 
   @IsNumber()

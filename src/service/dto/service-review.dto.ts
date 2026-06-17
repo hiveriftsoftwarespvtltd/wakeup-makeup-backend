@@ -1,6 +1,9 @@
+import { ToNumber } from '../../utils/type-tranformer';
 import { PartialType } from '@nestjs/mapped-types';
 import { Type } from 'class-transformer';
 import { IsMongoId, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+
+
 
 export class CreateServiceReviewDto {
   @IsMongoId()
@@ -12,8 +15,10 @@ export class CreateServiceReviewDto {
   @IsMongoId()
   serviceProviderId!: string;
 
+  @ToNumber()
+
   @IsNumber()
-  @Type(() => Number)
+  @ToNumber()
   @Min(1)
   @Max(5)
   providerRating!: number;
@@ -22,8 +27,10 @@ export class CreateServiceReviewDto {
   @IsString()
   providerReview?: string;
 
+  @ToNumber()
+
   @IsNumber()
-  @Type(() => Number)
+  @ToNumber()
   @Min(1)
   @Max(5)
   serviceRating!: number;

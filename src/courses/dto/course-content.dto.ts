@@ -1,5 +1,8 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import { Type } from "class-transformer";
 import { IsBoolean, IsMongoId, IsNumber, IsOptional, IsString, Min } from "class-validator";
+
+
 
 export class CreateCourseSectionDTO {
     @IsMongoId()
@@ -8,8 +11,10 @@ export class CreateCourseSectionDTO {
     @IsString()
     title: string;
 
+    @ToNumber()
+
     @IsNumber()
-    @Type(() => Number)
+    @ToNumber()
     @Min(0)
     order: number;
 }
@@ -20,7 +25,7 @@ export class UpdateCourseSectionDTO {
     title?: string;
 
     @IsOptional()
-    @Type(() => Number)
+    @ToNumber()
     @Min(0)
 
     @IsNumber()
@@ -50,17 +55,17 @@ export class CreateCourseLessonDTO {
 
     @IsOptional()
     @Min(0)
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     durationInSeconds?: number;
 
     @Min(0)
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     order: number;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isPreview?: boolean;
 }
@@ -84,18 +89,18 @@ export class UpdateCourseLessonDTO {
 
     @IsOptional()
     @Min(0)
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     durationInSeconds?: number;
 
     @IsOptional()
-    @Type(() => Number)
+    @ToNumber()
     @Min(0)
     @IsNumber()
     order?: number;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isPreview?: boolean;
 }

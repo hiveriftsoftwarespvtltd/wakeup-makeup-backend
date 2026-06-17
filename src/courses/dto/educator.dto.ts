@@ -1,4 +1,7 @@
+import { ToBoolean } from '../../utils/type-tranformer';
 import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
+
+
 
 export class OnBoardEducatorDTO {
     @IsOptional()
@@ -23,6 +26,7 @@ export class UpdateEducatorDTO {
 }
 
 export class ApproveEducatorDTO {
+    @ToBoolean()
     @IsBoolean()
     isApproved: boolean;
 }

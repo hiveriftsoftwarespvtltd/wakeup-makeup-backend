@@ -1,6 +1,9 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import { IsString, IsOptional, IsArray, IsEnum, IsBoolean, IsNumber, IsDateString, IsObject } from 'class-validator';
 import { ContentType, RedirectType } from '../schema/home.content.schema';
 import { Type } from 'class-transformer';
+
+
 
 export class CreateHomeContentDto {
     @IsOptional()
@@ -53,12 +56,12 @@ export class CreateHomeContentDto {
     textColor?: string;
 
     @IsOptional()
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     displayOrder?: number;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isActive?: boolean;
 
@@ -76,7 +79,7 @@ export class CreateHomeContentDto {
     metaData?: Record<string, any>;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isFeatured?: boolean;
 

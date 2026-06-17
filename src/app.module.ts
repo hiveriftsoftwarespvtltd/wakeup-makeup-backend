@@ -24,6 +24,7 @@ import { WalletModule } from './wallet/wallet.module';
 import { CoursesModule } from './courses/courses.module';
 
 
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -59,7 +60,8 @@ import { CoursesModule } from './courses/courses.module';
     ServiceModule,
     PayoutModule,
     WalletModule,
-    CoursesModule
+    CoursesModule,
+  
   ],
   controllers: [AppController],
   providers: [AppService],

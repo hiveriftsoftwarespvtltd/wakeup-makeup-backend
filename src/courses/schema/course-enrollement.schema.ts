@@ -8,6 +8,14 @@ export enum EnrollmentStatus {
     REFUNDED = 'REFUNDED',
 }
 
+export enum EnrollmentSource {
+    FREE = 'FREE',
+    PURCHASED = 'PURCHASED',
+    ADMIN_GRANTED = 'ADMIN_GRANTED',
+    SUBSCRIPTION = 'SUBSCRIPTION',
+}
+
+
 export type CourseEnrollmentDocument = CourseEnrollment & Document
 
 @Schema({ timestamps: true })
@@ -37,6 +45,13 @@ export class CourseEnrollment {
 
     @Prop()
     completedAt: Date;
+
+    @Prop({
+        enum: EnrollmentSource,
+        required: true,
+        default: EnrollmentSource.FREE
+    })
+    source: EnrollmentSource;
 }
 
 export const CourseEnrollmentSchema = SchemaFactory.createForClass(CourseEnrollment)

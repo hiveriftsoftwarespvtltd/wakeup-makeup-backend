@@ -1,3 +1,4 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import {
   ArrayUnique,
   IsArray,
@@ -19,6 +20,8 @@ import { ProductStatus } from '../schema/product.schema';
 import { PartialType } from '@nestjs/mapped-types';
 
 
+
+
 // ================= VARIANT DTO =================
 
 export class CreateVariantDto {
@@ -26,44 +29,44 @@ export class CreateVariantDto {
   @IsString()
   sku!: string;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   costPrice!: number;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   salesPrice!: number;
 
   @IsOptional()
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   offeredPrice!: number
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   stock!: number;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   weight!: number;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   length!: number;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   width!: number;
 
-  @Type(() => Number)
+  @ToNumber()
   @IsNumber()
   @Min(0)
   height!: number;
@@ -83,7 +86,7 @@ export class CreateVariantDto {
   attributes!: Record<string, string>;
 
   @IsOptional()
-  @Type(() => Boolean)
+  @ToBoolean()
   @IsBoolean()
   isActive?: boolean;
 }
@@ -112,6 +115,8 @@ export class CreateProductDto {
   brand?: string
 
   @IsOptional()
+  @ToBoolean()
+
   @IsBoolean()
   isShippingApply?: boolean
 

@@ -1,6 +1,9 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import { Type } from "class-transformer";
 import { IsBoolean, IsEnum, IsMongoId, IsNumber, IsOptional } from "class-validator";
 import { PaymentMethod } from "src/order/schema/order.schema";
+
+
 
 export class EnrollCourseDTO {
     @IsMongoId()
@@ -23,12 +26,12 @@ export class UpdateLessonProgressDTO {
     lessonId: string;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isCompleted?: boolean;
 
     @IsOptional()
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     watchedDurationInSeconds?: number;
 }

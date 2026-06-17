@@ -1,6 +1,9 @@
+import { ToNumber } from '../../utils/type-tranformer';
 import { IsString, IsNumber, IsOptional, IsArray, ValidateNested, IsEnum, IsBoolean, Min, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { QuotationItemType } from '../schema/service-quotation.schema';
+
+
 
 export class QuotationItemDto {
     @IsEnum(QuotationItemType)
@@ -13,17 +16,25 @@ export class QuotationItemDto {
     @IsString()
     title!: string;
 
+    @ToNumber()
+
     @IsNumber()
     @Min(1)
     quantity!: number;
+
+    @ToNumber()
 
     @IsNumber()
     @Min(0)
     unitCostPrice!: number;
 
+    @ToNumber()
+
     @IsNumber()
     @Min(0)
     unitSellingPrice!: number;
+
+    @ToNumber()
 
     @IsNumber()
     @Min(0)
@@ -68,6 +79,8 @@ export class CreateServiceQuotationDto {
 
     @IsDateString()
     slotEndTime!: string;
+
+    @ToNumber()
 
     @IsNumber()
     @Min(1)

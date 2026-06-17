@@ -1,5 +1,8 @@
+import { ToBoolean } from '../../utils/type-tranformer';
 import { IsBoolean, IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { BankAccountStatus, BankAccountType } from '../schema/bank-account.schema';
+
+
 
 export class CreateBankAccountDto {
     @IsNotEmpty()
@@ -23,6 +26,7 @@ export class CreateBankAccountDto {
     accountType?: BankAccountType;
 
     @IsOptional()
+    @ToBoolean()
     @IsBoolean()
     isPrimary?: boolean;
 }
@@ -49,6 +53,7 @@ export class UpdateBankAccountDto {
     accountType?: BankAccountType;
 
     @IsOptional()
+    @ToBoolean()
     @IsBoolean()
     isPrimary?: boolean;
 }

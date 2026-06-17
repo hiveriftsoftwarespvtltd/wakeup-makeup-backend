@@ -1,3 +1,4 @@
+import { ToNumber } from '../../utils/type-tranformer';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -11,6 +12,8 @@ import {
 } from 'class-validator';
 import { PaymentMethod, VendorPayoutStatus } from 'src/vendor/schema/vendor-payout.schema';
 
+
+
 export enum VendorStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
@@ -22,6 +25,8 @@ export class UpdateVendorDTO {
   // isActive?:boolean
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   @Min(0)
   @Max(100)
@@ -50,10 +55,10 @@ export class vendorPayDTO {
 
   @IsArray()
   @ArrayNotEmpty()
-  payoutIds!:[]
+  payoutIds!: []
 }
 
-export class updateVendorPayoutDTO{
+export class updateVendorPayoutDTO {
   // @IsString()
   // orderId!:string
 
@@ -61,8 +66,8 @@ export class updateVendorPayoutDTO{
   // vendorOrderId!:string
 
   @IsString()
-  vendorPayoutId!:string
+  vendorPayoutId!: string
 
   @IsEnum(VendorPayoutStatus)
-  status!:VendorPayoutStatus
+  status!: VendorPayoutStatus
 }

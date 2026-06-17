@@ -1,6 +1,9 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import { Type } from "class-transformer";
 import { ArrayUnique, IsArray, IsBoolean, IsEnum, IsMongoId, IsNumber, IsOptional, IsString, Min } from "class-validator";
 import { CourseLanguage, CourseLevel, CourseStatus } from "../schema/course.schema";
+
+
 
 
 export class AddCourseCategoryDTO {
@@ -44,6 +47,8 @@ export class UpdateCourseCategoryDTO {
     tags?: string[]
 
     @IsOptional()
+    @ToBoolean()
+
     @IsBoolean()
     isActive?: boolean
 }
@@ -77,31 +82,32 @@ export class CreateCourseDTO {
     language?: CourseLanguage;
 
 
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     @Min(0)
     costPrice: number;
 
 
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     @Min(0)
     sellingPrice: number;
 
 
-    @Type(() => Number)
+    @ToNumber()
     @Min(0)
     offeredPrice: number;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isFree?: boolean;
 }
 
 export class UpdateCourseDTO {
+    @IsOptional()
     @IsString()
-    title: string;
+    title?: string;
 
     @IsOptional()
     @IsString()
@@ -114,8 +120,9 @@ export class UpdateCourseDTO {
     // @IsMongoId()
     // thumbnail: string;
 
+    @IsOptional()
     @IsMongoId()
-    categoryId: string;
+    categoryId?: string;
 
     @IsOptional()
     @IsArray()
@@ -136,29 +143,29 @@ export class UpdateCourseDTO {
     status?: CourseStatus;
 
     @IsOptional()
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     @Min(0)
     costPrice?: number;
 
     @IsOptional()
-    @Type(() => Number)
+    @ToNumber()
     @IsNumber()
     @Min(0)
     sellingPrice?: number;
 
     @IsOptional()
-    @Type(() => Number)
+    @ToNumber()
     @Min(0)
     offeredPrice?: number;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isFree?: boolean;
 
     @IsOptional()
-    @Type(() => Boolean)
+    @ToBoolean()
     @IsBoolean()
     isActive?: boolean
 }

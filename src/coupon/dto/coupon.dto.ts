@@ -1,3 +1,4 @@
+import { ToNumber } from '../../utils/type-tranformer';
 // create-coupon.dto.ts
 
 import {
@@ -15,12 +16,17 @@ import {
 } from '../schema/coupon.schema';
 import { PartialType } from '@nestjs/mapped-types';
 
+
+
 export class CreateCouponDto {
   @IsString()
   code!: string;
 
   @IsEnum(CouponType)
   type!: CouponType;
+
+  @ToNumber()
+
 
   @IsNumber()
   value!: number;
@@ -38,18 +44,26 @@ export class CreateCouponDto {
   scope?: CouponScope;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   minimumOrderAmount?: number;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   maximumDiscount?: number;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   usageLimitPerUser?: number;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   totalUsageLimit?: number;
 

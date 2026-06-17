@@ -44,6 +44,10 @@ export class CourseEnrollmentService {
             throw new BadRequestException('User is already enrolled in this course');
         }
 
+        if (!course.isFree) {
+            throw new BadRequestException("Course is not free to enroll. Please purchase the course to enroll.");
+        }
+
         const enrollment = await this.courseEnrollmentModel.create({
             learnerId: new Types.ObjectId(learnerId),
             courseId: new Types.ObjectId(dto.courseId),
@@ -207,32 +211,32 @@ export class CourseEnrollmentService {
     }
 
     async getUserEnrollments(learnerId: string) {
-    const enrollments = await this.courseEnrollmentModel
-        .find({
-            learnerId: new Types.ObjectId(learnerId)
-        })
-        .populate({
-            path: 'courseId',
-            select: 'title thumbnail level isDeleted',
-            populate: [
-                {
-                    path: 'educatorId',
-                    select: 'fullName profileImage'
-                },
-                {
-                    path: 'thumbnail',
-                    select: '_id url publicId'
-                }
-            ]
-        })
-        .sort({ createdAt: -1 })
-        .lean();
+        const enrollments = await this.courseEnrollmentModel
+            .find({
+                learnerId: new Types.ObjectId(learnerId)
+            })
+            .populate({
+                path: 'courseId',
+                select: 'title thumbnail level isDeleted',
+                populate: [
+                    {
+                        path: 'educatorId',
+                        select: 'fullName profileImage'
+                    },
+                    {
+                        path: 'thumbnail',
+                        select: '_id url publicId'
+                    }
+                ]
+            })
+            .sort({ createdAt: -1 })
+            .lean();
 
-    return ApiResponse.success(
-        'User enrollments retrieved',
-        enrollments
-    );
-}
+        return ApiResponse.success(
+            'User enrollments retrieved',
+            enrollments
+        );
+    }
 
     async updateLessonProgress(learnerId: string, dto: UpdateLessonProgressDTO) {
         const session = await this.connection.startSession();

@@ -151,7 +151,6 @@ export class CoursesService {
         return ApiResponse.success("Course category details", courseCategory)
     }
 
-
     async deleteCourseCategory(courseCategoryId: string) {
 
         const session = await this.connection.startSession()
@@ -181,7 +180,6 @@ export class CoursesService {
         }
     }
 
-
     async addCourse(
         educatorId: string,
         file: any,
@@ -189,6 +187,9 @@ export class CoursesService {
     ) {
         const session = await this.connection.startSession();
         let media: any = null;
+
+        console.log("DTO", dto)
+        console.log("File", file)
 
         try {
             session.startTransaction();
@@ -205,7 +206,7 @@ export class CoursesService {
                 );
             }
 
-            if (dto.costPrice >= dto.sellingPrice || dto.sellingPrice >= dto.offeredPrice) {
+            if (dto.costPrice > dto.sellingPrice || dto.sellingPrice > dto.offeredPrice) {
                 throw new BadRequestException("Cost price should be less than selling price and selling price should be less than offered price");
             }
 
@@ -229,12 +230,14 @@ export class CoursesService {
             };
 
             if (payload.costPrice !== undefined && payload.sellingPrice !== undefined && payload.offeredPrice !== undefined) {
-                if (!payload.isFree) {
-                    if (payload.costPrice >= payload.sellingPrice || payload.sellingPrice >= payload.offeredPrice) {
-                        throw new BadRequestException("Cost price should be less than selling price and selling price should be less than offered price");
-                    }
+                // if (!payload.isFree) {
+                if (payload.costPrice > payload.sellingPrice || payload.sellingPrice > payload.offeredPrice) {
+                    throw new BadRequestException("Cost price should be less than selling price and selling price should be less than offered price");
+                    // }
                 }
             }
+
+            console.log("Payload in line 239", payload)
 
             if (thumbnailId) {
                 payload.thumbnail = thumbnailId;
@@ -253,12 +256,17 @@ export class CoursesService {
             );
 
         } catch (error) {
+            console.log("Error in add course", error)
             await session.abortTransaction();
 
             if (media) {
-                await this.documentService.deleteMedia(
-                    media._id.toString()
-                );
+                try {
+                    await this.documentService.deleteMedia(
+                        media._id.toString()
+                    );
+                } catch (err) {
+                    console.log('Media already rolled back');
+                }
             }
 
             throw error;
@@ -275,7 +283,7 @@ export class CoursesService {
     ) {
         const session = await this.connection.startSession();
         let media: any = null;
-        console.log("Update course DTO",dto)
+        console.log("Update course DTO", dto)
 
         try {
             session.startTransaction();
@@ -298,10 +306,12 @@ export class CoursesService {
             const finalSellingPrice = updatedFields.sellingPrice !== undefined ? updatedFields.sellingPrice : course.sellingPrice;
             const finalOfferedPrice = updatedFields.offeredPrice !== undefined ? updatedFields.offeredPrice : course.offeredPrice;
 
+            console.log("Filtered Object in line 300", filteredObject(dto), "updatedFields", updatedFields)
+
             const finalIsFree = updatedFields.isFree !== undefined ? updatedFields.isFree : course.isFree;
 
             if (!finalIsFree) {
-                if (finalCostPrice >= finalSellingPrice || finalSellingPrice >= finalOfferedPrice) {
+                if (finalCostPrice > finalSellingPrice || finalSellingPrice > finalOfferedPrice) {
                     throw new BadRequestException("Cost price should be less than selling price and selling price should be less than offered price");
                 }
             }

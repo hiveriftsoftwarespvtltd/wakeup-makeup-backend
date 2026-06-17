@@ -1,12 +1,20 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import { IsEnum, IsNumber, IsOptional, IsBoolean } from 'class-validator';
 import { CashbackType } from '../schema/cashback/cashbacks.slabs.schema';
 
+
+
 export class CreateCashbackSlabDto {
+    @ToNumber()
     @IsNumber()
     minValue!: number;
 
+    @ToNumber()
+
     @IsNumber()
     maxValue!: number;
+
+    @ToNumber()
 
     @IsNumber()
     cashbackValue!: number;
@@ -15,9 +23,13 @@ export class CreateCashbackSlabDto {
     @IsOptional()
     cashbackType?: CashbackType;
 
+    @ToNumber()
+
     @IsNumber()
     @IsOptional()
     maxCashback?: number;
+
+    @ToBoolean()
 
     @IsBoolean()
     @IsOptional()
@@ -25,13 +37,18 @@ export class CreateCashbackSlabDto {
 }
 
 export class UpdateCashbackSlabDto {
+    @ToNumber()
     @IsNumber()
     @IsOptional()
     minValue?: number;
 
+    @ToNumber()
+
     @IsNumber()
     @IsOptional()
     maxValue?: number;
+
+    @ToNumber()
 
     @IsNumber()
     @IsOptional()
@@ -41,9 +58,13 @@ export class UpdateCashbackSlabDto {
     @IsOptional()
     cashbackType?: CashbackType;
 
+    @ToNumber()
+
     @IsNumber()
     @IsOptional()
     maxCashback?: number;
+
+    @ToBoolean()
 
     @IsBoolean()
     @IsOptional()

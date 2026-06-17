@@ -1,6 +1,9 @@
+import { ToNumber } from '../../utils/type-tranformer';
 import { Type } from "class-transformer";
 import { IsEnum, IsMongoId, IsNumber, IsOptional, IsString, IsUrl } from "class-validator";
 import { CourseAttachmentType } from "../schema/course-attachments.schema";
+
+
 
 export class CreateCourseAttachmentDTO {
     @IsMongoId()
@@ -22,8 +25,9 @@ export class CreateCourseAttachmentDTO {
     url: string;
 
     @IsOptional()
+    @ToNumber()
     @IsNumber()
-    @Type(() => Number)
+    @ToNumber()
     duration?: number;
 }
 
@@ -37,7 +41,8 @@ export class UpdateCourseAttachmentDTO {
     url?: string;
 
     @IsOptional()
+    @ToNumber()
     @IsNumber()
-    @Type(() => Number)
+    @ToNumber()
     duration?: number;
 }

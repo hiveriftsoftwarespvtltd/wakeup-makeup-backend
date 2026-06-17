@@ -1,3 +1,4 @@
+import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import {
   IsBoolean,
   IsEmail,
@@ -9,6 +10,8 @@ import {
   Min,
 } from 'class-validator';
 import { InfluencerStatus } from '../schema/influencer.schema';
+
+
 
 export class CreateInfluencerDto {
   // @IsString()
@@ -49,6 +52,8 @@ export class CreateInfluencerDto {
   // commissionRate?: number;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   followers?: number;
 }
@@ -84,6 +89,8 @@ export class UpdateInfluencerDto {
   // commissionRate?: number;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   followers?: number;
 
@@ -92,18 +99,28 @@ export class UpdateInfluencerDto {
   status?: InfluencerStatus;
 
   @IsOptional()
+  @ToBoolean()
+
   @IsBoolean()
   isActive?: boolean;
 }
 
 export class createSlabDTO {
+  @ToNumber()
+
   @IsNumber()
   @Min(0)
   minSales!: number;
 
+  @ToNumber()
+
+
   @IsNumber()
   @Min(0)
   maxSales!: number;
+
+  @ToNumber()
+
 
   @IsNumber()
   @Min(0)
@@ -113,22 +130,30 @@ export class createSlabDTO {
 
 export class UpdateSlabDTO {
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   @Min(0)
   minSales?: number;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   @Min(0)
   maxSales?: number;
 
   @IsOptional()
+  @ToNumber()
+
   @IsNumber()
   @Min(0)
   @Max(99)
   commissionRate?: number;
 
   @IsOptional()
+  @ToBoolean()
+
   @IsBoolean()
   isActive?: boolean;
 }
