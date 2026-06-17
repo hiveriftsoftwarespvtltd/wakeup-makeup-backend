@@ -21,7 +21,7 @@ export class CartController {
   constructor(
     private cartService: CartService,
     private couponService: CouponService,
-  ) {}
+  ) { }
 
   @Get('fetch-user-cart')
   async fetchUserCart(@Req() req: any) {
@@ -43,9 +43,14 @@ export class CartController {
     return this.couponService.applyCoupon(req.user._id, dto);
   }
 
+  @Post('validate-wallet')
+  validateWallet(@Req() req: any, @Body() dto: any) {
+    return this.cartService.applyWallet(req.user._id, dto);
+  }
+
   @Get('cart-details/:addressId')
-  fetchCartDetails(@Req() req:any,@Param('addressId') addressId:string){
-    return this.cartService.estimateCartSummary(req.user._id,addressId)
+  fetchCartDetails(@Req() req: any, @Param('addressId') addressId: string) {
+    return this.cartService.estimateCartSummary(req.user._id, addressId)
   }
 
   @Post('add-to-cart/:id')

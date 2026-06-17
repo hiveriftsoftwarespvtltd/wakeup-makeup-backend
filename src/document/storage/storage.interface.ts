@@ -12,9 +12,9 @@ export type UploadResult = {
 
 export interface StorageProvider {
   upload(
-    file: Express.Multer.File,
+    file: any,
     folder: string,
   ): Promise<UploadResult>;
 
-  delete(publicId: string): Promise<void>;
-}
+  delete(publicId: string, resourceType?: string): Promise<void>;
+}

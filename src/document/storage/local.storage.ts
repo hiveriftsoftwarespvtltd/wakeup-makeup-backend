@@ -9,7 +9,7 @@ import { StorageProvider, UploadResult } from './storage.interface';
 
 export class LocalStorage implements StorageProvider {
   async upload(
-    file: Express.Multer.File,
+    file: any,
     folder: string,
   ): Promise<UploadResult> {
     const uploadDir = path.join(process.cwd(), 'uploads', folder);
@@ -32,7 +32,7 @@ export class LocalStorage implements StorageProvider {
     };
   }
 
-  async delete(publicId: string): Promise<void> {
+  async delete(publicId: string, resourceType?: string): Promise<void> {
     const filePath = path.join(process.cwd(), 'uploads', publicId);
 
     if (fs.existsSync(filePath)) {

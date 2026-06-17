@@ -34,13 +34,13 @@ import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 @Roles(UserRole.VENDOR)
 @Controller('product')
 export class ProductController {
-  constructor(private productService: ProductService) {}
+  constructor(private productService: ProductService) { }
 
   // @Post('create-category')
   // @UseInterceptors(FileInterceptor('file'))
   // createCategory(
   //   @UploadedFile()
-  //   file: Express.Multer.File,
+  //   file: any,
 
   //   @Req()
   //   req: any,
@@ -74,7 +74,7 @@ export class ProductController {
   async createProduct(
     @Body() body: any,
     @Req() req: any,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: any[],
   ) {
     const dto: any = {
       name: body.name,
@@ -85,7 +85,9 @@ export class ProductController {
       metaDescription: body.metaDescription,
       status: body.status,
       variants: [],
-      tags:body.tags || []
+      tags: body.tags || [],
+      brand: body.brand,
+      isShippingApply: body.isShippingApply
     };
 
     const variantsMap = {};
@@ -129,7 +131,7 @@ export class ProductController {
   // @UseInterceptors(FileInterceptor('file'))
   // updateCategory(
   //   @Param('id') id: string,
-  //   @UploadedFile() file: Express.Multer.File,
+  //   @UploadedFile() file: any,
   //   @Req() req: any,
   //   @Body() dto: UpdateCategoryDTO,
   // ) {
@@ -155,7 +157,7 @@ export class ProductController {
     @Param('id') id: string,
     @Body() body: any,
     @Req() req: any,
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: any[],
   ) {
     const dto: any = {
       name: body.name,
@@ -166,7 +168,9 @@ export class ProductController {
       metaDescription: body.metaDescription,
       status: body.status,
       variants: [],
-      tags:body.tags || []
+      tags: body.tags || [],
+      brand: body.brand,
+      isShippingApply: body.isShippingApply
     };
 
     // =========================
@@ -201,7 +205,7 @@ export class ProductController {
     });
 
     dto.variants = Object.values(variantsMap);
-   
+
 
     return this.productService.updateProduct(
       dto,

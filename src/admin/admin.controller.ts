@@ -13,6 +13,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { ApiResponse } from 'src/common/responses/api-response';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -39,7 +40,7 @@ export class AdminController {
   constructor(
     private adminService: AdminService,
     private influencerService: InfluencerService,
-  ) {}
+  ) { }
 
   @Get('vendors')
   async getAllVendors() {
@@ -80,7 +81,7 @@ export class AdminController {
   @UseInterceptors(FileInterceptor('file'))
   createCategory(
     @UploadedFile()
-    file: Express.Multer.File,
+    file: any,
 
     @Req()
     req: any,
@@ -149,8 +150,8 @@ export class AdminController {
   }
 
   @Post('send-influencer-invitation-link')
-  async sendInfluencerInvitationLink(@Body('email') email:string,@Body('name') name:string,@Req() req:any){
-    return await this.influencerService.sendInfluencerInvitationLink(email,name,req.user._id)
+  async sendInfluencerInvitationLink(@Body('email') email: string, @Body('name') name: string, @Req() req: any) {
+    return await this.influencerService.sendInfluencerInvitationLink(email, name, req.user._id)
   }
 
   //  @Post('onboard-influencer')
@@ -256,7 +257,7 @@ export class AdminController {
     @Param('id') id: string,
 
     @UploadedFile()
-    file: Express.Multer.File,
+    file: any,
 
     @Req()
     req: any,
@@ -297,6 +298,21 @@ export class AdminController {
     return await this.adminService.deleteVendor(id);
   }
 
+  @Delete('delete-influencer/:id')
+  async deleteInfluencer(@Param('id') id: string) {
+    return await this.adminService.deleteInfluencer(id);
+  }
+
+  @Delete('delete-educator/:id')
+  async deleteEducator(@Param('id') id: string) {
+    return await this.adminService.deleteEducator(id);
+  }
+
+  @Delete('delete-service-provider/:id')
+  async deleteServiceProvider(@Param('id') id: string) {
+    return await this.adminService.deleteServiceProvider(id);
+  }
+
   @Patch('vendor-update/:vendorId')
   async updateVendor(
     @Param('vendorId') vendorId: string,
@@ -331,5 +347,36 @@ export class AdminController {
     @Param('productId') productId: string,
   ) {
     return await this.adminService.deleteVendorProduct(vendorId, productId);
+  }
+
+  @Patch('restore-user/:id')
+  async restoreUser(@Param('id') id: string) {
+    return await this.adminService.restoreUser(id);
+  }
+
+  @Patch('restore-vendor/:id')
+  async restoreVendor(@Param('id') id: string) {
+    return await this.adminService.restoreVendor(id);
+  }
+
+  @Patch('restore-influencer/:id')
+  async restoreInfluencer(@Param('id') id: string) {
+    return await this.adminService.restoreInfluencer(id);
+  }
+
+  @Patch('restore-educator/:id')
+  async restoreEducator(@Param('id') id: string) {
+    return await this.adminService.restoreEducator(id);
+  }
+
+  @Patch('restore-service-provider/:id')
+  async restoreServiceProvider(@Param('id') id: string) {
+    return await this.adminService.restoreServiceProvider(id);
+  }
+
+  @Get('cloudinary-storage-size')
+  async getCloudinaryStorageSize() {
+    const data = await this.adminService.getCloudinaryStorageSize();
+    return ApiResponse.success('Storage size fetched successfully', data);
   }
 }

@@ -31,11 +31,11 @@ export class ProductService {
     @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
     @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
     private documentService: DocumentService,
-  ) {}
+  ) { }
 
   // async CreateCategory(
   //   dto: CreateCategory,
-  //   file: Express.Multer.File,
+  //   file: any,
   //   userId: string,
   //   vendorId: string,
   // ) {
@@ -76,7 +76,7 @@ export class ProductService {
 
   // async updateCategory(
   //   dto: UpdateCategoryDTO,
-  //   file: Express.Multer.File,
+  //   file: any,
   //   userId: string,
   //   vendorId: string,
   //   categoryId: string,
@@ -202,7 +202,7 @@ export class ProductService {
 
   // async createProduct(
   //   dto: CreateProductDto,
-  //   files: Express.Multer.File[],
+  //   files: any[],
   //   userId: string,
   //   vendorId: string,
   // ) {
@@ -345,7 +345,7 @@ export class ProductService {
 
   async createProduct(
     dto: CreateProductDto,
-    files: Express.Multer.File[],
+    files: any[],
     userId: string,
     vendorId: string,
   ) {
@@ -459,8 +459,9 @@ export class ProductService {
               metaDescription: dto.metaDescription,
               status: dto.status,
               hasVariants: dto.variants.length > 1,
-              tags:dto.tags,
-              isShippingApply:dto.isShippingApply
+              tags: dto.tags,
+              isShippingApply: dto.isShippingApply,
+              brand: dto.brand?.toLowerCase()
             },
           ],
           { session },
@@ -473,11 +474,11 @@ export class ProductService {
           const media = variantMediaData[i];
 
           if (
-            variant.costPrice > variant.salesPrice ||
-            variant.salesPrice < variant.offeredPrice
+            variant.costPrice >= variant.salesPrice ||
+            variant.salesPrice >= variant.offeredPrice
           ) {
             throw new BadRequestException(
-              'Cost Price should be smaller than sales price and sales price should be greater than offered price',
+              'Cost Price should be less than sales price and sales price should be less than offered price',
             );
           }
 
@@ -555,7 +556,7 @@ export class ProductService {
 
   async updateProduct(
     dto: UpdateProductDto,
-    files: Express.Multer.File[],
+    files: any[],
     userId: string,
     vendorId: string,
     productId: string,
@@ -615,12 +616,20 @@ export class ProductService {
       product.slug = dto.slug;
     }
 
-    if(dto.tags !== undefined){
+    if (dto.tags !== undefined) {
       product.tags = dto.tags
     }
 
     if (dto.description !== undefined) {
       product.description = dto.description;
+    }
+
+    if (dto.brand !== undefined) {
+      product.brand = dto.brand.toLowerCase();
+    }
+
+    if (dto.isShippingApply !== undefined) {
+      product.isShippingApply = dto.isShippingApply;
     }
 
     if (dto.categoryId !== undefined) {
@@ -813,11 +822,11 @@ export class ProductService {
             }
 
             if (
-              variant.costPrice < variant.salesPrice ||
-              variant.salesPrice < variant.offeredPrice
+              variant.costPrice >= variant.salesPrice ||
+              variant.salesPrice >= variant.offeredPrice
             ) {
               throw new BadRequestException(
-                'Cost Price should be greater than sales price and sales price should be greater than offered price',
+                'Cost Price should be less than sales price and sales price should be less than offered price',
               );
             }
 

@@ -1,3 +1,4 @@
+import { ToNumber } from '../../utils/type-tranformer';
 import {
   IsArray,
   IsEnum,
@@ -12,12 +13,17 @@ import {
 import { Type } from 'class-transformer';
 import { OrderStatus, PaymentMethod } from '../schema/order.schema';
 
+
+
 export class CreateOrderItemDto {
   @IsMongoId()
   productId!: string;
 
   @IsMongoId()
   variantId!: string;
+
+  @ToNumber()
+
 
   @IsNumber()
   @Min(1)

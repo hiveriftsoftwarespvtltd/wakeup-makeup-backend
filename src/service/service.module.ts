@@ -1,6 +1,18 @@
 import { Module } from '@nestjs/common';
 import { ServiceController } from './service.controller';
 import { ServiceService } from './service.service';
+import { ServiceSearchController } from './service-search.controller';
+import { ServiceSearchService } from './service-search.service';
+import { ServiceBookingController } from './service-booking.controller';
+import { ServiceBookingService } from './service-booking.service';
+import { ServiceLeadController } from './service-lead.controller';
+import { ServiceLeadService } from './service-lead.service';
+import { ServiceReviewController } from './service-review.controller';
+import { ServiceReviewService } from './service-review.service';
+import { ServiceProviderReviewController } from './service-provider-review.controller';
+import { ServiceProviderReviewService } from './service-provider-review.service';
+import { ServiceQuotationController } from './service-quotation.controller';
+import { ServiceQuotationService } from './service-quotation.service';
 import {
   ProviderSubscription,
   ProviderSubscriptionSchema,
@@ -19,14 +31,7 @@ import {
   ServiceCategorySchema,
 } from './schema/service-category.schema';
 import { ServiceLead, ServiceLeadSchema } from './schema/service-lead.schema';
-import {
-  ServiceProviderPayoutSchema,
-  ServicerProviderPayout,
-} from './schema/service-provider-payout.schema';
-import {
-  ServiceProviderWallet,
-  ServiceProviderWalletSchema,
-} from './schema/service-provider-wallet.schema';
+
 import {
   ServiceProvider,
   ServiceProviderSchema,
@@ -35,6 +40,10 @@ import {
   ServiceReview,
   ServiceReviewSchema,
 } from './schema/service-review.schema';
+import {
+  ServiceQuotation,
+  ServiceQuotationSchema,
+} from './schema/service-quotation.schema';
 import { ServcieSlotSchema, ServiceSlot } from './schema/service-slot.schema';
 import {
   ServiceStaff,
@@ -46,6 +55,13 @@ import {
 } from './schema/service-subscription.schema';
 import { Service, ServiceSchema } from './schema/service.schema';
 import { DocumentModule } from 'src/document/document.module';
+import { User, UserSchema } from 'src/user/schema/user.schema';
+import { Coupon, CouponSchema } from 'src/coupon/schema/coupon.schema';
+import { CouponUsage, CouponUsageSchema } from 'src/coupon/schema/coupon-usage.schema';
+import { CashbackSlab, CashbackSlabSchema } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
+import { WalletModule } from 'src/wallet/wallet.module';
+import { LeadBooking, LeadBookingSchema } from './schema/service-lead-booking.schema';
+import { StaffAllocation, StaffAllocationSchema } from './schema/staff-allocation.schema';
 
 @Module({
   imports: [
@@ -55,13 +71,9 @@ import { DocumentModule } from 'src/document/document.module';
       { name: ServiceBooking.name, schema: ServiceBookingSchema },
       { name: ServiceCategory.name, schema: ServiceCategorySchema },
       { name: ServiceLead.name, schema: ServiceLeadSchema },
-      {
-        name: ServicerProviderPayout.name,
-        schema: ServiceProviderPayoutSchema,
-      },
-      { name: ServiceProviderWallet.name, schema: ServiceProviderWalletSchema },
       { name: ServiceProvider.name, schema: ServiceProviderSchema },
       { name: ServiceReview.name, schema: ServiceReviewSchema },
+      { name: ServiceQuotation.name, schema: ServiceQuotationSchema },
       { name: ServiceSlot.name, schema: ServcieSlotSchema },
       { name: ServiceStaff.name, schema: ServiceStaffSchema },
       {
@@ -69,11 +81,18 @@ import { DocumentModule } from 'src/document/document.module';
         schema: ServiceSubscriptionPlanSchema,
       },
       { name: Service.name, schema: ServiceSchema },
+      { name: User.name, schema: UserSchema },
+      { name: Coupon.name, schema: CouponSchema },
+      { name: CouponUsage.name, schema: CouponUsageSchema },
+      { name: CashbackSlab.name, schema: CashbackSlabSchema },
+      { name: LeadBooking.name, schema: LeadBookingSchema },
+      { name: StaffAllocation.name, schema: StaffAllocationSchema },
     ]),
-     DocumentModule
+    DocumentModule,
+    WalletModule,
   ],
-  controllers: [ServiceController],
-  providers: [ServiceService],
-  exports:[ServiceService]
+  controllers: [ServiceController, ServiceSearchController, ServiceBookingController, ServiceLeadController, ServiceReviewController, ServiceProviderReviewController, ServiceQuotationController],
+  providers: [ServiceService, ServiceSearchService, ServiceBookingService, ServiceLeadService, ServiceReviewService, ServiceProviderReviewService, ServiceQuotationService],
+  exports: [ServiceService, ServiceSearchService, ServiceBookingService, ServiceLeadService, MongooseModule, ServiceReviewService, ServiceProviderReviewService, ServiceQuotationService],
 })
-export class ServiceModule {}
+export class ServiceModule { }

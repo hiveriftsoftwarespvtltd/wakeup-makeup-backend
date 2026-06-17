@@ -10,22 +10,21 @@ import { winstonLogger } from './common/logger/winston.logger';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
-  
 
-  app.setGlobalPrefix('/api/v1')
-  app.useGlobalInterceptors(new ResponseInterceptor())
-  app.useGlobalFilters(new GlobalExceptionFilter())
+  app.setGlobalPrefix('/api/v1');
+  app.useGlobalInterceptors(new ResponseInterceptor());
+  app.useGlobalFilters(new GlobalExceptionFilter());
   app.useGlobalPipes(
-  new ValidationPipe({
-    whitelist: true,
-    transform: true, // IMPORTANT
-    forbidNonWhitelisted:true
-  }),
-);
-  app.enableCors()
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
+  app.enableCors();
   await app.listen(process.env.PORT ?? 3000);
 
-  console.log(`backedn running on ${process.env.PORT ?? 3000}`)
+  console.log(`backend running on http://localhost:${process.env.PORT ?? 3000}`);
 }
 
 process.on('unhandledRejection', (reason: any) => {
@@ -34,9 +33,9 @@ process.on('unhandledRejection', (reason: any) => {
     reason:
       reason instanceof Error
         ? {
-            message: reason.message,
-            stack: reason.stack,
-          }
+          message: reason.message,
+          stack: reason.stack,
+        }
         : reason,
   });
 });

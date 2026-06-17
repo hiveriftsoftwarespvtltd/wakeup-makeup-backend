@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { DocumentModule } from 'src/document/document.module';
 
 import { UserReview, UserReviewSchema } from './schema/user-review.schema';
 import { ReviewController } from './user-review.controller';
@@ -15,7 +16,8 @@ import { VendorOrder, VendorOrderSchema } from 'src/order/schema/vendor-order.sc
     ]),
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
     MongooseModule.forFeature([{ name: Vendor.name, schema: VendorSchema }]),
-    MongooseModule.forFeature([{name:VendorOrder.name,schema:VendorOrderSchema}])
+    MongooseModule.forFeature([{name:VendorOrder.name,schema:VendorOrderSchema}]),
+    DocumentModule
   ],
   controllers: [ReviewController],
   providers: [ReviewService],

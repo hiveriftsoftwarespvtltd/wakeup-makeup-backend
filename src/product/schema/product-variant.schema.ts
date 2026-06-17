@@ -68,6 +68,9 @@ export class ProductVariant {
 
   @Prop({ default: true })
   isActive!: boolean;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
 }
 
 export const ProductVariantSchema = SchemaFactory.createForClass(ProductVariant);

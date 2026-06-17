@@ -10,6 +10,7 @@ export enum UserRole {
   SERVICE_PROVIDER = 'service_provider',
   DISTRIBUTOR = 'distributor',
   USER = 'user',
+  EDUCATOR = 'educator',
 }
 
 export enum AuthType {
@@ -70,11 +71,36 @@ export class User {
   @Prop({ default: false })
   isVendorOnboardingCompleted!: boolean;
 
+  @Prop({ default: false })
+  isServiceProviderOnboardingCompleted!: boolean;
+
+  @Prop({ default: false })
+  isDistributorOnboardingCompleted!: boolean;
+
+  @Prop({ default: false })
+  isInfluencerOnboardingCompleted!: boolean;
+
   @Prop({
     type: Types.ObjectId,
     ref: 'ServiceProvider',
   })
   serviceProviderId?: Types.ObjectId;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Distributor',
+  })
+  distributorId?: Types.ObjectId;
+
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'Educator',
+  })
+  educatorId?: Types.ObjectId;
+
+  @Prop({ default: false })
+  isEducatorOnboardingCompleted!: boolean;
+
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

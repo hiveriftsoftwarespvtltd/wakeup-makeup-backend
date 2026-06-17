@@ -8,7 +8,12 @@ export class ServiceSlot {
 
   @Prop({
     type: Types.ObjectId,
-    ref: 'Staff',
+    ref: 'ServiceProvider',
+  })
+  providerId!: Types.ObjectId;
+  @Prop({
+    type: Types.ObjectId,
+    ref: 'ServiceStaff',
   })
   staffId!: Types.ObjectId;
 
@@ -16,10 +21,10 @@ export class ServiceSlot {
   date!: Date;
 
   @Prop()
-  startTime!: string;
+  startTime!: Date;
 
   @Prop()
-  endTime!: string;
+  endTime!: Date;
 
   @Prop({ default: false })
   isBooked!: boolean;

@@ -14,12 +14,16 @@ import { InfluencerCommission, InfluencerCommissionSchema } from 'src/influencer
 import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
 import { ShiprocketModule } from 'src/shiprocket/shiprocket.module';
 import { VendorOrder, VendorOrderSchema } from './schema/vendor-order.schema';
+import { UserReview, UserReviewSchema } from 'src/user-review/schema/user-review.schema';
+
+import { WalletModule } from 'src/wallet/wallet.module';
+import { CashbackSlab, CashbackSlabSchema } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
 
 
 @Module({
-  imports:[MongooseModule.forFeature([{name:Order.name,schema:OrderSchema}]),MongooseModule.forFeature([{name:Product.name,schema:ProductSchema}]),MongooseModule.forFeature([{name:ProductVariant.name,schema:ProductVariantSchema}]),MongooseModule.forFeature([{name:Address.name,schema:AddressSchema}]),MongooseModule.forFeature([{name:Coupon.name,schema:CouponSchema}]),MongooseModule.forFeature([{name:Influencer.name,schema:InfluencerSchema}]),MongooseModule.forFeature([{name:CouponUsage.name,schema:CouponUsageSchema}]),MongooseModule.forFeature([{name:VendorPayout.name,schema:VendorPayoutSchema}]),MongooseModule.forFeature([{name:InfluencerCommission.name,schema:InfluencerCommissionSchema}]),MongooseModule.forFeature([{name:Vendor.name,schema:VendorSchema}]),MongooseModule.forFeature([{name:VendorOrder.name,schema:VendorOrderSchema}]),ShiprocketModule,],
+  imports: [MongooseModule.forFeature([{ name: Order.name, schema: OrderSchema }]), MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]), MongooseModule.forFeature([{ name: ProductVariant.name, schema: ProductVariantSchema }]), MongooseModule.forFeature([{ name: Address.name, schema: AddressSchema }]), MongooseModule.forFeature([{ name: Coupon.name, schema: CouponSchema }]), MongooseModule.forFeature([{ name: Influencer.name, schema: InfluencerSchema }]), MongooseModule.forFeature([{ name: CouponUsage.name, schema: CouponUsageSchema }]), MongooseModule.forFeature([{ name: VendorPayout.name, schema: VendorPayoutSchema }]), MongooseModule.forFeature([{ name: InfluencerCommission.name, schema: InfluencerCommissionSchema }]), MongooseModule.forFeature([{ name: Vendor.name, schema: VendorSchema }]), MongooseModule.forFeature([{ name: VendorOrder.name, schema: VendorOrderSchema }]), MongooseModule.forFeature([{ name: UserReview.name, schema: UserReviewSchema }, { name: CashbackSlab.name, schema: CashbackSlabSchema }]), ShiprocketModule, WalletModule,],
   controllers: [OrderController],
   providers: [OrderService],
-  exports:[OrderService,MongooseModule]
+  exports: [OrderService, MongooseModule]
 })
-export class OrderModule {}
+export class OrderModule { }

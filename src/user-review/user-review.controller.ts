@@ -8,63 +8,95 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
+  UploadedFiles,
+  BadRequestException,
 } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { ReviewService } from './user-review.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
+import { OptionalAuthGuard } from 'src/auth/optional-auth.guards';
 import { CreateReviewDto, UpdateReviewDto } from './dto/reviewDTO';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { UserRole } from 'src/user/schema/user.schema';
 
 
 
-@Controller('reviews')
+@Controller('user-reviews')
 export class ReviewController {
   constructor(
     private readonly reviewService: ReviewService,
-  ) {}
+  ) { }
 
-  @Post()
+  @Post('add')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('images', 4, {
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
+        return cb(new BadRequestException('Only image files are allowed!'), false);
+      }
+      cb(null, true);
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }
+  }))
   async createReview(
     @Req() req: any,
     @Body() dto: CreateReviewDto,
+    @UploadedFiles() files: any[]
   ) {
     return this.reviewService.createReview(
       req.user._id,
       dto,
+      files
     );
   }
 
-  @Patch(':id')
+  @Patch('update/:id')
   @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FilesInterceptor('images', 4, {
+    fileFilter: (req, file, cb) => {
+      if (!file.mimetype.match(/\/(jpg|jpeg|png|webp)$/)) {
+        return cb(new BadRequestException('Only image files are allowed!'), false);
+      }
+      cb(null, true);
+    },
+    limits: { fileSize: 5 * 1024 * 1024 }
+  }))
   async updateReview(
     @Req() req: any,
     @Param('id') id: string,
     @Body() dto: UpdateReviewDto,
+    @UploadedFiles() files: any[]
   ) {
     return this.reviewService.updateReview(
       req.user._id,
       id,
       dto,
+      files
     );
   }
 
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard)
+  @Delete('delete/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
   async deleteReview(
-    @Req() req: any,
     @Param('id') id: string,
   ) {
     return this.reviewService.deleteReview(
-      req.user._id,
       id,
     );
   }
 
-  @Get('product/:productId')
+  @Get('product-reviews/:productId')
+  @UseGuards(OptionalAuthGuard)
   async getProductReviews(
+    @Req() req: any,
     @Param('productId') productId: string,
   ) {
     return this.reviewService.getProductReviews(
       productId,
+      req.user?._id,
     );
   }
 }

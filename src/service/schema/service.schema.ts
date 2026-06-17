@@ -2,10 +2,16 @@ import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Types } from "mongoose";
 
 
-export enum ServiceType{
-  HOME="HOME",
-  SALON="SALON",
-  BOTH="BOTH"
+export enum ServiceType {
+  HOME = "HOME",
+  SALON = "SALON",
+  BOTH = "BOTH"
+}
+
+export enum ServiceGender {
+  ONLY_MEN = "ONLY_MEN",
+  ONLY_WOMEN = "ONLY_WOMEN",
+  BOTH = "BOTH",
 }
 
 export type ServiceDocument = Service & Document
@@ -36,10 +42,13 @@ export class Service {
   durationMinutes!: number;
 
   @Prop({ required: true })
-  price!: number;
+  costPrice!: number;
 
-  @Prop()
-  discountedPrice!: number;
+  @Prop({ required: true })
+  sellingPrice!: number;
+
+  @Prop({ required: true })
+  offeredPrice!: number
 
   @Prop({
     enum: ServiceType,
@@ -55,6 +64,21 @@ export class Service {
 
   @Prop({ default: true })
   isActive!: boolean;
+
+  @Prop({ default: false })
+  isDeleted!: boolean;
+
+  @Prop({
+    enum: ServiceGender,
+    default: ServiceGender.ONLY_WOMEN,
+  })
+  serviceGender!: string;
+
+  @Prop({ default: 0 })
+  averageRating!: number;
+
+  @Prop({ default: 0 })
+  totalReviews!: number;
 }
 
 export const ServiceSchema = SchemaFactory.createForClass(Service)

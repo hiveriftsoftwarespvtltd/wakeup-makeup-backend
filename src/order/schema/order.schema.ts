@@ -3,7 +3,7 @@
 // // ===============================
 
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Types,Document } from "mongoose";
+import { Types, Document } from "mongoose";
 
 // import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 
@@ -401,6 +401,9 @@ export enum OrderStatus {
 export enum PaymentMethod {
   CASH_ON_DELIVERY = 'CashOnDelivery',
   ONLINE = 'Online',
+  WALLET = 'Wallet',
+  WALLET_PLUS_ONLINE = 'WalletPlusOnline',
+  WALLET_PLUS_COD = 'WalletPlusCOD',
 }
 
 export enum PaymentStatus {
@@ -656,7 +659,7 @@ export class Order {
   @Prop({ default: 0 })
   shippingCharge!: number;
 
-   @Prop({ default: 0 })
+  @Prop({ default: 0 })
   codCharge!: number;
 
 
@@ -669,10 +672,25 @@ export class Order {
   @Prop({ default: 0 })
   refundAmount!: number;
 
+  @Prop({ default: 0 })
+  walletAmountUsed!: number;
+
+  @Prop({ default: 0 })
+  walletRefundedAmount!: number;
+
+  @Prop({ default: 0 })
+  paidAmount!: number;
+
   @Prop({
     default: false,
   })
   isDeleted!: boolean;
+
+  @Prop()
+  cancelledAt?: Date;
+
+  @Prop()
+  cancellationReason?: string;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order)
