@@ -88,6 +88,7 @@ export class CartService {
 
     const productIds = cart.items.map((item) => item.product);
     const variantIds = cart.items.map((item) => item.variant);
+    
 
     const products = await this.productModel.find({
       _id: { $in: productIds },
@@ -100,6 +101,7 @@ export class CartService {
       isDeleted: false,
       isActive: true,
     });
+    
 
     const productMap = new Map(
       products.map((product) => [product._id.toString(), product]),
@@ -108,15 +110,28 @@ export class CartService {
     const variantMap = new Map(
       variants.map((variant) => [variant._id.toString(), variant]),
     );
+   
 
     const validItems = cart.items.filter((item) => {
-      const product = productMap.get(item.product.toString());
+      // const product = productMap.get(item.product.toString());
+      const productId =
+        item.product instanceof Types.ObjectId
+          ? item.product.toString()
+          : (item.product as any)._id.toString();
+
+      const product = productMap.get(productId);
 
       if (!product) {
         return false;
       }
 
-      const variant = variantMap.get(item.variant.toString());
+      // const variant = variantMap.get(item.variant.toString());
+      const variantId =
+        item.variant instanceof Types.ObjectId
+          ? item.variant.toString()
+          : (item.variant as any)._id.toString();
+
+      const variant = variantMap.get(variantId);
 
       if (!variant) {
         return false;
@@ -130,10 +145,14 @@ export class CartService {
       return true;
     });
 
+    
+
     if (validItems.length !== cart.items.length) {
       cart.items = validItems;
       await cart.save();
     }
+
+ 
 
     return cart;
   }
@@ -174,17 +193,21 @@ export class CartService {
     }
 
     let cart = await this.cartModel.findOne({
-      user: userId,
+      user: new Types.ObjectId(userId),
     });
+
+    
 
     if (!cart) {
       cart = await this.cartModel.create({
-        user: userId,
+        user: new Types.ObjectId(userId),
         items: [],
       });
     }
 
     await this.cleanInvalidCartItems(cart);
+
+  
 
 
     const existingItem = cart.items.find(
@@ -192,6 +215,9 @@ export class CartService {
         item.product.toString() === productId &&
         item.variant.toString() === variantId,
     );
+
+
+   
 
     if (existingItem) {
       const updatedQty = existingItem.quantity + quantity;
@@ -209,12 +235,19 @@ export class CartService {
       } as any);
     }
 
+    
+
     await cart.save();
 
-    return await this.fetchUserCart(userId);
+    
+
+    // return await this.fetchUserCart(userId);
+    return ApiResponse.success("Item added to cart successfully", cart)
   }
 
   async fetchUserCart(userId: string) {
+
+
     const cart = await this.cartModel
       .findOne({ user: userId })
       .populate({
@@ -228,9 +261,11 @@ export class CartService {
         populate: [
           {
             path: 'thumbnail',
+            select: 'url _id publicId'
           },
           {
             path: 'images',
+            select: 'url _id publicId'
           },
         ],
       });
@@ -239,7 +274,11 @@ export class CartService {
       return ApiResponse.success('Cart not found', { items: [] });
     }
 
+   
+
     await this.cleanInvalidCartItems(cart);
+
+    
 
     return ApiResponse.success('Cart fetched successfully', cart);
   }

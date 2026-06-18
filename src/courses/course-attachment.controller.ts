@@ -25,7 +25,7 @@ export class CourseAttachmentController {
         return await this.courseAttachmentService.updateAttachment(req.user.educatorId.toString(), attachmentId, dto);
     }
 
-    @UseGuards(OptionalAuthGuard)
+   @UseGuards(OptionalAuthGuard)
     @Get('list/course/:courseId')
     async getAttachmentsByCourse(@Param('courseId') courseId: string, @Req() req: any) {
         return await this.courseAttachmentService.getAttachmentsByCourse(courseId, req.user);

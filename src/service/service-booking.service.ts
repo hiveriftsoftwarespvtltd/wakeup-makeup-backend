@@ -284,8 +284,7 @@ export class ServiceBookingService {
       const primaryService = services[0];
 
       const providerId = primaryService?.providerId;
-      console.log("ProviderId", providerId)
-      console.log("services", services)
+
 
       const providerMismatch = services.some(s => s.providerId.toString() !== providerId?.toString());
       if (providerMismatch) {
@@ -375,8 +374,6 @@ export class ServiceBookingService {
       const availableSlots =
         availableSlotsResponse.data?.slots || [];
 
-      console.log("availableSlots", availableSlots)
-      console.log("dto.slotStartTime", dto.slotStartTime)
 
 
 
@@ -583,7 +580,7 @@ export class ServiceBookingService {
       const totalAmount =
         subtotal - couponDiscount;
 
-      console.log("DTO in line 586", dto)
+
 
       let walletAmountUsed = 0;
       let actualPaymentStatus: any
@@ -619,7 +616,7 @@ export class ServiceBookingService {
         }
       }
 
-      console.log("Actual Payment Status", actualPaymentStatus)
+
 
       const [booking] =
         await this.serviceBookingModel.create(
@@ -1181,7 +1178,7 @@ export class ServiceBookingService {
         booking.paymentStatus === BookingPaymentStatus.PAID &&
         !(booking as any).providerSettled
       ) {
-        console.log("Booking Provider Id", booking.providerId)
+
         await this.serviceProviderWalletService.addBalance(
           booking.providerId.toString(),
           booking.totalAmount,

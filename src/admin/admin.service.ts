@@ -798,10 +798,26 @@ export class AdminService {
       throw new NotFoundException('Product not found');
     }
 
+    const isOrdered = await this.vendorOrderModel.exists({
+      'items.productId': product._id,
+    });
+
     // fetch all variants
     const variants = await this.productVariantModel.find({
       productId: product._id,
     });
+
+    if (isOrdered) {
+      product.isDeleted = true;
+      product.isActive = false;
+      await product.save();
+      for (const variant of variants) {
+        variant.isDeleted = true;
+        variant.isActive = false;
+        await variant.save();
+      }
+      return ApiResponse.success('Product soft deleted because it was ordered previously', null);
+    }
 
     // delete media + variants
     for (const variant of variants) {

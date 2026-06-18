@@ -21,6 +21,7 @@ import { DocumentService } from 'src/document/document.service';
 import { ApiResponse } from 'src/common/responses/api-response';
 // import { UpdateCategoryDTO } from './dto/update-category.dto';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
+import { VendorOrder, VendorOrderDocument } from 'src/order/schema/vendor-order.schema';
 
 @Injectable()
 export class ProductService {
@@ -30,6 +31,7 @@ export class ProductService {
     private productVariantModel: Model<ProductVariantDocument>,
     @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
     @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
+    @InjectModel(VendorOrder.name) private vendorOrderModel: Model<VendorOrderDocument>,
     private documentService: DocumentService,
   ) { }
 
@@ -474,8 +476,8 @@ export class ProductService {
           const media = variantMediaData[i];
 
           if (
-            variant.costPrice >= variant.salesPrice ||
-            variant.salesPrice >= variant.offeredPrice
+            variant.costPrice > variant.salesPrice ||
+            variant.salesPrice > variant.offeredPrice
           ) {
             throw new BadRequestException(
               'Cost Price should be less than sales price and sales price should be less than offered price',
@@ -822,8 +824,8 @@ export class ProductService {
             }
 
             if (
-              variant.costPrice >= variant.salesPrice ||
-              variant.salesPrice >= variant.offeredPrice
+              variant.costPrice > variant.salesPrice ||
+              variant.salesPrice > variant.offeredPrice
             ) {
               throw new BadRequestException(
                 'Cost Price should be less than sales price and sales price should be less than offered price',
@@ -988,9 +990,25 @@ export class ProductService {
       throw new NotFoundException('Product not found');
     }
 
+    const isOrdered = await this.vendorOrderModel.exists({
+      'items.productId': product._id,
+    });
+
     const variants = await this.productVariantModel.find({
       productId: product._id,
     });
+
+    if (isOrdered) {
+      product.isDeleted = true;
+      product.isActive = false;
+      await product.save();
+      for (const variant of variants) {
+        variant.isDeleted = true;
+        variant.isActive = false;
+        await variant.save();
+      }
+      return ApiResponse.success('Product soft deleted because it was ordered previously', null);
+    }
 
     for (const variant of variants) {
       // delete thumbnail
@@ -1102,6 +1120,17 @@ export class ProductService {
       throw new BadRequestException(
         'Cannot delete the last variant of product',
       );
+    }
+
+    const isOrdered = await this.vendorOrderModel.exists({
+      'items.variantId': variant._id,
+    });
+
+    if (isOrdered) {
+      variant.isDeleted = true;
+      variant.isActive = false;
+      await variant.save();
+      return ApiResponse.success('Product Variant soft deleted because it was ordered previously', null);
     }
 
     if (variant.thumbnail) {

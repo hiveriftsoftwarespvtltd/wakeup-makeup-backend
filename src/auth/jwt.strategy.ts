@@ -24,11 +24,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
   async validate(payload: any) {
 
+    
+
     if (!payload.sub) {
       throw new UnauthorizedException()
     }
 
-    const user = await this.userModel.findById(payload.sub).select("email role isActive vendorId serviceProviderId influencerId distributorId educatorId")
+    const user = await this.userModel.findById(payload.sub).select("name email role isActive vendorId serviceProviderId influencerId distributorId educatorId")
 
     if (!user) {
       throw new UnauthorizedException("User not found")
@@ -40,10 +42,10 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 
 
 
-    console.log("Role is jwt", user)
     return {
       _id: user._id,
       email: user.email,
+      name: user.name,
       role: user.role,
       vendorId: user.vendorId,
       influencerId: user.influencerId,

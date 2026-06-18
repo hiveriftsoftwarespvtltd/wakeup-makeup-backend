@@ -122,7 +122,7 @@ export class CoursesService {
 
     async getCourseCategories(role?: string) {
         const query: any = {}
-        console.log("Role ", role)
+       
 
         if (role && role !== UserRole.ADMIN) {
             query.isDeleted = false;
@@ -188,8 +188,7 @@ export class CoursesService {
         const session = await this.connection.startSession();
         let media: any = null;
 
-        console.log("DTO", dto)
-        console.log("File", file)
+        
 
         try {
             session.startTransaction();
@@ -237,7 +236,7 @@ export class CoursesService {
                 }
             }
 
-            console.log("Payload in line 239", payload)
+           
 
             if (thumbnailId) {
                 payload.thumbnail = thumbnailId;
@@ -256,7 +255,7 @@ export class CoursesService {
             );
 
         } catch (error) {
-            console.log("Error in add course", error)
+            
             await session.abortTransaction();
 
             if (media) {
@@ -283,7 +282,7 @@ export class CoursesService {
     ) {
         const session = await this.connection.startSession();
         let media: any = null;
-        console.log("Update course DTO", dto)
+       
 
         try {
             session.startTransaction();
@@ -306,7 +305,7 @@ export class CoursesService {
             const finalSellingPrice = updatedFields.sellingPrice !== undefined ? updatedFields.sellingPrice : course.sellingPrice;
             const finalOfferedPrice = updatedFields.offeredPrice !== undefined ? updatedFields.offeredPrice : course.offeredPrice;
 
-            console.log("Filtered Object in line 300", filteredObject(dto), "updatedFields", updatedFields)
+            
 
             const finalIsFree = updatedFields.isFree !== undefined ? updatedFields.isFree : course.isFree;
 

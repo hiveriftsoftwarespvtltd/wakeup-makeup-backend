@@ -23,7 +23,7 @@ import { AddAddressDTO, UpdateAddressDTO } from 'src/address/dto/address.dto';
 @UseGuards(JwtAuthGuard)
 @Controller('user')
 export class UserController {
-  constructor(private userService: UserService) {}
+  constructor(private userService: UserService) { }
 
   // @Get()
   // findAll() {
@@ -35,7 +35,7 @@ export class UserController {
   //   return this.userService.create(dto);
   // }
 
- 
+
 
   @Post('avatar')
   @UseInterceptors(FileInterceptor('file'))
@@ -76,6 +76,7 @@ export class UserController {
     @Query('minPrice') minPrice?: number,
     @Query('maxPrice') maxPrice?: number,
   ) {
+   
     return this.userService.fetchProducts(
       req.user._id,
       categoryId,
