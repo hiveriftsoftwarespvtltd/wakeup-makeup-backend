@@ -1,6 +1,51 @@
-// src/media/storage/local.storage.ts
-import { Express } from 'express';
+// // src/media/storage/local.storage.ts
+// import { Express } from 'express';
 
+
+// import * as fs from 'fs';
+// import * as path from 'path';
+// import { randomUUID } from 'crypto';
+// import { StorageProvider, UploadResult } from './storage.interface';
+
+// export class LocalStorage implements StorageProvider {
+//   async upload(
+//     file: any,
+//     folder: string,
+//   ): Promise<UploadResult> {
+//     // const uploadDir = path.join(process.cwd(), 'uploads', folder);
+//     const uploadDir =
+//       process.env.NODE_ENV === 'production'
+//         ? path.join('/var/www/uploads', folder)
+//         : path.join(process.cwd(), 'uploads', folder);
+
+//     if (!fs.existsSync(uploadDir)) {
+//       fs.mkdirSync(uploadDir, { recursive: true });
+//     }
+
+//     const fileName = `${randomUUID()}-${file.originalname}`;
+//     const filePath = path.join(uploadDir, fileName);
+
+//     fs.writeFileSync(filePath, file.buffer);
+
+//     return {
+//       url: `/uploads/${folder}/${fileName}`,
+//       publicId: `${folder}/${fileName}`, // 🔥 used for delete
+//       mimeType: file.mimetype,
+//       size: file.size,
+//       originalName: file.originalname,
+//     };
+//   }
+
+//   async delete(publicId: string, resourceType?: string): Promise<void> {
+//     const filePath = path.join(process.cwd(), 'uploads', publicId);
+
+//     if (fs.existsSync(filePath)) {
+//       fs.unlinkSync(filePath);
+//     }
+//   }
+// }
+
+// src/media/storage/local.storage.ts
 
 import * as fs from 'fs';
 import * as path from 'path';
@@ -8,12 +53,27 @@ import { randomUUID } from 'crypto';
 import { StorageProvider, UploadResult } from './storage.interface';
 
 export class LocalStorage implements StorageProvider {
+  private getBaseUploadDir(): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const storageUsed = process.env.STORAGE_USED;
+
+  // Only use external server folder when using local storage in production
+  if (isProduction && storageUsed === 'local') {
+    return process.env.UPLOAD_DIR || '/var/www/uploads';
+  }
+
+  // Development local storage
+  return path.join(process.cwd(), 'uploads');
+}
+
   async upload(
     file: any,
     folder: string,
   ): Promise<UploadResult> {
-    const uploadDir = path.join(process.cwd(), 'uploads', folder);
+    const baseUploadDir = this.getBaseUploadDir();
+    const uploadDir = path.join(baseUploadDir, folder);
 
+    // Create folder if it doesn't exist
     if (!fs.existsSync(uploadDir)) {
       fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -23,17 +83,26 @@ export class LocalStorage implements StorageProvider {
 
     fs.writeFileSync(filePath, file.buffer);
 
+    const baseUrl =
+  process.env.NODE_ENV === 'production'
+    ? process.env.SERVER_BASE_URL
+    : `http://localhost:${process.env.PORT}`;
+
     return {
-      url: `/uploads/${folder}/${fileName}`,
-      publicId: `${folder}/${fileName}`, // 🔥 used for delete
+      url: `${baseUrl}/uploads/${folder}/${fileName}`,
+      publicId: `${folder}/${fileName}`,
       mimeType: file.mimetype,
       size: file.size,
       originalName: file.originalname,
     };
   }
 
-  async delete(publicId: string, resourceType?: string): Promise<void> {
-    const filePath = path.join(process.cwd(), 'uploads', publicId);
+  async delete(
+    publicId: string,
+    resourceType?: string,
+  ): Promise<void> {
+    const baseUploadDir = this.getBaseUploadDir();
+    const filePath = path.join(baseUploadDir, publicId);
 
     if (fs.existsSync(filePath)) {
       fs.unlinkSync(filePath);

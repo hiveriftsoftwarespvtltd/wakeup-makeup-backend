@@ -110,7 +110,7 @@ export class AdminSeederService {
       for (let i = 0; i < counts.users; i++) {
         const u = new UserModel({
           name: faker.person.fullName(),
-          email: faker.internet.email(),
+          email: faker.internet.email().toLowerCase(),
           password: defaultPassword,
           role: UserRole.USER,
           phone: faker.phone.number(),
@@ -123,7 +123,7 @@ export class AdminSeederService {
       for (let i = 0; i < counts.vendors; i++) {
         const u = new UserModel({
           name: faker.person.fullName(),
-          email: faker.internet.email(),
+          email: faker.internet.email().toLowerCase(),
           password: defaultPassword,
           role: UserRole.VENDOR,
           isEmailVerified: true,
@@ -188,7 +188,7 @@ export class AdminSeederService {
       for (let i = 0; i < counts.educators; i++) {
         const u = new UserModel({
           name: faker.person.fullName(),
-          email: faker.internet.email(),
+          email: faker.internet.email().toLowerCase(),
           password: defaultPassword,
           role: UserRole.EDUCATOR,
           isEmailVerified: true,
@@ -249,7 +249,7 @@ export class AdminSeederService {
       for (let i = 0; i < counts.providers; i++) {
         const u = new UserModel({
           name: faker.person.fullName(),
-          email: faker.internet.email(),
+          email: faker.internet.email().toLowerCase(),
           password: defaultPassword,
           role: UserRole.SERVICE_PROVIDER,
           isEmailVerified: true,
@@ -298,7 +298,7 @@ export class AdminSeederService {
       for (let i = 0; i < counts.influencers; i++) {
         const u = new UserModel({
           name: faker.person.fullName(),
-          email: faker.internet.email(),
+          email: faker.internet.email().toLowerCase(),
           password: defaultPassword,
           role: UserRole.INFLUENCER,
           isEmailVerified: true,

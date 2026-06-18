@@ -60,6 +60,7 @@ export class CartController {
     @Body('quantity') quantity: number,
     @Body('productId') productId: string,
   ) {
+   
     return this.cartService.addToCart(req.user._id, productId, id, quantity);
   }
 

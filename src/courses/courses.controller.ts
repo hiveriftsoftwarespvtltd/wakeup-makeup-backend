@@ -18,14 +18,14 @@ export class CoursesController {
     @Post('add-course-category')
     @UseInterceptors(FileInterceptor('file'))
     async createCourseCategory(@Body() dto: AddCourseCategoryDTO, @Req() req: any, @UploadedFile() file: Express.Multer.File) {
-        console.log("Category", file, dto)
+       
         return await this.courseService.addCategory(req.user._id, file, dto)
     }
 
     @Get('get-all-course-categories')
     @UseGuards(OptionalAuthGuard)
     async getAllCourseCategories(@Req() req: any) {
-        console.log()
+        
         return await this.courseService.getCourseCategories(req.user?.role)
     }
 
@@ -63,7 +63,7 @@ export class CoursesController {
     @Put('update-course/:courseId')
     @UseInterceptors(FileInterceptor('file'))
     async updateCourse(@Param('courseId') courseId: string, @Req() req: any, @UploadedFile() file: Express.Multer.File, @Body() dto: UpdateCourseDTO) {
-        console.log("Requyest User", req.user)
+       
         return await this.courseService.updateCourse(req.user.educatorId, courseId, dto, file);
     }
 

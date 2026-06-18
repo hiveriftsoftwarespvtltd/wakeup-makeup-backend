@@ -9,7 +9,14 @@ import { winstonLogger } from './common/logger/winston.logger';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+  // app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+  const uploadDir =
+    process.env.NODE_ENV === 'production' &&
+      process.env.STORAGE_USED === 'local'
+      ? process.env.UPLOAD_DIR || '/var/www/uploads'
+      : join(process.cwd(), 'uploads');
+
+  app.use('/uploads', express.static(uploadDir));
 
   app.setGlobalPrefix('/api/v1');
   app.useGlobalInterceptors(new ResponseInterceptor());
@@ -24,7 +31,7 @@ async function bootstrap() {
   app.enableCors();
   await app.listen(process.env.PORT ?? 3000);
 
-  console.log(`backend running on http://localhost:-{process.env.PORT ?? 3000}`);
+  console.log(`backend running on http://localhost:${process.env.PORT ?? 3000}`);
 }
 
 process.on('unhandledRejection', (reason: any) => {

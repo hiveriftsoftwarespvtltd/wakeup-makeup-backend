@@ -74,7 +74,7 @@ export class ServiceBookingController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SERVICE_PROVIDER)
   updateServiceBooking(@Req() req: any, @Param('id') bookingId: string, @Body('bookingStatus') bookingStatus?: BookingStatus, @Body('paymentStatus') paymentStatus?: BookingPaymentStatus) {
-    console.log("Service provider Id", req.user.serviceProviderId)
+    
     return this.serviceBookingService.updateServiceBooking(req.user.serviceProviderId, bookingId, bookingStatus, paymentStatus);
   }
 }

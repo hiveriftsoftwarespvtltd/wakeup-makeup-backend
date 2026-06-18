@@ -22,7 +22,7 @@ import { ServiceModule } from './service/service.module';
 import { PayoutModule } from './payout/payout.module';
 import { WalletModule } from './wallet/wallet.module';
 import { CoursesModule } from './courses/courses.module';
-
+import { AiFeaturesModule } from './ai-features/ai-features.module';
 
 
 @Module({
@@ -37,7 +37,7 @@ import { CoursesModule } from './courses/courses.module';
 
         const uri = node_env === 'development' ? configService.get('LOCAL_MONGO_URI') : configService.get('MONGO_URI')
         if (!uri) {
-          throw new Error("MNGO_URI NOT FOUND IN ENV")
+          throw new Error("MONGO_URI NOT FOUND IN ENV")
         }
         return { uri }
       }
@@ -61,7 +61,7 @@ import { CoursesModule } from './courses/courses.module';
     PayoutModule,
     WalletModule,
     CoursesModule,
-  
+    AiFeaturesModule
   ],
   controllers: [AppController],
   providers: [AppService],

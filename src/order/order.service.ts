@@ -861,7 +861,6 @@ export class OrderService {
             height: bucket.height,
           });
 
-          console.log('shipping', shipping);
 
 
           shippingCharge = Number(shipping.shippingCharge) || 0;

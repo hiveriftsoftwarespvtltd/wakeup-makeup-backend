@@ -110,7 +110,7 @@ export class DocumentService {
   //   }
 
   async deleteMedia(id: string, session?: ClientSession) {
-    console.log("Category Id in deleteMedia", id);
+    
     const query = this.mediaModel.findById(id);
 
     if (session) {

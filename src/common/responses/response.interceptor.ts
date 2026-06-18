@@ -19,6 +19,9 @@ export class ResponseInterceptor<T>
   ): Observable<ApiResponse<T>> {
     return next.handle().pipe(
       map((data) => {
+        if (data instanceof ApiResponse) {
+          return data;
+        }
         return ApiResponse.success('Success', data);
       }),
     );

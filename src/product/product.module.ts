@@ -26,6 +26,11 @@ import {
 } from 'src/document/schema/document.schema';
 
 import {
+  VendorOrder,
+  VendorOrderSchema,
+} from 'src/order/schema/vendor-order.schema';
+
+import {
   User,
   UserSchema,
 } from 'src/user/schema/user.schema';
@@ -58,6 +63,10 @@ import { DocumentModule } from 'src/document/document.module';
       {
         name: Media.name,
         schema: MediaSchema,
+      },
+      {
+        name: VendorOrder.name,
+        schema: VendorOrderSchema,
       },
     ]),
 
