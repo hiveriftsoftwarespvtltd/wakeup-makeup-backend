@@ -14,6 +14,12 @@ import { CashbackSlab, CashbackSlabDocument, CashbackType } from 'src/wallet/sch
 import { PaymentMethod } from 'src/order/schema/order.schema';
 import { WalletTransactionReason } from 'src/wallet/schema/user/user.wallet.transactions';
 import { EducatorWalletTransactionReason } from 'src/wallet/schema/educator/educator.wallet.transactions';
+import {
+    CommissionRate,
+    CommissionRateDocument,
+    CommissionEntityType,
+    CommissionOn,
+} from 'src/admin/schema/commission-rate.schema';
 
 @Injectable()
 export class CourseEnrollmentService {
@@ -24,6 +30,7 @@ export class CourseEnrollmentService {
         @InjectModel(Course.name) private courseModel: Model<CourseDocument>,
         @InjectModel(CoursePurchase.name) private coursePurchaseModel: Model<CoursePurchaseDocument>,
         @InjectModel(CashbackSlab.name) private cashbackSlabModel: Model<CashbackSlabDocument>,
+        @InjectModel(CommissionRate.name) private commissionRateModel: Model<CommissionRateDocument>,
         private userWalletService: UserWalletService,
         private educatorWalletService: EducatorWalletService,
         @InjectConnection() private connection: Connection,
@@ -71,7 +78,20 @@ export class CourseEnrollmentService {
             }
 
             const educator: any = course.educatorId;
-            const platformCommissionRate = educator?.comissionRate || 0;
+
+            // ── Resolve commission from admin CommissionRate schema ───────────────
+            const DEFAULT_COMMISSION_RATE = 25;
+            const DEFAULT_COMMISSION_ON = CommissionOn.SALEVALUE; // courses are revenue-based
+
+            const commissionDoc = await this.commissionRateModel.findOne().session(session);
+            const educatorSlab = commissionDoc?.commissions?.find(
+                (s) => s.entityType === CommissionEntityType.EDUCATOR,
+            );
+
+            const platformCommissionRate =
+                educatorSlab?.commissionPercentage ?? DEFAULT_COMMISSION_RATE;
+            const platformCommissionOn =
+                educatorSlab?.commissionOn ?? DEFAULT_COMMISSION_ON;
 
             const existingPurchase = await this.coursePurchaseModel.findOne({
                 learnerId: new Types.ObjectId(learnerId),
@@ -113,8 +133,17 @@ export class CourseEnrollmentService {
                 }
             }
 
-            const platformCommissionAmount = Number(((totalAmount * platformCommissionRate) / 100).toFixed(2));
-            const educatorEarnings = totalAmount - platformCommissionAmount;
+            // Choose commission base
+            let commissionBase: number;
+            if (platformCommissionOn === CommissionOn.PROFITVALUE) {
+                const costPrice = course.costPrice ?? 0;
+                commissionBase = Math.max(0, totalAmount - costPrice);
+            } else {
+                commissionBase = totalAmount;
+            }
+
+            const platformCommissionAmount = Number(((commissionBase * platformCommissionRate) / 100).toFixed(2));
+            const educatorEarnings = parseFloat((totalAmount - platformCommissionAmount).toFixed(2));
 
             const [purchase] = await this.coursePurchaseModel.create([{
                 learnerId: new Types.ObjectId(learnerId),
@@ -125,6 +154,7 @@ export class CourseEnrollmentService {
                 status: CoursePurchaseStatus.PAID,
                 isSettled: false,
                 platformCommissionRate,
+                platformCommissionOn,
                 platformCommissionAmount,
                 paymentMeta: {
                     cashbackAwarded: false

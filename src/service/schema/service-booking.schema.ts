@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 import { PaymentMethod } from "src/order/schema/order.schema";
+import { CommissionOn } from "src/admin/schema/commission-rate.schema";
 
 
 export enum BookingStatus {
@@ -127,6 +128,19 @@ export class ServiceBooking {
 
   @Prop({ type: Object, default: {} })
   paymentMeta!: any;
+
+  // ── Commission / Payout fields ──────────────────────────────────
+  @Prop({ default: 0 })
+  platformCommissionRate!: number;
+
+  @Prop({ default: CommissionOn.PROFITVALUE, enum: CommissionOn })
+  platformCommissionOn!: CommissionOn;
+
+  @Prop({ default: 0 })
+  platformCommissionAmount!: number;
+
+  @Prop({ default: 0 })
+  providerPayoutAmount!: number;
 
   @Prop({ default: false })
   isSettled!: boolean;

@@ -56,6 +56,12 @@ import { VendorWalletService } from 'src/wallet/service/vendor/vendor.wallet.ser
 import { VendorWalletTransactionReason } from 'src/wallet/schema/vendor/vendor.wallet.transactions';
 import { InfluencerWalletService } from 'src/wallet/service/influencer/influencer.wallet.service';
 import { InfluencerWalletTransactionReason } from 'src/wallet/schema/influencer/influencer.wallet.transactions';
+import {
+  CommissionRate,
+  CommissionRateDocument,
+  CommissionEntityType,
+  CommissionOn,
+} from 'src/admin/schema/commission-rate.schema';
 
 @Injectable()
 export class VendorService {
@@ -77,6 +83,8 @@ export class VendorService {
     private influencerCommisionModel: Model<InfluencerCommissionDocument>,
     @InjectModel(CashbackSlab.name)
     private cashbackSlabModel: Model<CashbackSlabDocument>,
+    @InjectModel(CommissionRate.name)
+    private commissionRateModel: Model<CommissionRateDocument>,
     @InjectConnection() private readonly connection: Connection,
     private documentService: DocumentService,
     private userWalletService: UserWalletService,
@@ -784,6 +792,39 @@ export class VendorService {
         vendorOrder.paymentStatus === PaymentStatus.PAID &&
         !vendorOrder.isVendorSettled
       ) {
+        // ── Resolve commission rate from admin schema ──────────────────
+        const DEFAULT_COMMISSION_RATE = 25;
+        const DEFAULT_COMMISSION_ON = CommissionOn.PROFITVALUE;
+
+        const commissionDoc = await this.commissionRateModel.findOne().session(session);
+
+        const vendorSlab = commissionDoc?.commissions?.find(
+          (s) => s.entityType === CommissionEntityType.VENDOR,
+        );
+
+        const commissionRate = vendorSlab?.commissionPercentage ?? DEFAULT_COMMISSION_RATE;
+        const commissionOn = vendorSlab?.commissionOn ?? DEFAULT_COMMISSION_ON;
+
+        // ── Compute payout based on commissionOn ──────────────────────
+        let commissionBase: number;
+        if (commissionOn === CommissionOn.PROFITVALUE) {
+          // grossProfit = finalOrderAmount - costPrice
+          commissionBase = vendorOrder.grossProfit ?? 0;
+        } else {
+          // SALE_VALUE → commission on the final order amount (grandTotal - shipping - cod)
+          commissionBase = vendorOrder.grandTotal - (vendorOrder.shippingCharge ?? 0) - (vendorOrder.codCharge ?? 0);
+        }
+
+        const platformCommissionAmount = parseFloat(((commissionBase * commissionRate) / 100).toFixed(2));
+
+        // payout = sale amount (excl. shipping/cod) minus platform commission
+        const saleBase = vendorOrder.grandTotal - (vendorOrder.shippingCharge ?? 0) - (vendorOrder.codCharge ?? 0);
+        const resolvedPayout = parseFloat((saleBase - platformCommissionAmount).toFixed(2));
+
+        vendorOrder.platformCommissionRate = commissionRate;
+        vendorOrder.platformCommissionOn = commissionOn;
+        vendorOrder.platformCommissionAmount = platformCommissionAmount;
+        vendorOrder.payoutAmount = resolvedPayout > 0 ? resolvedPayout : 0;
         vendorOrder.isVendorSettled = true;
         vendorOrder.vendorSettledAt = new Date();
 
@@ -957,20 +998,27 @@ export class VendorService {
           },
         );
 
-        // Calculate and add cashback if the main order just became DELIVERED and wallet was used
+        // ======================================================
+        // CASHBACK: credit user wallet for any DELIVERED + PAID order
+        // ======================================================
         if (
           allDelivered &&
           updatedMainOrder &&
-          (updatedMainOrder.paymentMethod === PaymentMethod.WALLET || updatedMainOrder.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) &&
-          updatedMainOrder.walletAmountUsed > 0 &&
+          updatedMainOrder.paymentStatus === PaymentStatus.PAID &&
           !updatedMainOrder.paymentMeta?.cashbackAwarded
         ) {
-          // Fetch active slabs and sort descending by minValue to find the highest applicable slab
-          const slabs = await this.cashbackSlabModel.find({ isActive: true }).sort({ minValue: -1 }).session(session);
+          const slabs = await this.cashbackSlabModel
+            .find({ isActive: true })
+            .sort({ minValue: -1 })
+            .session(session);
+
           let awardedCashback = 0;
 
           for (const slab of slabs) {
-            if (updatedMainOrder.grandTotal >= slab.minValue && updatedMainOrder.grandTotal <= slab.maxValue) {
+            if (
+              updatedMainOrder.grandTotal >= slab.minValue &&
+              updatedMainOrder.grandTotal <= slab.maxValue
+            ) {
               if (slab.cashbackType === CashbackType.PERCENTAGE) {
                 awardedCashback = (updatedMainOrder.grandTotal * slab.cashbackValue) / 100;
               } else {
@@ -979,7 +1027,7 @@ export class VendorService {
               if (slab.maxCashback > 0 && awardedCashback > slab.maxCashback) {
                 awardedCashback = slab.maxCashback;
               }
-              break; // Found the matching slab
+              break;
             }
           }
 
@@ -989,14 +1037,13 @@ export class VendorService {
               awardedCashback,
               WalletTransactionReason.CASHBACK,
               `Cashback for Order ${updatedMainOrder.orderNumber}`,
-              session
+              session,
             );
 
-            // Mark that cashback has been awarded
             await this.orderModel.findByIdAndUpdate(
               updatedMainOrder._id,
-              { $set: { "paymentMeta.cashbackAwarded": true } },
-              { session }
+              { $set: { 'paymentMeta.cashbackAwarded': true } },
+              { session },
             );
           }
         }
@@ -1017,6 +1064,8 @@ export class VendorService {
       session.endSession();
     }
   }
+
+
   async deleteAllVendorProducts(vendorId: string) {
     const session = await this.productModel.db.startSession();
 

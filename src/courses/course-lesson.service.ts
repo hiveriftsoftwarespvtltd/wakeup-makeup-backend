@@ -19,6 +19,26 @@ export class CourseLessonService {
         @InjectModel(CourseEnrollment.name) private courseEnrollmentModel: Model<CourseEnrollmentDocument>,
     ) { }
 
+    private async updateCourseStats(courseId: Types.ObjectId) {
+        const result = await this.courseLessonModel.aggregate([
+            { $match: { courseId: new Types.ObjectId(courseId) } },
+            {
+                $group: {
+                    _id: "$courseId",
+                    totalLessons: { $sum: 1 },
+                    totalDurationInSeconds: { $sum: "$durationInSeconds" }
+                }
+            }
+        ]);
+
+        const stats = result[0] || { totalLessons: 0, totalDurationInSeconds: 0 };
+
+        await this.courseModel.findByIdAndUpdate(courseId, {
+            totalLessons: stats.totalLessons,
+            totalDurationInMinutes: Math.round((stats.totalDurationInSeconds || 0) / 60)
+        });
+    }
+
     async createLesson(
         educatorId: string,
         dto: CreateCourseLessonDTO,
@@ -79,6 +99,8 @@ export class CourseLessonService {
             order: dto.order,
             isPreview: dto.isPreview,
         });
+
+        await this.updateCourseStats(course._id);
 
         return ApiResponse.success(
             'Course lesson created successfully',
@@ -153,6 +175,8 @@ export class CourseLessonService {
 
         await lesson.save();
 
+        await this.updateCourseStats(course._id);
+
         return ApiResponse.success(
             'Course lesson updated successfully',
             lesson,
@@ -214,6 +238,8 @@ export class CourseLessonService {
         }
 
         await lesson.deleteOne();
+
+        await this.updateCourseStats(course._id);
 
         return ApiResponse.success('Course lesson deleted successfully');
     }

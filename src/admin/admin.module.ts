@@ -65,6 +65,9 @@ import { AdminCleanupService } from './admin.cleanup.service';
 
 import { AdminSeederController } from './admin.seeder.controller';
 import { AdminSeederService } from './admin.seeder.service';
+import { AdminCommissionRateController } from './admin.commission-rate.controller';
+import { AdminCommissionRateService } from './admin.commission-rate.service';
+import { CommissionRate, CommissionRateSchema } from './schema/commission-rate.schema';
 
 @Module({
   imports: [
@@ -93,11 +96,12 @@ import { AdminSeederService } from './admin.seeder.service';
     MongooseModule.forFeature([{ name: influencerCommissonSlab.name, schema: influencerCommissionSlabSchema }]),
     MongooseModule.forFeature([{ name: InfluencerPayout.name, schema: InfluencerPayoutSchema }, { name: InfluencerInvitation.name, schema: InfluencerInvitationSchema }, { name: ServiceLead.name, schema: ServiceLeadSchema }, { name: ServiceBooking.name, schema: ServiceBookingSchema }, { name: CoursePurchase.name, schema: CoursePurchaseSchema }, { name: UserWallet.name, schema: UserWalletSchema }, { name: WalletTransaction.name, schema: WalletTransactionSchema }, { name: Wishlist.name, schema: WishlistSchema }, { name: Cart.name, schema: cartSchema }, { name: VendorWallet.name, schema: VendorWalletSchema }, { name: InfluencerWallet.name, schema: InfluencerWalletSchema }, { name: Educator.name, schema: EducatorSchema }, { name: EducatorWallet.name, schema: EducatorWalletSchema }, { name: Course.name, schema: CourseSchema }, { name: CourseEnrollment.name, schema: CourseEnrollmentSchema }, { name: ServiceProvider.name, schema: ServiceProviderSchema }, { name: ServiceProviderWallet.name, schema: ServiceProviderWalletSchema }, { name: ServiceQuotation.name, schema: ServiceQuotationSchema }, { name: ProviderSubscription.name, schema: ProviderSubscriptionSchema }, { name: ServiceReview.name, schema: ServiceReviewSchema }, { name: Service.name, schema: ServiceSchema }, { name: ServiceStaff.name, schema: ServiceStaffSchema }]),
     MongooseModule.forFeature([{ name: HomeContent.name, schema: HomeContentSchema }]),
+    MongooseModule.forFeature([{ name: CommissionRate.name, schema: CommissionRateSchema }]),
     DocumentModule,
     InfluencerModule,
     WalletModule,
   ],
-  providers: [AdminService, AdminDashboardService, HomeContentService, AdminCleanupService, AdminSeederService],
+  providers: [AdminService, AdminDashboardService, HomeContentService, AdminCleanupService, AdminSeederService, AdminCommissionRateService],
   controllers: [
     AdminController,
     AdminDashboardController,
@@ -105,6 +109,7 @@ import { AdminSeederService } from './admin.seeder.service';
     HomeContentController,
     AdminCleanupController,
     AdminSeederController,
+    AdminCommissionRateController,
   ],
 })
 export class AdminModule {}

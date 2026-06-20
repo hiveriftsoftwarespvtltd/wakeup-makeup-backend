@@ -15,10 +15,11 @@ import { Influencer, InfluencerSchema } from 'src/influencer/schema/influencer.s
 import { InfluencerCommission, InfluencerCommissionSchema } from 'src/influencer/schema/influencer-commision-rate.schema';
 import { CashbackSlab, CashbackSlabSchema } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
 import { WalletModule } from 'src/wallet/wallet.module';
+import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commission-rate.schema';
 
 @Module({
   imports:[MongooseModule.forFeature([{name:Vendor.name,schema:VendorSchema}]),MongooseModule.forFeature([{name:User.name,schema:UserSchema}]),MongooseModule.forFeature([{name:Product.name,schema:ProductSchema}]),MongooseModule.forFeature([{name:Category.name,schema:CategorySchema}]),MongooseModule.forFeature([{name:ProductVariant.name,schema:ProductVariantSchema}]),MongooseModule.forFeature([{name:Order.name,schema:OrderSchema}]),MongooseModule.forFeature([{name:VendorOrder.name,schema:VendorOrderSchema}]),
-  MongooseModule.forFeature([{name:VendorShipment.name,schema:VendorShipmentSchema}]),MongooseModule.forFeature([{name:Influencer.name,schema:InfluencerSchema}]),MongooseModule.forFeature([{name:InfluencerCommission.name,schema:InfluencerCommissionSchema}]),MongooseModule.forFeature([{name:CashbackSlab.name,schema:CashbackSlabSchema}]),DocumentModule,WalletModule],
+  MongooseModule.forFeature([{name:VendorShipment.name,schema:VendorShipmentSchema}]),MongooseModule.forFeature([{name:Influencer.name,schema:InfluencerSchema}]),MongooseModule.forFeature([{name:InfluencerCommission.name,schema:InfluencerCommissionSchema}]),MongooseModule.forFeature([{name:CashbackSlab.name,schema:CashbackSlabSchema}]),MongooseModule.forFeature([{name:CommissionRate.name,schema:CommissionRateSchema}]),DocumentModule,WalletModule],
   providers: [VendorService],
   controllers: [VendorController],
   exports:[MongooseModule]

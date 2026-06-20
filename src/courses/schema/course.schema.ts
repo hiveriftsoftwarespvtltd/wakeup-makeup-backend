@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Document, Types } from "mongoose";
+import mongoose, { Document, Types } from "mongoose";
 
 
 
@@ -26,7 +26,7 @@ export type CourseDocument = Course & Document
 @Schema({ timestamps: true })
 export class Course {
     @Prop({
-        type: Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Educator',
         required: true,
     })
@@ -42,13 +42,13 @@ export class Course {
     description!: string;
 
     @Prop({
-        type: Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'Media'
     })
     thumbnail!: Types.ObjectId;
 
     @Prop({
-        type: Types.ObjectId,
+        type: mongoose.Schema.Types.ObjectId,
         ref: 'CourseCategory'
     })
     categoryId!: Types.ObjectId;

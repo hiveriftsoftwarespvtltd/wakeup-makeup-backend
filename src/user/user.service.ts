@@ -1223,7 +1223,7 @@ export class UserService {
           _id: 0,
           brand: '$_id',
           totalProducts: 1,
-          image: '$thumbnailMedia',
+          image: '$thumbnailMedia.url',
         },
       },
       {
@@ -1265,7 +1265,7 @@ export class UserService {
 
   async getTopSellingProducts(limit: number = 10) {
     const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 90);
 
     const matchStage = {
       createdAt: { $gte: thirtyDaysAgo },
@@ -1340,22 +1340,43 @@ export class UserService {
                   offeredPrice: '$$variant.offeredPrice',
                   stock: '$$variant.stock',
                   thumbnail: {
-                    $arrayElemAt: [
-                      {
-                        $filter: {
-                          input: '$thumbnails',
-                          as: 'thumb',
-                          cond: { $eq: ['$$thumb._id', '$$variant.thumbnail'] }
+                    $let: {
+                      vars: {
+                        thumb: {
+                          $arrayElemAt: [
+                            {
+                              $filter: {
+                                input: '$thumbnails',
+                                as: 'thumb',
+                                cond: { $eq: ['$$thumb._id', '$$variant.thumbnail'] }
+                              }
+                            },
+                            0
+                          ]
                         }
                       },
-                      0
-                    ]
+                      in: {
+                        _id: '$$thumb._id',
+                        publicId: '$$thumb.publicId',
+                        url: '$$thumb.url'
+                      }
+                    }
                   },
                   images: {
-                    $filter: {
-                      input: '$images',
+                    $map: {
+                      input: {
+                        $filter: {
+                          input: '$images',
+                          as: 'image',
+                          cond: { $in: ['$$image._id', '$$variant.images'] }
+                        }
+                      },
                       as: 'image',
-                      cond: { $in: ['$$image._id', '$$variant.images'] }
+                      in: {
+                        _id: '$$image._id',
+                        publicId: '$$image.publicId',
+                        url: '$$image.url'
+                      }
                     }
                   }
                 }
@@ -1371,7 +1392,7 @@ export class UserService {
 
   async getTrendingProducts(limit: number = 10) {
     const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 90);
 
     const ordersQuery = [
       {
@@ -1479,22 +1500,43 @@ export class UserService {
                 offeredPrice: '$$variant.offeredPrice',
                 stock: '$$variant.stock',
                 thumbnail: {
-                  $arrayElemAt: [
-                    {
-                      $filter: {
-                        input: '$thumbnails',
-                        as: 'thumb',
-                        cond: { $eq: ['$$thumb._id', '$$variant.thumbnail'] }
+                  $let: {
+                    vars: {
+                      thumb: {
+                        $arrayElemAt: [
+                          {
+                            $filter: {
+                              input: '$thumbnails',
+                              as: 'thumb',
+                              cond: { $eq: ['$$thumb._id', '$$variant.thumbnail'] }
+                            }
+                          },
+                          0
+                        ]
                       }
                     },
-                    0
-                  ]
+                    in: {
+                      _id: '$$thumb._id',
+                      publicId: '$$thumb.publicId',
+                      url: '$$thumb.url'
+                    }
+                  }
                 },
                 images: {
-                  $filter: {
-                    input: '$images',
+                  $map: {
+                    input: {
+                      $filter: {
+                        input: '$images',
+                        as: 'image',
+                        cond: { $in: ['$$image._id', '$$variant.images'] }
+                      }
+                    },
                     as: 'image',
-                    cond: { $in: ['$$image._id', '$$variant.images'] }
+                    in: {
+                      _id: '$$image._id',
+                      publicId: '$$image.publicId',
+                      url: '$$image.url'
+                    }
                   }
                 }
               }

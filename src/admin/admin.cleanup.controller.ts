@@ -14,6 +14,6 @@ export class AdminCleanupController {
     @Roles(UserRole.ADMIN)
     @Delete('all-data')
     async wipeAllData() {
-        return await this.adminCleanupService.wipeAllData();
+        return await this.adminCleanupService.wipeAllData(['shiprockettokens']);
     }
 }

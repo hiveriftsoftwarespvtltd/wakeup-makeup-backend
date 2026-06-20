@@ -477,10 +477,10 @@ export class ProductService {
 
           if (
             variant.costPrice > variant.salesPrice ||
-            variant.salesPrice > variant.offeredPrice
+            variant.offeredPrice > variant.salesPrice
           ) {
             throw new BadRequestException(
-              'Cost Price should be less than sales price and sales price should be less than offered price',
+              'Cost Price should be less than sales price and sales price should be greater than offered price',
             );
           }
 
@@ -825,10 +825,10 @@ export class ProductService {
 
             if (
               variant.costPrice > variant.salesPrice ||
-              variant.salesPrice > variant.offeredPrice
+              variant.offeredPrice > variant.salesPrice
             ) {
               throw new BadRequestException(
-                'Cost Price should be less than sales price and sales price should be less than offered price',
+                'Cost Price should be less than sales price and sales price should be greater than offered price',
               );
             }
 

@@ -8,6 +8,7 @@ import {
   ShippingAddress,
   ShippingAddressSchema,
 } from './order.schema';
+import { CommissionOn } from 'src/admin/schema/commission-rate.schema';
 
 export type VendorOrderDocument = VendorOrder & Document;
 @Schema({ timestamps: true })
@@ -119,6 +120,9 @@ export class VendorOrder {
 
   @Prop({ default: 0 })
   platformCommissionRate!: number;
+
+  @Prop({ default: CommissionOn.PROFITVALUE, enum: CommissionOn })
+  platformCommissionOn!: CommissionOn;
 
   @Prop({ default: 0 })
   platformCommissionAmount!: number;

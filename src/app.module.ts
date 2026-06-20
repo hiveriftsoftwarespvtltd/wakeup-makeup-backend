@@ -37,7 +37,7 @@ import { AiFeaturesModule } from './ai-features/ai-features.module';
 
         const uri = node_env === 'development' ? configService.get('LOCAL_MONGO_URI') : configService.get('MONGO_URI')
         if (!uri) {
-          throw new Error("MONGO_URI NOT FOUND IN ENV")
+          throw new Error("MNGO_URI NOT FOUND IN ENV")
         }
         return { uri }
       }
