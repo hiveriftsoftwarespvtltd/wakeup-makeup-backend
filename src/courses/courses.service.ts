@@ -122,7 +122,7 @@ export class CoursesService {
 
     async getCourseCategories(role?: string) {
         const query: any = {}
-       
+
 
         if (role && role !== UserRole.ADMIN) {
             query.isDeleted = false;
@@ -163,6 +163,7 @@ export class CoursesService {
             const course = await this.courseModel.findOne({ categoryId: new Types.ObjectId(courseCategoryId) })
             if (course) {
                 courseCategory.isDeleted = true
+                courseCategory.isActive = false
                 await courseCategory.save()
             } else {
                 if (courseCategory.icon) {
@@ -188,7 +189,7 @@ export class CoursesService {
         const session = await this.connection.startSession();
         let media: any = null;
 
-        
+
 
         try {
             session.startTransaction();
@@ -226,6 +227,7 @@ export class CoursesService {
             const payload: any = {
                 ...dto,
                 educatorId: new Types.ObjectId(educatorId),
+                categoryId: new Types.ObjectId(dto.categoryId)
             };
 
             if (payload.costPrice !== undefined && payload.sellingPrice !== undefined && payload.offeredPrice !== undefined) {
@@ -236,7 +238,7 @@ export class CoursesService {
                 }
             }
 
-           
+
 
             if (thumbnailId) {
                 payload.thumbnail = thumbnailId;
@@ -255,7 +257,7 @@ export class CoursesService {
             );
 
         } catch (error) {
-            
+
             await session.abortTransaction();
 
             if (media) {
@@ -282,7 +284,7 @@ export class CoursesService {
     ) {
         const session = await this.connection.startSession();
         let media: any = null;
-       
+
 
         try {
             session.startTransaction();
@@ -305,7 +307,7 @@ export class CoursesService {
             const finalSellingPrice = updatedFields.sellingPrice !== undefined ? updatedFields.sellingPrice : course.sellingPrice;
             const finalOfferedPrice = updatedFields.offeredPrice !== undefined ? updatedFields.offeredPrice : course.offeredPrice;
 
-            
+
 
             const finalIsFree = updatedFields.isFree !== undefined ? updatedFields.isFree : course.isFree;
 

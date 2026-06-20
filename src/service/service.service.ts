@@ -1307,6 +1307,17 @@ export class ServiceService {
     ) {
 
         const bookingDate = new Date(dto.date || Date.now());
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const checkDate = new Date(bookingDate);
+        checkDate.setHours(0, 0, 0, 0);
+
+        if (checkDate.getTime() < today.getTime()) {
+            throw new BadRequestException('date should be of today time or upcoming time');
+        }
+
         const dayOfWeek = getWeekDay(bookingDate);
 
         const requestedServiceIds = dto.serviceIds.map(id => new Types.ObjectId(id));

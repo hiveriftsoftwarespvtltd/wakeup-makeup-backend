@@ -76,7 +76,7 @@ export class UserController {
     @Query('minPrice') minPrice?: number,
     @Query('maxPrice') maxPrice?: number,
   ) {
-   
+
     return this.userService.fetchProducts(
       req.user._id,
       categoryId,

@@ -27,7 +27,6 @@ export class ServiceReviewService {
       const booking = await this.bookingModel.findOne({
         _id: new Types.ObjectId(dto.bookingId),
         userId: new Types.ObjectId(userId),
-        'items.serviceId': new Types.ObjectId(dto.serviceId),
         providerId: new Types.ObjectId(dto.serviceProviderId),
         bookingStatus: BookingStatus.COMPLETED,
         paymentStatus: BookingPaymentStatus.PAID,
@@ -37,46 +36,57 @@ export class ServiceReviewService {
         throw new BadRequestException('You can only review services that have been completed and paid for.');
       }
 
-      if (booking.paymentStatus !== BookingPaymentStatus.PAID || booking.bookingStatus !== BookingStatus.COMPLETED) {
-        throw new BadRequestException('You can only review services that have been completed and paid for.');
+      // Check if all requested services exist in the booking
+      const bookedServiceIds = booking.items.map(item => item.serviceId.toString());
+      if (!dto.services || dto.services.length === 0) {
+        throw new BadRequestException('No services provided for review.');
+      }
+      for (const service of dto.services) {
+        if (!bookedServiceIds.includes(service.serviceId)) {
+          throw new BadRequestException(`Service ${service.serviceId} is not part of this booking.`);
+        }
       }
 
       // Check for duplicate review
-      const existingReview = await this.reviewModel.findOne({
+      const serviceIdsToReview = dto.services.map(s => new Types.ObjectId(s.serviceId));
+      const existingReviews = await this.reviewModel.find({
         userId: new Types.ObjectId(userId),
         bookingId: new Types.ObjectId(dto.bookingId),
-        serviceId: new Types.ObjectId(dto.serviceId),
+        serviceId: { $in: serviceIdsToReview },
       }).session(session);
 
-      if (existingReview) {
-        throw new BadRequestException('You have already reviewed this booking.');
+      if (existingReviews.length > 0) {
+        throw new BadRequestException('You have already reviewed one or more of these services.');
       }
 
       const imageIds: Types.ObjectId[] = [];
       if (files && files.length > 0) {
         for (const file of files) {
-          // Document service upload is external, keeping outside transaction safety
           const uploaded = await this.documentService.upload(file, 'service-reviews', userId);
           imageIds.push(new Types.ObjectId(uploaded._id as any));
         }
       }
 
-      const [review] = await this.reviewModel.create([{
+      const reviewDocs = dto.services.map(serviceReview => ({
         userId: new Types.ObjectId(userId),
         bookingId: new Types.ObjectId(dto.bookingId),
-        serviceId: new Types.ObjectId(dto.serviceId),
+        serviceId: new Types.ObjectId(serviceReview.serviceId),
         serviceProviderId: new Types.ObjectId(dto.serviceProviderId),
         providerRating: dto.providerRating,
         providerReview: dto.providerReview,
-        serviceRating: dto.serviceRating,
-        serviceReview: dto.serviceReview,
+        serviceRating: serviceReview.serviceRating,
+        serviceReview: serviceReview.serviceReview,
         images: imageIds,
-      }], { session });
+      }));
 
-      await this.updateRatings(dto.serviceId, dto.serviceProviderId, session);
+      const reviews = await this.reviewModel.insertMany(reviewDocs, { session });
+
+      for (const service of dto.services) {
+        await this.updateRatings(service.serviceId, dto.serviceProviderId, session);
+      }
 
       await session.commitTransaction();
-      return review;
+      return reviews;
     } catch (error) {
       await session.abortTransaction();
       throw error;
@@ -85,40 +95,82 @@ export class ServiceReviewService {
     }
   }
 
-  async updateReview(userId: string, reviewId: string, dto: UpdateServiceReviewDto, files?: any[]) {
+  async updateReview(userId: string, targetId: string, dto: UpdateServiceReviewDto, files?: any[]) {
     const session = await this.connection.startSession();
     try {
       session.startTransaction();
 
-      const review = await this.reviewModel.findOne({
-        _id: new Types.ObjectId(reviewId),
+      // Try to find if targetId is a reviewId
+      const reviewByTarget = await this.reviewModel.findOne({
+        _id: new Types.ObjectId(targetId),
         userId: new Types.ObjectId(userId),
       }).session(session);
 
-      if (!review) {
-        throw new NotFoundException('Review not found');
+      let bookingIdToUse = new Types.ObjectId(targetId);
+      if (reviewByTarget) {
+        bookingIdToUse = reviewByTarget.bookingId;
       }
 
-      if (dto.providerRating !== undefined) review.providerRating = dto.providerRating;
-      if (dto.providerReview !== undefined) review.providerReview = dto.providerReview;
-      if (dto.serviceRating !== undefined) review.serviceRating = dto.serviceRating;
-      if (dto.serviceReview !== undefined) review.serviceReview = dto.serviceReview;
+      // Fetch all reviews for this booking
+      const reviews = await this.reviewModel.find({
+        bookingId: bookingIdToUse,
+        userId: new Types.ObjectId(userId),
+      }).session(session);
 
+      if (reviews.length === 0) {
+        throw new NotFoundException('Review(s) not found');
+      }
+
+      let imageIds: Types.ObjectId[] | undefined;
       if (files && files.length > 0) {
-        const imageIds: Types.ObjectId[] = [];
+        imageIds = [];
         for (const file of files) {
           const uploaded = await this.documentService.upload(file, 'service-reviews', userId);
           imageIds.push(new Types.ObjectId(uploaded._id as any));
         }
-        review.images = imageIds;
       }
 
-      await review.save({ session });
+      // Apply general provider updates to all matched reviews
+      for (const review of reviews) {
+        let hasChanges = false;
+        if (dto.providerRating !== undefined) {
+          review.providerRating = dto.providerRating;
+          hasChanges = true;
+        }
+        if (dto.providerReview !== undefined) {
+          review.providerReview = dto.providerReview;
+          hasChanges = true;
+        }
+        if (imageIds) {
+          review.images = imageIds;
+          hasChanges = true;
+        }
 
-      await this.updateRatings(review.serviceId.toString(), review.serviceProviderId.toString(), session);
+        if (hasChanges) {
+          await review.save({ session });
+        }
+      }
+
+      // Apply service specific updates
+      if (dto.services && dto.services.length > 0) {
+        for (const serviceUpdate of dto.services) {
+          const reviewToUpdate = reviews.find(r => r.serviceId.toString() === serviceUpdate.serviceId);
+          if (reviewToUpdate) {
+            if (serviceUpdate.serviceRating !== undefined) reviewToUpdate.serviceRating = serviceUpdate.serviceRating;
+            if (serviceUpdate.serviceReview !== undefined) reviewToUpdate.serviceReview = serviceUpdate.serviceReview;
+            await reviewToUpdate.save({ session });
+          }
+        }
+      }
+
+      const providerId = reviews[0].serviceProviderId.toString();
+      const serviceIds = [...new Set(reviews.map(r => r.serviceId.toString()))];
+      for (const sId of serviceIds) {
+        await this.updateRatings(sId, providerId, session);
+      }
 
       await session.commitTransaction();
-      return review;
+      return reviews;
     } catch (error) {
       await session.abortTransaction();
       throw error;

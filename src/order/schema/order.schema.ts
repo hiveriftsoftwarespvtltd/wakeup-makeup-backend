@@ -681,6 +681,15 @@ export class Order {
   @Prop({ default: 0 })
   paidAmount!: number;
 
+  @Prop({ default: 0 })
+  platformComissionRate!: number;
+
+  @Prop({ default: 0 })
+  influencerComissionRate!: number;
+
+  @Prop({ default: 0 })
+  platformComissionAmount!: number;
+
   @Prop({
     default: false,
   })

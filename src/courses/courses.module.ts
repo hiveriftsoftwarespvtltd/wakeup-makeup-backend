@@ -14,6 +14,7 @@ import { CourseAttachment, CourseAttachmentSchema } from './schema/course-attach
 import { DocumentModule } from 'src/document/document.module';
 import { User, UserSchema } from 'src/user/schema/user.schema';
 import { CashbackSlab, CashbackSlabSchema } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
+import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commission-rate.schema';
 import { EducatorController } from './educator.controller';
 import { EducatorService } from './educator.service';
 import { CourseSectionController } from './course-section.controller';
@@ -43,6 +44,7 @@ import { LearnerService } from './learner.service';
     { name: CourseAttachment.name, schema: CourseAttachmentSchema },
     { name: User.name, schema: UserSchema },
     { name: CashbackSlab.name, schema: CashbackSlabSchema },
+    { name: CommissionRate.name, schema: CommissionRateSchema },
   ]), DocumentModule, WalletModule],
   controllers: [CoursesController, EducatorController, CourseSectionController, CourseLessonController, CourseEnrollmentController, CourseAttachmentController, DashboardController, LearnerController],
   providers: [CoursesService, EducatorService, CourseSectionService, CourseLessonService, CourseEnrollmentService, CourseAttachmentService, DashboardService, LearnerService],

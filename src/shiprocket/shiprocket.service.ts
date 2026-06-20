@@ -16,6 +16,7 @@ import {
   ShiprocketToken,
   ShiprocketTokenDocument,
 } from './schema/shiprocket-token.schema';
+import { InsertShiprocketTokenDto } from './dto/InsertShiprocketToken.dto';
 
 export interface ServiceabilityParams {
   pickupPincode: string;
@@ -35,12 +36,12 @@ export class ShiprocketService {
     private readonly shiprocketTokenModel: Model<ShiprocketTokenDocument>,
 
     private readonly httpService: HttpService,
-  ) {}
+  ) { }
 
   private async generateToken(): Promise<string> {
     try {
 
-     
+
       const { data } = await firstValueFrom(
         this.httpService.post(
           `${process.env.SHIPROCKET_USER_URL}/auth/login`,
@@ -52,7 +53,7 @@ export class ShiprocketService {
         ),
       );
 
-      
+
 
       const expiresAt = new Date();
       expiresAt.setDate(expiresAt.getDate() + 9);
@@ -71,11 +72,34 @@ export class ShiprocketService {
 
       return data.token;
     } catch (error) {
-        console.log("Generate Ship Rocket Token Error",error)
+      console.log("Generate Ship Rocket Token Error", error)
+      console.log('Message:', error.message);
+      console.log('Response:', error.response?.data);
+      console.log('Status:', error.response?.status);
       throw new InternalServerErrorException(
         'Failed to generate Shiprocket token',
       );
     }
+  }
+
+  async insertShiprocketToken(insertShiprocketTokenDto: InsertShiprocketTokenDto) {
+    const expiresAt = insertShiprocketTokenDto.expiresAt
+      ? new Date(insertShiprocketTokenDto.expiresAt)
+      : new Date(new Date().setDate(new Date().getDate() + 9));
+
+    const result = await this.shiprocketTokenModel.findOneAndUpdate(
+      {},
+      {
+        token: insertShiprocketTokenDto.token,
+        expiresAt,
+      },
+      {
+        upsert: true,
+        new: true,
+      },
+    );
+
+    return result;
   }
 
   async getAuthToken(): Promise<string> {
@@ -106,6 +130,7 @@ export class ShiprocketService {
         params.declaredValue,
       ),
     });
+
 
     if (
       params.length &&
@@ -139,6 +164,7 @@ export class ShiprocketService {
       ),
     );
 
+  
     const availableCouriers =
       data?.data?.available_courier_companies || [];
 
@@ -151,7 +177,7 @@ export class ShiprocketService {
     // Only road/surface couriers
     const surfaceCouriers =
       availableCouriers.filter(
-        (courier:any) =>
+        (courier: any) =>
           courier.is_surface === true,
       );
 
@@ -166,7 +192,7 @@ export class ShiprocketService {
     // 2. Lowest ETA hours
 
     const bestCourier = surfaceCouriers.sort(
-      (a:any, b:any) => {
+      (a: any, b: any) => {
         if (
           b.tracking_performance !==
           a.tracking_performance
@@ -221,38 +247,38 @@ export class ShiprocketService {
     };
   }
   async calculateShippingForVariant(
-  vendorPincode: string,
-  deliveryPincode: string,
-  variant: any,
-  isCOD: 0 | 1 = 0,
-) {
-  try {
-    const shipping =
-      await this.getShippingOptions({
-        pickupPincode: vendorPincode,
-        deliveryPincode: deliveryPincode,
+    vendorPincode: string,
+    deliveryPincode: string,
+    variant: any,
+    isCOD: 0 | 1 = 0,
+  ) {
+    try {
+      const shipping =
+        await this.getShippingOptions({
+          pickupPincode: vendorPincode,
+          deliveryPincode: deliveryPincode,
 
-        weightKg: Number(variant.weight || 0.5),
+          weightKg: Number(variant.weight || 0.5),
 
-        declaredValue: Number(
-          variant.salesPrice || variant.price,
-        ),
+          declaredValue: Number(
+            variant.salesPrice || variant.price,
+          ),
 
-        isCOD,
+          isCOD,
 
-        length: Number(variant.length || 10),
-        breadth: Number(variant.breadth || 10),
-        height: Number(variant.height || 10),
-      });
+          length: Number(variant.length || 10),
+          breadth: Number(variant.breadth || 10),
+          height: Number(variant.height || 10),
+        });
 
-    return shipping;
-  } catch (error:any) {
-    return {
-      shippingAvailable: false,
-      message:
-        error?.response?.data?.message ||
-        'Shipping unavailable',
-    };
+      return shipping;
+    } catch (error: any) {
+      return {
+        shippingAvailable: false,
+        message:
+          error?.response?.data?.message ||
+          'Shipping unavailable',
+      };
+    }
   }
-}
 }

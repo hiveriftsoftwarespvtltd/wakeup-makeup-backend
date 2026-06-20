@@ -270,22 +270,33 @@ export class AuthService {
     }
 
     // generate login otp
-    const otp = generateOTP();
+    // const otp = generateOTP();
 
-    user.otp = otp;
+    // user.otp = otp;
 
-    user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
+    // user.otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    await user.save();
+    // await user.save();
 
     // send login otp
-    await sendMail(user.email, 'Login OTP', loginOtpTemplate(user.name, otp));
+    // await sendMail(user.email, 'Login OTP', loginOtpTemplate(user.name, otp));
+
+    const payload = {
+      sub: user._id,
+      email: user.email,
+      role: user.role,
+    };
+
+
+    const token = await this.jwtService.signAsync(payload);
+
+    const { password, ...safeUser } = user.toObject();
 
     return ApiResponse.success(
-      'OTP sent successfully',
+      'Login successful',
       {
-        email: user.email,
-        otp,
+        safeUser,
+        access_token: token,
       },
       200,
     );

@@ -19,9 +19,10 @@ import { StaffAllocation, StaffAllocationDocument, AllocationType, StaffAllocati
 import { UserWalletService } from 'src/wallet/service/user/user.wallet.service';
 import { CashbackSlab, CashbackSlabDocument, CashbackType } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
 import { WalletTransactionReason } from 'src/wallet/schema/user/user.wallet.transactions';
+import { ServiceReview, ServiceReviewDocument } from './schema/service-review.schema';
 import { Service, ServiceDocument } from './schema/service.schema';
 import { ServiceStaff, ServiceStaffDocument } from './schema/service-staff.schema';
-import { User, UserDocument } from 'src/user/schema/user.schema';
+import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
 import { ServiceProvider, ServiceProviderDocument } from './schema/service-provider.schema';
 import { CreateBookingDTO, RescheduleBookingDTO } from './dto/service.dto';
 import { calculateEndTime, safeSendMail, sendMail, toMinutes, toTimeString } from 'src/utils/helper';
@@ -29,6 +30,12 @@ import { ServiceService } from './service.service';
 import { bookingCancelledTemplate, bookingCompletedTemplate, bookingRescheduledTemplate } from 'src/utils/service.email.template';
 import { ServiceProviderWalletService } from 'src/wallet/service/service_provider/service_provider.wallet.service';
 import { ServiceProviderWalletTransactionReason } from 'src/wallet/schema/service_provider/service_provider.wallet.transactions';
+import {
+  CommissionRate,
+  CommissionRateDocument,
+  CommissionEntityType,
+  CommissionOn,
+} from 'src/admin/schema/commission-rate.schema';
 
 @Injectable()
 export class ServiceBookingService {
@@ -44,6 +51,8 @@ export class ServiceBookingService {
     @InjectModel(User.name) private userModel: Model<UserDocument>,
     @InjectModel(ServiceProvider.name) private providerModel: Model<ServiceProviderDocument>,
     @InjectModel(CashbackSlab.name) private cashbackSlabModel: Model<CashbackSlabDocument>,
+    @InjectModel(CommissionRate.name) private commissionRateModel: Model<CommissionRateDocument>,
+    @InjectModel(ServiceReview.name) private reviewModel: Model<ServiceReviewDocument>,
     private service: ServiceService,
     private userWalletService: UserWalletService,
     private serviceProviderWalletService: ServiceProviderWalletService,
@@ -51,200 +60,7 @@ export class ServiceBookingService {
     @InjectConnection() private connection: Connection,
   ) { }
 
-  // async createBooking(userId: string, dto: CreateBookingDTO) {
-  //   const session = await this.connection.startSession();
-  //   try {
-  //     session.startTransaction();
 
-  //     // Validate service
-  //     const service = await this.serviceModel
-  //       .findById(new Types.ObjectId(dto.serviceId))
-  //       .session(session);
-
-  //     if (!service || !service.isActive) {
-  //       throw new NotFoundException('Service not found or inactive');
-  //     }
-
-  //     // Validate staff belongs to provider (only if staffId is provided in DTO, otherwise might handle differently)
-  //     const staff = await this.serviceStaffModel
-  //       .findOne({
-  //         _id: new Types.ObjectId(dto.staffId),
-  //         providerId: service.providerId,
-  //         isActive: true,
-  //       })
-  //       .session(session);
-
-  //     if (!staff) {
-  //       throw new NotFoundException('Staff not found or inactive');
-  //     }
-
-  //     // Check slot availability
-  //     const bookingDate = new Date(dto.bookingDate);
-  //     const startOfDay = new Date(bookingDate);
-  //     startOfDay.setHours(0, 0, 0, 0);
-  //     const endOfDay = new Date(bookingDate);
-  //     endOfDay.setHours(23, 59, 59, 999);
-
-  //     const conflicting = await this.serviceBookingModel
-  //       .findOne({
-  //         staffId: staff._id,
-  //         bookingDate: { $gte: startOfDay, $lte: endOfDay },
-  //         slotStartTime: dto.slotStartTime,
-  //         bookingStatus: {
-  //           $in: [
-  //             BookingStatus.PENDING,
-  //             BookingStatus.CONFIRMED,
-  //             BookingStatus.ONGOING,
-  //           ],
-  //         },
-  //       })
-  //       .session(session);
-
-  //     if (conflicting) {
-  //       throw new BadRequestException('This slot is already booked');
-  //     }
-
-  //     // Price calculation
-  //     const subtotal = service.offeredPrice || service.sellingPrice;
-  //     let couponDiscount = 0;
-  //     let couponId: Types.ObjectId | undefined;
-
-  //     // Apply coupon if provided
-  //     if (dto.couponCode) {
-  //       const coupon = await this.couponModel
-  //         .findOne({
-  //           code: dto.couponCode.trim().toUpperCase(),
-  //           isActive: true,
-  //         })
-  //         .session(session);
-
-  //       if (!coupon) {
-  //         throw new BadRequestException('Coupon not found');
-  //       }
-
-  //       const now = new Date();
-  //       if (coupon.startsAt && now < coupon.startsAt) {
-  //         throw new BadRequestException('Coupon not started yet');
-  //       }
-  //       if (coupon.expiresAt && now >= coupon.expiresAt) {
-  //         throw new BadRequestException('Coupon expired');
-  //       }
-  //       if (
-  //         coupon.totalUsageLimit > 0 &&
-  //         coupon.totalUsed >= coupon.totalUsageLimit
-  //       ) {
-  //         throw new BadRequestException('Coupon usage limit exceeded');
-  //       }
-
-  //       const userCouponUsage = await this.couponUsageModel.countDocuments({
-  //         userId: new Types.ObjectId(userId),
-  //         couponId: coupon._id,
-  //       });
-
-  //       if (
-  //         coupon.usageLimitPerUser > 0 &&
-  //         userCouponUsage >= coupon.usageLimitPerUser
-  //       ) {
-  //         throw new BadRequestException('You already used this coupon');
-  //       }
-
-  //       if (
-  //         coupon.minimumOrderAmount > 0 &&
-  //         subtotal < coupon.minimumOrderAmount
-  //       ) {
-  //         throw new BadRequestException(
-  //           `Minimum order amount should be ₹${coupon.minimumOrderAmount}`,
-  //         );
-  //       }
-
-  //       if (coupon.type === CouponType.PERCENTAGE) {
-  //         couponDiscount = (subtotal * coupon.value) / 100;
-  //         if (coupon.maximumDiscount && couponDiscount > coupon.maximumDiscount) {
-  //           couponDiscount = coupon.maximumDiscount;
-  //         }
-  //       } else {
-  //         couponDiscount = coupon.value;
-  //       }
-
-  //       if (couponDiscount > subtotal) {
-  //         couponDiscount = subtotal;
-  //       }
-
-  //       // Increment coupon usage
-  //       coupon.totalUsed += 1;
-  //       await coupon.save({ session });
-
-  //       couponId = coupon._id as Types.ObjectId;
-  //     }
-
-  //     const totalAmount = subtotal - couponDiscount;
-
-  //     // Create booking
-  //     const [booking] = await this.serviceBookingModel.create(
-  //       [
-  //         {
-  //           userId: new Types.ObjectId(userId),
-  //           providerId: service.providerId,
-  //           staffId: staff._id,
-  //           serviceId: service._id,
-  //           bookingDate: bookingDate,
-  //           slotStartTime: dto.slotStartTime,
-  //           slotEndTime: dto.slotEndTime,
-  //           serviceAddress: dto.serviceAddress,
-  //           subtotal,
-  //           couponDiscount,
-  //           influencerDiscount: 0,
-  //           platformCommission: 0,
-  //           totalAmount,
-  //           bookingStatus: BookingStatus.PENDING,
-  //         },
-  //       ],
-  //       { session },
-  //     );
-
-  //     // Record coupon usage if applied
-  //     if (couponId) {
-  //       await this.couponUsageModel.create(
-  //         [
-  //           {
-  //             couponId,
-  //             userId: new Types.ObjectId(userId),
-  //             orderId: booking._id,
-  //             usedCount: 1,
-  //           },
-  //         ],
-  //         { session },
-  //       );
-  //     }
-
-  //     await session.commitTransaction();
-
-  //     // Send initial email (Booking Received)
-  //     const user = await this.userModel.findById(userId);
-  //     if (user && user.email) {
-  //       try {
-  //         const html = `
-  //           <h2>Booking Received</h2>
-  //           <p>Hi ${user.name || 'User'},</p>
-  //           <p>Your booking for <b>${service.title}</b> is currently pending confirmation from the provider.</p>
-  //           <p>Date: ${bookingDate.toLocaleDateString()}</p>
-  //           <p>Time: ${dto.slotStartTime} - ${dto.slotEndTime}</p>
-  //           <p>We will notify you once it is confirmed.</p>
-  //         `;
-  //         await sendMail(user.email, 'Your Booking is Pending', html);
-  //       } catch (err) {
-  //         console.error('Failed to send booking received email:', err);
-  //       }
-  //     }
-
-  //     return ApiResponse.success('Booking created successfully', booking);
-  //   } catch (error) {
-  //     await session.abortTransaction();
-  //     throw error;
-  //   } finally {
-  //     await session.endSession();
-  //   }
-  // }
 
   async createBooking(
     userId: string,
@@ -580,6 +396,39 @@ export class ServiceBookingService {
       const totalAmount =
         subtotal - couponDiscount;
 
+      // ── Resolve commission from admin CommissionRate schema ──────────────
+      const DEFAULT_COMMISSION_RATE = 25;
+      const DEFAULT_COMMISSION_ON = CommissionOn.PROFITVALUE;
+
+      const commissionDoc = await this.commissionRateModel.findOne().session(session);
+      const providerSlab = commissionDoc?.commissions?.find(
+        (s) => s.entityType === CommissionEntityType.SERVICE_PROVIDER,
+      );
+
+      const platformCommissionRate =
+        providerSlab?.commissionPercentage ?? DEFAULT_COMMISSION_RATE;
+      const platformCommissionOn =
+        providerSlab?.commissionOn ?? DEFAULT_COMMISSION_ON;
+
+      // Commission base depends on commissionOn
+      let commissionBase: number;
+      if (platformCommissionOn === CommissionOn.PROFITVALUE) {
+        const totalCostPrice = bookingItems.reduce(
+          (sum, item) => sum + (item.costPrice || 0),
+          0,
+        );
+        commissionBase = Math.max(0, totalAmount - totalCostPrice);
+      } else {
+        commissionBase = totalAmount;
+      }
+
+      const platformCommissionAmount = parseFloat(
+        ((commissionBase * platformCommissionRate) / 100).toFixed(2),
+      );
+      const providerPayoutAmount = parseFloat(
+        (totalAmount - platformCommissionAmount).toFixed(2),
+      );
+
 
 
       let walletAmountUsed = 0;
@@ -641,7 +490,10 @@ export class ServiceBookingService {
               subtotal,
               couponDiscount,
               influencerDiscount: 0,
-              platformCommission: 0,
+              platformCommissionRate,
+              platformCommissionOn,
+              platformCommissionAmount,
+              providerPayoutAmount,
               totalAmount,
 
               bookingStatus:
@@ -753,51 +605,7 @@ export class ServiceBookingService {
     }
   }
 
-  // async cancelBooking(userId: string, bookingId: string) {
-  //   const booking = await this.serviceBookingModel.findById(bookingId);
 
-  //   if (!booking) {
-  //     throw new NotFoundException('Booking not found');
-  //   }
-
-  //   const user = await this.userModel.findById(new Types.ObjectId(userId))
-  //   if(!user){
-  //     throw new NotFoundException('User not found');
-  //   }
-
-
-  //   if (booking.userId.toString() !== userId.toString()) {
-  //     // In a real app, an admin/provider might also be able to cancel.
-  //     // For now, assuming user cancels their own booking.
-  //     throw new BadRequestException('You are not authorized to cancel this booking');
-  //   }
-
-  //   if (booking.bookingStatus === BookingStatus.CANCELLED || booking.bookingStatus === BookingStatus.COMPLETED) {
-  //     throw new BadRequestException(`Cannot cancel booking in ${booking.bookingStatus} status`);
-  //   }
-
-  //   booking.bookingStatus = BookingStatus.CANCELLED;
-  //   await booking.save();
-
-  //    safeSendMail(
-  //       user.email,
-  //       'Booking Cancelled - WakeUp MakeUp',
-  //       bookingCancelledTemplate(user.name || '', {
-  //         serviceTitle: booking.serviceId.title,
-  //         providerName: 'Provider Name',
-  //         staffName: staff.name,
-  //         bookingDate: booking.bookingDate,
-  //         bookingId: booking._id.toString(),
-  //         totalAmount,
-  //       }),
-  //     ).then((res) => {
-  //       if (!res.success) {
-  //         console.log('Booking email failed but booking is safe');
-  //       }
-  //     });
-
-  //   return ApiResponse.success('Booking cancelled successfully', booking);
-  // }
 
   async cancelBooking(userId: string, bookingId: string) {
     const booking = await this.serviceBookingModel
@@ -1105,7 +913,32 @@ export class ServiceBookingService {
       .sort({ bookingDate: -1 })
       .lean();
 
-    return ApiResponse.success('Booking history fetched successfully', bookings);
+    // Fetch all reviews by this user for the fetched bookings
+    const bookingIds = bookings.map(b => b._id);
+    const reviews = await this.reviewModel.find({
+      userId: new Types.ObjectId(userId),
+      bookingId: { $in: bookingIds }
+    }).populate('images', 'url _id').lean();
+
+    // Group reviews by bookingId
+    const reviewsByBooking = reviews.reduce((acc, review) => {
+      const bId = review.bookingId.toString();
+      if (!acc[bId]) acc[bId] = [];
+      acc[bId].push(review);
+      return acc;
+    }, {} as any);
+
+    const enrichedBookings = bookings.map(booking => {
+      const bId = booking._id.toString();
+      const bookingReviews = reviewsByBooking[bId] || [];
+      return {
+        ...booking,
+        isReviewed: bookingReviews.length > 0,
+        reviews: bookingReviews
+      };
+    });
+
+    return ApiResponse.success('Booking history fetched successfully', enrichedBookings);
   }
 
   async updateServiceBooking(providerId: string, serviceBookingId: string, bookingStatus?: BookingStatus, paymentStatus?: BookingPaymentStatus) {
@@ -1136,7 +969,7 @@ export class ServiceBookingService {
       if (
         booking.bookingStatus === BookingStatus.COMPLETED &&
         booking.paymentStatus === BookingPaymentStatus.PAID &&
-        !(booking as any).cashbackAwarded
+        !booking.paymentMeta?.cashbackAwarded
       ) {
         const slabs = await this.cashbackSlabModel.find({ isActive: true }).sort({ minValue: -1 }).session(session);
         let awardedCashback = 0;
@@ -1151,7 +984,7 @@ export class ServiceBookingService {
             if (slab.maxCashback > 0 && awardedCashback > slab.maxCashback) {
               awardedCashback = slab.maxCashback;
             }
-            break; // Found the matching slab
+            break;
           }
         }
 
@@ -1164,10 +997,9 @@ export class ServiceBookingService {
             session
           );
 
-          // Mark that cashback has been awarded so we don't award it again
           await this.serviceBookingModel.findByIdAndUpdate(
             booking._id,
-            { $set: { cashbackAwarded: true } },
+            { $set: { 'paymentMeta.cashbackAwarded': true } },
             { session }
           );
         }
@@ -1176,22 +1008,62 @@ export class ServiceBookingService {
       if (
         booking.bookingStatus === BookingStatus.COMPLETED &&
         booking.paymentStatus === BookingPaymentStatus.PAID &&
-        !(booking as any).providerSettled
+        !(booking as any).isSettled
       ) {
+        // ── Resolve commission from admin schema ───────────────────────────
+        const DEFAULT_COMMISSION_RATE = 25;
+        const DEFAULT_COMMISSION_ON = CommissionOn.PROFITVALUE;
 
-        await this.serviceProviderWalletService.addBalance(
-          booking.providerId.toString(),
-          booking.totalAmount,
-          ServiceProviderWalletTransactionReason.SERVICE_EARNING,
-          `Earnings for Service Booking ${booking._id}`,
-          booking._id.toString(),
-          session
+        const commissionDoc = await this.commissionRateModel.findOne().session(session);
+        const providerSlab = commissionDoc?.commissions?.find(
+          (s) => s.entityType === CommissionEntityType.SERVICE_PROVIDER,
+        );
+
+        const commissionRate =
+          providerSlab?.commissionPercentage ?? DEFAULT_COMMISSION_RATE;
+        const commissionOn =
+          providerSlab?.commissionOn ?? DEFAULT_COMMISSION_ON;
+
+        const totalAmount = booking.totalAmount;
+        let commissionBase: number;
+        if (commissionOn === CommissionOn.PROFITVALUE) {
+          const totalCostPrice = booking.items.reduce(
+            (sum, item) => sum + (item.costPrice || 0),
+            0,
+          );
+          commissionBase = Math.max(0, totalAmount - totalCostPrice);
+        } else {
+          commissionBase = totalAmount;
+        }
+
+        const platformCommissionAmount = parseFloat(
+          ((commissionBase * commissionRate) / 100).toFixed(2),
+        );
+        const providerPayoutAmount = parseFloat(
+          (totalAmount - platformCommissionAmount).toFixed(2),
         );
 
         await this.serviceBookingModel.findByIdAndUpdate(
           booking._id,
-          { $set: { providerSettled: true } },
-          { session }
+          {
+            $set: {
+              platformCommissionRate: commissionRate,
+              platformCommissionOn: commissionOn,
+              platformCommissionAmount,
+              providerPayoutAmount,
+              isSettled: true,
+            },
+          },
+          { session },
+        );
+
+        await this.serviceProviderWalletService.addBalance(
+          booking.providerId.toString(),
+          providerPayoutAmount > 0 ? providerPayoutAmount : 0,
+          ServiceProviderWalletTransactionReason.SERVICE_EARNING,
+          `Earnings for Service Booking ${booking._id}`,
+          booking._id.toString(),
+          session
         );
       }
 
@@ -1204,5 +1076,117 @@ export class ServiceBookingService {
     } finally {
       session.endSession();
     }
+  }
+
+  async getProviderBookings(
+    providerId: string,
+    page: number = 1,
+    limit: number = 10,
+    status?: string,
+  ) {
+    const filter: any = { providerId: new Types.ObjectId(providerId) };
+
+    if (status) {
+      filter.bookingStatus = status;
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      this.serviceBookingModel
+        .find(filter)
+        .populate('userId', 'name email phone avatar')
+        .populate('staffId', 'name')
+        .populate('items.serviceId', 'title')
+        .sort({ bookingDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      this.serviceBookingModel.countDocuments(filter),
+    ]);
+
+    return ApiResponse.success('Provider bookings fetched successfully', {
+      bookings,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  }
+
+  async getAdminBookings(
+    page: number = 1,
+    limit: number = 10,
+    status?: string,
+    providerId?: string,
+  ) {
+    const filter: any = {};
+
+    if (status) {
+      filter.bookingStatus = status;
+    }
+    
+    if (providerId) {
+       filter.providerId = new Types.ObjectId(providerId);
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [bookings, total] = await Promise.all([
+      this.serviceBookingModel
+        .find(filter)
+        .populate('userId', 'name email phone avatar')
+        .populate('providerId', 'businessName phone')
+        .populate('staffId', 'name')
+        .populate('items.serviceId', 'title')
+        .sort({ bookingDate: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      this.serviceBookingModel.countDocuments(filter),
+    ]);
+
+    return ApiResponse.success('Admin bookings fetched successfully', {
+      bookings,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
+  }
+
+  async getBookingDetails(bookingId: string, user: any) {
+    const booking = await this.serviceBookingModel
+      .findById(bookingId)
+      .populate('userId', 'name email phone avatar')
+      .populate('providerId', 'businessName phone address email logo')
+      .populate('staffId', 'name phone avatar')
+      .populate('items.serviceId', 'title description durationMinutes images')
+      .lean();
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    // Access control check
+    if (user.role === UserRole.USER && booking.userId?._id?.toString() !== user._id.toString()) {
+      throw new BadRequestException('You are not authorized to view this booking');
+    }
+
+    if (user.role === UserRole.SERVICE_PROVIDER && booking.providerId?._id?.toString() !== user.serviceProviderId?.toString()) {
+      throw new BadRequestException('You are not authorized to view this booking');
+    }
+
+    const reviews = await this.reviewModel.find({ bookingId: new Types.ObjectId(bookingId) }).populate('images', 'url _id').lean();
+
+    return ApiResponse.success('Booking details fetched successfully', {
+      ...booking,
+      reviews,
+      isReviewed: reviews.length > 0
+    });
   }
 }

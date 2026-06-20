@@ -62,6 +62,7 @@ import { CashbackSlab, CashbackSlabSchema } from 'src/wallet/schema/cashback/cas
 import { WalletModule } from 'src/wallet/wallet.module';
 import { LeadBooking, LeadBookingSchema } from './schema/service-lead-booking.schema';
 import { StaffAllocation, StaffAllocationSchema } from './schema/staff-allocation.schema';
+import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commission-rate.schema';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { StaffAllocation, StaffAllocationSchema } from './schema/staff-allocatio
       { name: CashbackSlab.name, schema: CashbackSlabSchema },
       { name: LeadBooking.name, schema: LeadBookingSchema },
       { name: StaffAllocation.name, schema: StaffAllocationSchema },
+      { name: CommissionRate.name, schema: CommissionRateSchema },
     ]),
     DocumentModule,
     WalletModule,

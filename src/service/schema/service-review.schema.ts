@@ -70,6 +70,6 @@ export const ServiceReviewSchema = SchemaFactory.createForClass(ServiceReview)
 
 
 ServiceReviewSchema.index(
-  { bookingId: 1, userId: 1 },
+  { bookingId: 1, userId: 1, serviceId: 1 },
   { unique: true },
 );
