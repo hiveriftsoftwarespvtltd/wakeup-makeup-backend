@@ -28,6 +28,9 @@ import { ForgotPasswordOTPDTO } from './dto/verify-forgot-password-otp.dto';
 import { Vendor } from 'src/vendor/schema/vendor.schema';
 import { ServiceProvider } from 'src/service/schema/service-provider.schema';
 import { UserWalletService } from 'src/wallet/service/user/user.wallet.service';
+import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
+import { Influencer, InfluencerDocument, InfluencerStatus } from 'src/influencer/schema/influencer.schema';
+import { Educator, EducatorDocument, EducatorStatus } from 'src/courses/schema/educator.schema';
 
 @Injectable()
 export class AuthService {
@@ -35,9 +38,12 @@ export class AuthService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Vendor.name) private vendorModel: Model<Vendor>,
     @InjectModel(ServiceProvider.name) private serviceProviderModel: Model<ServiceProvider>,
+    @InjectModel(Influencer.name) private influencerModel: Model<InfluencerDocument>,
+    @InjectModel(Educator.name) private educatorModel: Model<EducatorDocument>,
     private userService: UserService,
     private jwtService: JwtService,
     private userWalletService: UserWalletService,
+    private affiliateTrackingService: AffiliateTrackingService,
   ) { }
 
   async register(dto: RegisterDTO) {
@@ -145,6 +151,8 @@ export class AuthService {
       isActive: true,
     });
 
+
+
     await sendMail(
       user.email,
       'Verify Your Email',
@@ -187,7 +195,7 @@ export class AuthService {
     );
   }
 
-  async verifyEmail(dto: VerifyEmailDTO) {
+  async verifyEmail(dto: VerifyEmailDTO, referralCode?: string) {
     const user = await this.userModel.findOne({
       email: dto.email.toLowerCase(),
     });
@@ -206,6 +214,16 @@ export class AuthService {
 
     if (!user.otpExpiresAt || user.otpExpiresAt < new Date()) {
       throw new BadRequestException('OTP expired');
+    }
+
+    console.log("Referral Code", referralCode)
+    if (referralCode) {
+      const program = await this.affiliateTrackingService.trackSignup(user._id, referralCode);
+      console.log("Referral Code", program)
+      user.affliateProgramId = program?._id
+      user.referredByInfluencerId = program?.influencerId
+      // user.save()
+
     }
 
     user.isEmailVerified = true;
@@ -260,6 +278,28 @@ export class AuthService {
         throw new ConflictException('You account is not approved by admin');
       } else if (serviceProvider?.verificationStatus === 'REJECTED') {
         throw new ConflictException('Your account is rejected by admin');
+      }
+    }
+
+    if (user.role === UserRole.INFLUENCER) {
+      const influencer = await this.influencerModel.findOne({ userId: new Types.ObjectId(user._id) })
+      if (influencer?.status === InfluencerStatus.PENDING) {
+        throw new ConflictException("You account is not approved by admin");
+      } else if (influencer?.status === InfluencerStatus.REJECTED) {
+        throw new ConflictException("Your account is rejected by admin");
+      } else if (influencer?.status === InfluencerStatus.BLOCKED) {
+        throw new ConflictException("Your account is blocked by admin");
+      }
+    }
+
+    if (user.role === UserRole.EDUCATOR) {
+      const educator = await this.educatorModel.findOne({ userId: new Types.ObjectId(user._id) })
+      if (educator?.status === EducatorStatus.PENDING) {
+        throw new ConflictException("You account is not approved by admin");
+      } else if (educator?.status === EducatorStatus.REJECTED) {
+        throw new ConflictException("Your account is rejected by admin");
+      } else if (educator?.status === EducatorStatus.BLOCKED) {
+        throw new ConflictException("Your account is blocked by admin");
       }
     }
 

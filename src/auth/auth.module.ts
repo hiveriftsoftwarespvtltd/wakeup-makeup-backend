@@ -10,6 +10,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
 import { ServiceProvider, ServiceProviderSchema } from 'src/service/schema/service-provider.schema';
 import { WalletModule } from 'src/wallet/wallet.module';
+import { InfluencerModule } from 'src/influencer/influencer.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { WalletModule } from 'src/wallet/wallet.module';
     }),
     MongooseModule.forFeature([{ name: Vendor.name, schema: VendorSchema }, { name: ServiceProvider.name, schema: ServiceProviderSchema }]),
     WalletModule,
+    InfluencerModule,
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],

@@ -15,6 +15,8 @@ import { createVendorDTO } from './dto/create-vendor.dto';
 import { DashboardFilterDTO } from './dto/vendor-analytics.dto';
 import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
+import { notifyAdmins } from 'src/utils/helper';
+import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
 import { DocumentService } from 'src/document/document.service';
 import { updateVendorDTO } from './dto/update-vendor-dto';
 import { Product, ProductDocument } from 'src/product/schema/product.schema';
@@ -62,6 +64,7 @@ import {
   CommissionEntityType,
   CommissionOn,
 } from 'src/admin/schema/commission-rate.schema';
+import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
 
 @Injectable()
 export class VendorService {
@@ -90,6 +93,7 @@ export class VendorService {
     private userWalletService: UserWalletService,
     private vendorWalletService: VendorWalletService,
     private influencerWalletService: InfluencerWalletService,
+    private affiliateTrackingService: AffiliateTrackingService,
   ) { }
 
   async registerVendor(
@@ -161,6 +165,16 @@ export class VendorService {
     user.vendorId = vendor._id;
     user.isVendorOnboardingCompleted = true;
     await user.save();
+
+    await notifyAdmins(
+      this.userModel,
+      'New Vendor Onboarding Request',
+      adminPendingRequestNotificationTemplate('Vendor', user.name, user.email, {
+        BusinessName: vendor.businessName,
+        City: vendor.city,
+        State: vendor.state,
+      })
+    );
 
     return ApiResponse.success('Vendor Request created successfully', vendor);
   }
@@ -283,15 +297,22 @@ export class VendorService {
     return ApiResponse.success('Vendor updated successfully', vendor);
   }
 
-  async vendorProducts(userId: string, vendorId: string) {
+  async vendorProducts(userId: string, vendorId: string, page?: number, limit?: number) {
     if (!vendorId) {
       throw new ConflictException(
         'Complete Your Onboarding to access this feature',
       );
     }
+
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
     return await this.productModel
       .find({ createdBy: userId, vendorId: vendorId })
       .populate('variants')
+      .skip(skip)
+      .limit(pageSize)
       .lean();
   }
 
@@ -307,66 +328,12 @@ export class VendorService {
       .lean();
   }
 
-  // async vendorOrders(vendorId:string){
 
-  //   return this.vendorOrderModel.find({vendorId:new Types.ObjectId(vendorId)}).find()
-  //     .populate('userId','-password')
-  //     .populate('vendorId')
-  //     .populate('orderId')
-  //     .populate('items.productId')
-  //     .populate('items.variantId')
-  //     .sort({ createdAt: -1 })
-  //     .lean();
-  // }
+  async vendorOrders(vendorId: string, page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
 
-  // async orderDetails(vendorId:string,orderId:string){
-  //   const order = await this.orderModel.findOne({vendorId:new Types.ObjectId(vendorId),_id:new Types.ObjectId(orderId)}).populate('userId')
-  //     // .populate('vendorId')
-  //     .populate('addressId')
-  //     .populate('items.productId')
-  //     .populate('items.variantId')
-  //     .lean()
-
-  //     if(!order){
-  //       throw new NotFoundException("Order Not Found")
-  //     }
-  //     return ApiResponse.success("Order Details Fetched Successfully",order)
-  // }
-
-  // async updateOrder(dto:UpdateOrderDTO,orderId:string,vendorId:string){
-
-  //   const order = await this.orderModel.findOne({_id:new Types.ObjectId(orderId),vendorId:new Types.ObjectId(vendorId)})
-  //   if(!order){
-  //     throw new NotFoundException("Order Not Found")
-  //   }
-  //   if(order.orderStatus === OrderStatus.DELIVERED){
-  //     throw new ConflictException("You could not update delivered ordered")
-  //   }
-  //   const filteredData = Object.fromEntries(Object.entries(dto).filter(([_,value])=> value !== undefined && value !== null && value !== ''))
-  //   Object.assign(order,filteredData)
-  //   if(dto.orderStatus === "delivered" && dto.paymentStatus === "paid"){
-  //     order.deliveredAt = new Date()
-  //     order.vendorPaid = true
-  //     order.vendorPaidAt = new Date()
-  //     order.vendorPayoutAmount = order.subTotal
-  //   }
-  //   if(dto.orderStatus === 'cancelled'){
-  //     if(!dto.cancellationReason){
-  //       throw new ConflictException("Provide a reason to cancel this order")
-  //     }
-  //     const vendor = await this.vendorModel.findById(new Types.ObjectId(vendorId)).select("ownerId")
-  //     if(!vendor){
-  //       throw new NotFoundException("Vendor Not Found")
-  //     }
-  //     order.cancelledBy = vendor.ownerId
-  //     order.cancellationReason = dto.cancellationReason
-  //     order.cancelledAt=new Date()
-  //   }
-  //   await order.save()
-  //   return ApiResponse.success("Order Update Successfully",order)
-  // }
-
-  async vendorOrders(vendorId: string) {
     const orders = await this.vendorOrderModel
       .find({
         vendorId: new Types.ObjectId(vendorId),
@@ -378,6 +345,8 @@ export class VendorService {
       .populate('items.productId')
       .populate('items.variantId')
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize)
       .lean();
 
     return ApiResponse.success('Vendor Orders Fetched Successfully', orders);
@@ -404,297 +373,7 @@ export class VendorService {
     return ApiResponse.success('Order Details Fetched Successfully', order);
   }
 
-  // async updateOrder(
-  //   dto: UpdateOrderDTO,
-  //   orderId: string,
-  //   vendorId: string,
-  // ) {
-  //   const order = await this.vendorOrderModel.findOne({
-  //     _id: new Types.ObjectId(orderId),
-  //     vendorId: new Types.ObjectId(vendorId),
-  //   });
-
-  //   if (!order) {
-  //     throw new NotFoundException(
-  //       'Order Not Found',
-  //     );
-  //   }
-
-  //   if (
-  //     order.orderStatus ===
-  //     OrderStatus.DELIVERED
-  //   ) {
-  //     throw new ConflictException(
-  //       'Delivered order cannot be updated',
-  //     );
-  //   }
-
-  //   const filteredData = Object.fromEntries(
-  //     Object.entries(dto).filter(
-  //       ([_, value]) =>
-  //         value !== undefined &&
-  //         value !== null &&
-  //         value !== '',
-  //     ),
-  //   );
-
-  //   Object.assign(order, filteredData);
-
-  //   // Delivered
-  //   if (
-  //     dto.orderStatus ===
-  //     OrderStatus.DELIVERED
-  //   ) {
-  //     order.deliveredAt = new Date();
-
-  //     if (
-  //       dto.paymentStatus ===
-  //       PaymentStatus.PAID
-  //     ) {
-  //       order.paymentStatus =
-  //         PaymentStatus.PAID;
-  //     }
-  //   }
-
-  //   // Shipped
-  //   if (
-  //     dto.orderStatus ===
-  //     OrderStatus.SHIPPED
-  //   ) {
-  //     order.shippedAt = new Date();
-  //   }
-
-  //   // Cancelled
-  //   if (
-  //     dto.orderStatus ===
-  //     OrderStatus.CANCELLED
-  //   ) {
-  //     if (!dto.cancellationReason) {
-  //       throw new ConflictException(
-  //         'Provide cancellation reason',
-  //       );
-  //     }
-
-  //     order.cancelledAt = new Date();
-  //     order.cancellationReason =
-  //       dto.cancellationReason;
-  //   }
-
-  //   await order.save();
-
-  //   return ApiResponse.success(
-  //     'Order Updated Successfully',
-  //     order,
-  //   );
-  // }
-
-  // async updateOrder(
-  //   dto: UpdateOrderDTO,
-  //   orderId: string,
-  //   vendorId: string,
-  // ) {
-  //   const session =
-  //     await this.connection.startSession();
-
-  //   try {
-  //     session.startTransaction();
-
-  //     const vendorOrder =
-  //       await this.vendorOrderModel.findOne({
-  //         _id: new Types.ObjectId(orderId),
-  //         vendorId: new Types.ObjectId(vendorId),
-  //       });
-
-  //     if (!vendorOrder) {
-  //       throw new NotFoundException(
-  //         'Vendor Order Not Found',
-  //       );
-  //     }
-
-  //     // prevent updates after delivered
-  //     if (
-  //       vendorOrder.orderStatus ===
-  //       OrderStatus.DELIVERED
-  //     ) {
-  //       throw new ConflictException(
-  //         'Delivered order cannot be updated',
-  //       );
-  //     }
-
-  //     // ======================================================
-  //     // CLEAN DTO
-  //     // ======================================================
-
-  //     const filteredData = Object.fromEntries(
-  //       Object.entries(dto).filter(
-  //         ([_, value]) =>
-  //           value !== undefined &&
-  //           value !== null &&
-  //           value !== '',
-  //       ),
-  //     );
-
-  //     Object.assign(
-  //       vendorOrder,
-  //       filteredData,
-  //     );
-
-  //     // ======================================================
-  //     // DELIVERED
-  //     // ======================================================
-
-  //     if (
-  //       dto.orderStatus ===
-  //       OrderStatus.DELIVERED
-  //     ) {
-  //       vendorOrder.orderStatus =
-  //         OrderStatus.DELIVERED;
-
-  //       vendorOrder.deliveredAt =
-  //         dto.deliveredAt
-  //           ? new Date(dto.deliveredAt)
-  //           : new Date();
-  //     }
-
-  //     // ======================================================
-  //     // SHIPPED
-  //     // ======================================================
-
-  //     if (
-  //       dto.orderStatus ===
-  //       OrderStatus.SHIPPED
-  //     ) {
-  //       vendorOrder.orderStatus =
-  //         OrderStatus.SHIPPED;
-
-  //       vendorOrder.shippedAt =
-  //         new Date();
-  //     }
-
-  //     // ======================================================
-  //     // CANCELLED
-  //     // ======================================================
-
-  //     if (
-  //       dto.orderStatus ===
-  //       OrderStatus.CANCELLED
-  //     ) {
-  //       if (!dto.cancellationReason) {
-  //         throw new ConflictException(
-  //           'Provide cancellation reason',
-  //         );
-  //       }
-
-  //       vendorOrder.orderStatus =
-  //         OrderStatus.CANCELLED;
-
-  //       vendorOrder.cancelledAt =
-  //         dto.cancelledAt
-  //           ? new Date(dto.cancelledAt)
-  //           : new Date();
-
-  //       vendorOrder.cancellationReason =
-  //         dto.cancellationReason;
-  //     }
-
-  //     // payment update
-  //     if (dto.paymentStatus) {
-  //       vendorOrder.paymentStatus =
-  //         dto.paymentStatus;
-  //     }
-
-  //     await vendorOrder.save({
-  //       session,
-  //     });
-
-  //     // ======================================================
-  //     // FETCH ALL SIBLING VENDOR ORDERS
-  //     // ======================================================
-
-  //     const allVendorOrders =
-  //       await this.vendorOrderModel
-  //         .find({
-  //           orderId:
-  //             vendorOrder.orderId,
-  //         })
-  //         .session(session);
-
-  //     // ======================================================
-  //     // CHECK STATUSES
-  //     // ======================================================
-
-  //     const allDelivered =
-  //       allVendorOrders.every(
-  //         (item) =>
-  //           item.orderStatus ===
-  //           OrderStatus.DELIVERED,
-  //       );
-
-  //     const someDelivered =
-  //       allVendorOrders.some(
-  //         (item) =>
-  //           item.orderStatus ===
-  //           OrderStatus.DELIVERED,
-  //       );
-
-  //     const allPaid =
-  //       allVendorOrders.every(
-  //         (item) =>
-  //           item.paymentStatus ===
-  //           PaymentStatus.PAID,
-  //       );
-
-  //     // ======================================================
-  //     // PREPARE MAIN ORDER UPDATE
-  //     // ======================================================
-
-  //     const mainOrderUpdate: any = {};
-
-  //     // order status
-  //     if (allDelivered) {
-  //       mainOrderUpdate.orderStatus =
-  //         OrderStatus.DELIVERED;
-  //     } else if (someDelivered) {
-  //       mainOrderUpdate.orderStatus =
-  //         OrderStatus.PARTIALLY_DELIVERED;
-  //     }
-
-  //     // payment status
-  //     if (allPaid) {
-  //       mainOrderUpdate.paymentStatus =
-  //         PaymentStatus.PAID;
-  //     }
-
-  //     // ======================================================
-  //     // UPDATE MAIN ORDER
-  //     // ======================================================
-
-  //     if (
-  //       Object.keys(mainOrderUpdate)
-  //         .length > 0
-  //     ) {
-  //       await this.orderModel.findByIdAndUpdate(
-  //         vendorOrder.orderId,
-  //         mainOrderUpdate,
-  //         {
-  //           session,
-  //         },
-  //       );
-  //     }
-
-  //     await session.commitTransaction();
-
-  //     return ApiResponse.success(
-  //       'Order Updated Successfully',
-  //       vendorOrder,
-  //     );
-  //   } catch (error) {
-  //     await session.abortTransaction();
-  //     throw error;
-  //   } finally {
-  //     session.endSession();
-  //   }
-  // }
+ 
 
   async updateOrder(dto: UpdateOrderDTO, orderId: string, vendorId: string) {
     const session = await this.connection.startSession();
@@ -1046,6 +725,10 @@ export class VendorService {
               { session },
             );
           }
+        }
+
+        if (allDelivered && updatedMainOrder && updatedMainOrder.paymentStatus === PaymentStatus.PAID) {
+          await this.affiliateTrackingService.updateCommissionStatus(updatedMainOrder._id, 'PRODUCT', 'PAID');
         }
       }
 

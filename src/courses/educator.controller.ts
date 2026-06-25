@@ -5,6 +5,7 @@ import {
     Param,
     Post,
     Put,
+    Query,
     Req,
     UploadedFile,
     UseGuards,
@@ -77,8 +78,8 @@ export class EducatorController {
     // ===================================================
 
     @Get('list')
-    listAllEducators() {
-        return this.educatorService.listAllEducators();
+    listAllEducators(@Query('page') page: number, @Query('limit') limit: number) {
+        return this.educatorService.listAllEducators(page, limit);
     }
 
     @Get('details/:educatorId')
@@ -93,8 +94,8 @@ export class EducatorController {
     @Get('pending-approvals')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.ADMIN)
-    listPendingEducators() {
-        return this.educatorService.listPendingEducators();
+    listPendingEducators(@Query('page') page: number, @Query('limit') limit: number) {
+        return this.educatorService.listPendingEducators(page, limit);
     }
 
     @Put('approve/:educatorId')

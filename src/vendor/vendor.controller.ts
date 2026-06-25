@@ -114,8 +114,8 @@ export class VendorController {
   }
 
   @Get('vendor-products')
-  async vendorProducts(@Req() req: any) {
-    return await this.vendorService.vendorProducts(req.user._id, req.user.vendorId)
+  async vendorProducts(@Req() req: any, @Query('page') page: number, @Query('limit') limit: number) {
+    return await this.vendorService.vendorProducts(req.user._id, req.user.vendorId, page, limit)
   }
 
   @Get('vendor-categories')
@@ -124,8 +124,8 @@ export class VendorController {
   }
 
   @Get('vendor-orders')
-  async vendorOrders(@Req() req: any) {
-    return this.vendorService.vendorOrders(req.user.vendorId)
+  async vendorOrders(@Req() req: any, @Query('page') page: number, @Query('limit') limit: number) {
+    return this.vendorService.vendorOrders(req.user.vendorId, page, limit)
   }
 
   @Delete("delete-all-products")

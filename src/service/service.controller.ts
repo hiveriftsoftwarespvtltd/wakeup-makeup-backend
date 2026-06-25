@@ -169,8 +169,8 @@ export class ServiceController {
     }
 
     @Get('get-all-service-providers')
-    listProviders() {
-        return this.serviceService.listServiceProviders();
+    listProviders(@Query('page') page: number, @Query('limit') limit: number) {
+        return this.serviceService.listServiceProviders(page, limit);
     }
 
     @Put('service-provider/:id/verify')
@@ -228,13 +228,15 @@ export class ServiceController {
     listServices(
         @Query('categoryId') categoryId?: string,
         @Query('providerId') providerId?: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number,
     ) {
-        return this.serviceService.listServices(categoryId, providerId);
+        return this.serviceService.listServices(categoryId, providerId, page, limit);
     }
 
     @Get('get-all-services/:providerId')
-    listServicesByProvider(@Param('providerId') providerId: string) {
-        return this.serviceService.listServices(undefined, providerId);
+    listServicesByProvider(@Param('providerId') providerId: string, @Query('page') page: number, @Query('limit') limit: number) {
+        return this.serviceService.listServices(undefined, providerId, page, limit);
     }
 
     // ===================================================
@@ -348,8 +350,8 @@ export class ServiceController {
 
     @Get('user-service-leads')
     @UseGuards(JwtAuthGuard)
-    userListLeads(@Req() req: any, @Query('categoryId') categoryId?: string) {
-        return this.serviceService.userListLeads(req.user._id, categoryId);
+    userListLeads(@Req() req: any, @Query('categoryId') categoryId?: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+        return this.serviceService.userListLeads(req.user._id, categoryId, page, limit);
     }
 
 

@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
-import { Educator, EducatorDocument } from './schema/educator.schema';
+import { Educator, EducatorDocument, EducatorStatus } from './schema/educator.schema';
 import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
 import { Course, CourseDocument } from './schema/course.schema';
 import { CourseEnrollment, CourseEnrollmentDocument } from './schema/course-enrollement.schema';
@@ -14,6 +14,8 @@ import { ApiResponse } from 'src/common/responses/api-response';
 import { MediaFolderName } from 'src/constants';
 import { OnBoardEducatorDTO, UpdateEducatorDTO } from './dto/educator.dto';
 import { EducatorWalletService } from 'src/wallet/service/educator/educator.wallet.service';
+import { notifyAdmins } from 'src/utils/helper';
+import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
 
 @Injectable()
 export class EducatorService {
@@ -119,6 +121,16 @@ export class EducatorService {
             );
 
             await session.commitTransaction();
+
+            await notifyAdmins(
+                this.userModel,
+                'New Educator Onboarding Request',
+                adminPendingRequestNotificationTemplate('Educator', user.name, user.email, {
+                    Bio: educator.bio,
+                    Expertise: educator.expertise?.join(', '),
+                })
+            );
+
             return ApiResponse.success('Educator profile created successfully', educator);
         } catch (error) {
             await session.abortTransaction();
@@ -254,7 +266,11 @@ export class EducatorService {
         });
     }
 
-    async listAllEducators(role?: string) {
+    async listAllEducators(page?: number, limit?: number, role?: string) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const query: any = {}
         if (!role) {
             query.isDeleted = false,
@@ -270,6 +286,8 @@ export class EducatorService {
             .populate('userId', 'name email avatar')
             .populate('profileImage', 'url _id publicId')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('All educators', educators);
@@ -288,6 +306,7 @@ export class EducatorService {
         }
 
         educator.isApproved = isApproved;
+        educator.status = isApproved ? EducatorStatus.APPROVED : EducatorStatus.REJECTED;
         await educator.save();
 
         if (isApproved) {
@@ -319,12 +338,18 @@ export class EducatorService {
     // ADMIN — LIST PENDING APPROVALS
     // ===================================================
 
-    async listPendingEducators() {
+    async listPendingEducators(page?: number, limit?: number) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const educators = await this.educatorModel
             .find({ isApproved: false, isActive: true })
             .populate('userId', 'name email avatar')
             .populate('profileImage')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('Pending educator approvals', educators);

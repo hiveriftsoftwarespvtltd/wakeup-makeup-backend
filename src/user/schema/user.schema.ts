@@ -98,6 +98,12 @@ export class User {
   })
   educatorId?: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: "AffliateProgram" })
+  affliateProgramId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Influencer' })
+  referredByInfluencerId?: Types.ObjectId;
+
   @Prop({ default: false })
   isEducatorOnboardingCompleted!: boolean;
 

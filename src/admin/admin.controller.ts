@@ -43,28 +43,28 @@ export class AdminController {
   ) { }
 
   @Get('vendors')
-  async getAllVendors() {
-    return await this.adminService.fetchAllVendors();
+  async getAllVendors(@Query('page') page: number, @Query('limit') limit: number) {
+    return await this.adminService.fetchAllVendors(page, limit);
   }
 
   @Get('users')
-  async getAllUsers() {
-    return await this.adminService.fetchAllUsers();
+  async getAllUsers(@Query('page') page: number, @Query('limit') limit: number) {
+    return await this.adminService.fetchAllUsers(page, limit);
   }
 
   @Get('pending-vendors')
-  async fetAllPendingVendors() {
-    return this.adminService.fetchPendingVendors();
+  async fetAllPendingVendors(@Query('page') page: number, @Query('limit') limit: number) {
+    return this.adminService.fetchPendingVendors(page, limit);
   }
 
   @Get('products')
-  async fetAllProducts() {
-    return this.adminService.fetchProducts();
+  async fetAllProducts(@Query('page') page: number, @Query('limit') limit: number) {
+    return this.adminService.fetchProducts(page, limit);
   }
 
   @Get('orders')
-  async fetchAllOrders() {
-    return this.adminService.fetchAllOrders();
+  async fetchAllOrders(@Query('page') page: number, @Query('limit') limit: number) {
+    return this.adminService.fetchAllOrders(page, limit);
   }
 
   @Delete('delete-all-products')
@@ -160,8 +160,8 @@ export class AdminController {
   //   }
 
   @Get('all-influencer-commission-slabs')
-  getAllCommissionSlabs() {
-    return this.influencerService.getAllCommissionSlabs();
+  getAllCommissionSlabs(@Query('page') page: number, @Query('limit') limit: number) {
+    return this.influencerService.getAllCommissionSlabs(page, limit);
   }
 
   // @Post('vendor-payout/settle')

@@ -30,6 +30,7 @@ import { DashboardService } from './dashboard.service';
 import { WalletModule } from 'src/wallet/wallet.module';
 import { LearnerController } from './learner.controller';
 import { LearnerService } from './learner.service';
+import { InfluencerModule } from 'src/influencer/influencer.module';
 
 @Module({
   imports: [MongooseModule.forFeature([
@@ -45,7 +46,7 @@ import { LearnerService } from './learner.service';
     { name: User.name, schema: UserSchema },
     { name: CashbackSlab.name, schema: CashbackSlabSchema },
     { name: CommissionRate.name, schema: CommissionRateSchema },
-  ]), DocumentModule, WalletModule],
+  ]), DocumentModule, WalletModule, InfluencerModule],
   controllers: [CoursesController, EducatorController, CourseSectionController, CourseLessonController, CourseEnrollmentController, CourseAttachmentController, DashboardController, LearnerController],
   providers: [CoursesService, EducatorService, CourseSectionService, CourseLessonService, CourseEnrollmentService, CourseAttachmentService, DashboardService, LearnerService],
   exports: [CoursesService, EducatorService, CourseSectionService, CourseLessonService, CourseEnrollmentService, CourseAttachmentService, DashboardService, LearnerService, MongooseModule]

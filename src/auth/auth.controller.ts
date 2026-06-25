@@ -11,48 +11,49 @@ import { JwtAuthGuard } from './jwt-auth.guad';
 
 @Controller('auth')
 export class AuthController {
-    constructor(private authService:AuthService){}
+    constructor(private authService: AuthService) { }
 
     @Post('register')
-    register(@Body() dto:RegisterDTO){
+    register(@Body() dto: RegisterDTO) {
         return this.authService.register(dto)
     }
 
     @Post('login')
-    login(@Body() dto:LoginDTO){
+    login(@Body() dto: LoginDTO) {
         return this.authService.login(dto)
     }
 
     @Post('verify-email')
-    verifyEmail(@Body() dto:VerifyEmailDTO){
-        return this.authService.verifyEmail(dto)
+    verifyEmail(@Body() dto: VerifyEmailDTO, @Req() req: any) {
+        console.log("Req in line 28 : ", req.cookies)
+        return this.authService.verifyEmail(dto, req.cookies?.referralCode,)
     }
 
     @Post('verify-login-otp')
-    verifyLoginOTP(@Body() dto:VerifyLoginDTO){
+    verifyLoginOTP(@Body() dto: VerifyLoginDTO) {
         return this.authService.verifyLoginOtp(dto)
     }
 
     @UseGuards(JwtAuthGuard)
     @Post('reset-password')
-    resetPassword(@Req() req:any,@Body() dto:ResetPasswordDTO){
-        return this.authService.resetPassword(dto,req.user._id)
+    resetPassword(@Req() req: any, @Body() dto: ResetPasswordDTO) {
+        return this.authService.resetPassword(dto, req.user._id)
     }
 
-   
+
     @Post('send-forgot-password-otp')
-    forgotPasswordOTP(@Body('email') email:string){
+    forgotPasswordOTP(@Body('email') email: string) {
         return this.authService.sendForgotPasswordOTP(email)
     }
 
-    
+
     @Post('verify-forgot-password-otp')
-    verifyForgotPasswordOTP(@Body() dto:ForgotPasswordOTPDTO){
+    verifyForgotPasswordOTP(@Body() dto: ForgotPasswordOTPDTO) {
         return this.authService.verifyForgotPasswordOTP(dto)
     }
 
     @Post('send-verify-email-otp')
-    sendVerifyEmailOTP(@Body('email') email:string){
+    sendVerifyEmailOTP(@Body('email') email: string) {
         return this.authService.sendVerifyEmailOTP(email)
     }
 }

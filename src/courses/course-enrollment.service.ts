@@ -20,6 +20,7 @@ import {
     CommissionEntityType,
     CommissionOn,
 } from 'src/admin/schema/commission-rate.schema';
+import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
 
 @Injectable()
 export class CourseEnrollmentService {
@@ -34,6 +35,7 @@ export class CourseEnrollmentService {
         private userWalletService: UserWalletService,
         private educatorWalletService: EducatorWalletService,
         @InjectConnection() private connection: Connection,
+        private affiliateTrackingService: AffiliateTrackingService,
     ) { }
 
     async enrollUser(learnerId: string, dto: EnrollCourseDTO) {
@@ -210,6 +212,11 @@ export class CourseEnrollmentService {
                         await purchase.save({ session });
                     }
                 }
+            }
+
+            await this.affiliateTrackingService.createPendingCommission(learnerId, 'COURSE', purchase._id, totalAmount);
+            if (purchase.status === CoursePurchaseStatus.PAID) {
+                await this.affiliateTrackingService.updateCommissionStatus(purchase._id, 'COURSE', 'PAID');
             }
 
             await session.commitTransaction();

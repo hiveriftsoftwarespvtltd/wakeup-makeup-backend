@@ -584,3 +584,69 @@ export const influencerInvitationTemplate = (
 </html>
   `;
 };
+
+export const adminPendingRequestNotificationTemplate = (
+  roleName: string,
+  userName: string,
+  userEmail: string,
+  details: Record<string, any>,
+) => {
+  let detailsHtml = '';
+  for (const [key, value] of Object.entries(details)) {
+    if (value !== undefined && value !== null && value !== '') {
+      detailsHtml += `
+        <tr style="border-bottom: 1px solid #e5e7eb;">
+          <td style="padding: 10px 0; color: #4b5563; font-weight: 600; width: 40%;">${key.charAt(0).toUpperCase() + key.slice(1)}</td>
+          <td style="padding: 10px 0; color: #111827;">${value}</td>
+        </tr>
+      `;
+    }
+  }
+
+  return emailWrapper(
+    'New Pending Request',
+    `A new ${roleName} onboarding request has been submitted.`,
+    `
+      <div style="margin-bottom: 30px;">
+        <p style="color:#4b5563; font-size:16px; line-height:1.6; margin-bottom:10px;">
+          <strong>Name:</strong> ${userName}
+        </p>
+        <p style="color:#4b5563; font-size:16px; line-height:1.6; margin-bottom:20px;">
+          <strong>Email:</strong> ${userEmail}
+        </p>
+      </div>
+
+      <div style="
+        background:#f8fafc;
+        border:1px solid #e5e7eb;
+        border-radius:12px;
+        padding:24px;
+        margin:30px 0;
+      ">
+        <h3 style="
+          margin-top:0;
+          color:#111827;
+          font-size:18px;
+          border-bottom: 2px solid #e5e7eb;
+          padding-bottom: 10px;
+          margin-bottom: 15px;
+        ">
+          Submitted Details
+        </h3>
+        
+        <table width="100%" cellpadding="0" cellspacing="0" style="font-size: 14px;">
+          ${detailsHtml}
+        </table>
+      </div>
+
+      <p style="
+        color:#6b7280;
+        font-size:15px;
+        line-height:1.8;
+        margin-top:20px;
+      ">
+        Please review the request in the admin dashboard to approve or reject it.
+      </p>
+    `,
+  );
+};

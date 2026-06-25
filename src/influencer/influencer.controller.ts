@@ -17,10 +17,11 @@ import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
 import { RolesGuard } from 'src/auth/roles.guard';
 import { Roles } from 'src/auth/roles.decorator';
 import { UserRole } from 'src/user/schema/user.schema';
+import { InfluencerStatus } from './schema/influencer.schema';
 
 @Controller('influencers')
 export class InfluencerController {
-  constructor(private readonly influencerService: InfluencerService) {}
+  constructor(private readonly influencerService: InfluencerService) { }
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   // @Post('onboard-influencer')
@@ -30,8 +31,8 @@ export class InfluencerController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @Get('all-influencers')
-  findAll() {
-    return this.influencerService.findAll();
+  findAll(@Query('page') page: number, @Query('limit') limit: number) {
+    return this.influencerService.findAll(page, limit);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -58,16 +59,36 @@ export class InfluencerController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.INFLUENCER)
   @Get('overview')
-  overView(@Req() req:any) {
+  overView(@Req() req: any) {
     return this.influencerService.overview(req.user.influencerId);
   }
 
-  @UseGuards(JwtAuthGuard,RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.INFLUENCER)
   @Get('analytics')
-  analytics(@Req() req:any,@Query('days') days:number){
-    return this.influencerService.influencerAnalytics(req.user.influencerId,days)
+  analytics(@Req() req: any, @Query('days') days: number) {
+    return this.influencerService.influencerAnalytics(req.user.influencerId, days)
   }
 
-  
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Get('influencer-requests')
+  async getInfluencerRequests(@Query('page') page: number, @Query('limit') limit: number) {
+    return await this.influencerService.getAllPendingInfluencersRequests(page, limit)
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @Put('update-influencer-status/:influencerId')
+  async updateInfluencerStatus(@Param('influencerId') influencerId: string, @Body('status') status: InfluencerStatus) {
+    return await this.influencerService.changeInfluencerStatus(influencerId, status)
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN, UserRole.INFLUENCER)
+  @Post('send-influencer-invitation-link')
+  async sendInfluencerInvitationLink(@Body('email') email: string, @Body('name') name: string, @Req() req: any) {
+    return await this.influencerService.sendInfluencerInvitationLink(email, name, req.user._id)
+  }
+
 }

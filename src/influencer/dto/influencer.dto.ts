@@ -1,15 +1,19 @@
 import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import {
   IsBoolean,
+  IsDate,
   IsEmail,
   IsMongoId,
   IsNumber,
   IsOptional,
+  isString,
   IsString,
   Max,
   Min,
 } from 'class-validator';
 import { InfluencerStatus } from '../schema/influencer.schema';
+import { PlatformType } from '../schema/influencer-taskbar.schema';
+import { Type } from 'class-transformer';
 
 
 
@@ -20,10 +24,13 @@ export class CreateInfluencerDto {
   // email!: string;
 
   @IsString()
-  token!:string
+  token!: string
 
   @IsString()
   password!: string;
+
+  @IsString()
+  phone!: string
 
   // @IsString()
   // name!: string;
@@ -45,7 +52,11 @@ export class CreateInfluencerDto {
 
   @IsOptional()
   @IsString()
-  tiktok?: string;
+  facebook?: string;
+
+  @IsOptional()
+  @IsString()
+  snapchat?: string;
 
   // @IsOptional()
   // @IsNumber()
@@ -82,7 +93,11 @@ export class UpdateInfluencerDto {
 
   @IsOptional()
   @IsString()
-  tiktok?: string;
+  facebook?: string;
+
+  @IsOptional()
+  @IsString()
+  snapchat?: string;
 
   // @IsOptional()
   // @IsNumber()
@@ -156,4 +171,34 @@ export class UpdateSlabDTO {
 
   @IsBoolean()
   isActive?: boolean;
+}
+
+export class CreateInfluencerTaskbarDTO {
+
+  @IsString()
+  mediaLink!: string
+
+  @IsString()
+  platform!: PlatformType
+
+  @Type(() => Date)
+  @IsDate()
+  postingDate!: Date
+}
+
+export class UpdateInfluencerTaskbarDTO {
+
+  @IsOptional()
+  @IsString()
+  mediaLink?: string
+
+  @IsOptional()
+  @IsString()
+  platform?: PlatformType
+
+
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  postingDate?: Date
 }

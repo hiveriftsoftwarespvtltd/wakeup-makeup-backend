@@ -36,6 +36,7 @@ import {
   CommissionEntityType,
   CommissionOn,
 } from 'src/admin/schema/commission-rate.schema';
+import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
 
 @Injectable()
 export class ServiceBookingService {
@@ -58,6 +59,7 @@ export class ServiceBookingService {
     private serviceProviderWalletService: ServiceProviderWalletService,
     @InjectModel(StaffAllocation.name) private staffAllocationModel: Model<StaffAllocationDocument>,
     @InjectConnection() private connection: Connection,
+    private affiliateTrackingService: AffiliateTrackingService,
   ) { }
 
 
@@ -573,6 +575,8 @@ export class ServiceBookingService {
         }
       }
 
+      await this.affiliateTrackingService.createPendingCommission(userId, 'SERVICE', booking._id, totalAmount);
+
       await session.commitTransaction();
       safeSendMail(
         user.email,
@@ -1067,6 +1071,10 @@ export class ServiceBookingService {
         );
       }
 
+      if (booking.bookingStatus === BookingStatus.COMPLETED && booking.paymentStatus === BookingPaymentStatus.PAID) {
+        await this.affiliateTrackingService.updateCommissionStatus(booking._id, 'SERVICE', 'PAID');
+      }
+
       await session.commitTransaction();
 
       return ApiResponse.success('Service Booking updated successfully', booking);
@@ -1127,9 +1135,9 @@ export class ServiceBookingService {
     if (status) {
       filter.bookingStatus = status;
     }
-    
+
     if (providerId) {
-       filter.providerId = new Types.ObjectId(providerId);
+      filter.providerId = new Types.ObjectId(providerId);
     }
 
     const skip = (page - 1) * limit;

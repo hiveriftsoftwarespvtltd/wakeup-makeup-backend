@@ -69,7 +69,8 @@ import { DocumentService } from 'src/document/document.service';
 import { StaffAllocation, StaffAllocationStatus } from './schema/staff-allocation.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
 import { MediaFolderName } from 'src/constants';
-import { getWeekDay, toSlug } from 'src/utils/helper';
+import { getWeekDay, notifyAdmins, toSlug } from 'src/utils/helper';
+import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
 import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
 import { Coupon, CouponDocument, CouponType } from 'src/coupon/schema/coupon.schema';
 import { CouponUsage, CouponUsageDocument } from 'src/coupon/schema/coupon-usage.schema';
@@ -501,6 +502,19 @@ export class ServiceService {
             );
 
             await session.commitTransaction();
+
+            await notifyAdmins(
+                this.userModel,
+                'New Service Provider Onboarding Request',
+                adminPendingRequestNotificationTemplate('Service Provider', user.name, user.email, {
+                    BusinessName: provider.businessName,
+                    Phone: provider.phone,
+                    Email: provider.email,
+                    City: provider.city,
+                    State: provider.state,
+                })
+            );
+
             return ApiResponse.success(
                 'Service provider registered successfully',
                 provider,
@@ -583,7 +597,11 @@ export class ServiceService {
         });
     }
 
-    async listServiceProviders() {
+    async listServiceProviders(page?: number, limit?: number) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const providers = await this.serviceProviderModel
             .find({
                 isDeleted: false,
@@ -592,6 +610,8 @@ export class ServiceService {
             })
             .populate('userId', 'name email avatar')
             .sort({ isFeatured: -1, rating: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('Service providers', providers);
@@ -931,7 +951,11 @@ export class ServiceService {
         return ApiResponse.success('Service details', service);
     }
 
-    async listServices(categoryId?: string, providerId?: string) {
+    async listServices(categoryId?: string, providerId?: string, page?: number, limit?: number) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const filter: any = { isActive: true };
         if (categoryId) {
             filter.categoryId = new Types.ObjectId(categoryId);
@@ -946,6 +970,8 @@ export class ServiceService {
             .populate('providerId', 'businessName rating')
             .populate('images')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('Services list', services);
@@ -1499,7 +1525,11 @@ export class ServiceService {
     }
 
 
-    async userListLeads(userId: string, categoryId?: string) {
+    async userListLeads(userId: string, categoryId?: string, page?: number, limit?: number) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const filter: any = { userId: new Types.ObjectId(userId) };
         if (categoryId) {
             filter.categoryIds = new Types.ObjectId(categoryId);
@@ -1510,6 +1540,8 @@ export class ServiceService {
             .populate('userId', 'name email phone')
             .populate('categoryIds', 'name label')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('Leads list', leads);
