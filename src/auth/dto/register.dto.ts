@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, IsEnum, IsOptional, IsMongoId } from "class-validator";
+import { IsEmail, IsString, MinLength, IsEnum, IsOptional, IsMongoId, IsArray } from "class-validator";
 import { UserRole } from "src/user/schema/user.schema";
 
 export class RegisterDTO {
@@ -16,9 +16,10 @@ export class RegisterDTO {
     @IsString()
     phone?: string
 
-    @IsEnum(UserRole)
+    @IsArray()
+    @IsEnum(UserRole, { each: true })
     @IsOptional()
-    role?: UserRole
+    roles?: UserRole[]
 
     @IsMongoId()
     @IsOptional()

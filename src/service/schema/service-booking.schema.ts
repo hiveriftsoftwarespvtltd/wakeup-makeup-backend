@@ -16,7 +16,8 @@ export enum BookingStatus {
 export enum BookingPaymentStatus {
   PENDING = "PENDING",
   PAID = "PAID",
-  REFUNDED = "REFUNDED"
+  REFUNDED = "REFUNDED",
+  PARTIALLY_PAID = "PARTIALLY_PAID"
 }
 
 @Schema({ _id: false })
@@ -87,6 +88,12 @@ export class ServiceBooking {
   @Prop()
   subtotal!: number;
 
+  @Prop({ type: Types.ObjectId, ref: 'Coupon' })
+  couponId?: Types.ObjectId;
+
+  @Prop()
+  couponCode?: string;
+
   @Prop()
   couponDiscount!: number;
 
@@ -98,6 +105,12 @@ export class ServiceBooking {
 
   @Prop()
   totalAmount!: number;
+
+  @Prop()
+  advanceAmount!: number;
+
+  @Prop()
+  remainingAmount!: number;
 
   @Prop({
     enum: BookingStatus,

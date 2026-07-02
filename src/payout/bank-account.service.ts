@@ -1,8 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { BankAccount, BankAccountDocument, BankAccountOwnerType } from './schema/bank-account.schema';
-import { CreateBankAccountDto, UpdateBankAccountDto } from './dto/bank-account.dto';
+import { BankAccount, BankAccountDocument, BankAccountOwnerType, BankAccountStatus } from './schema/bank-account.schema';
+import { CreateBankAccountDto, UpdateBankAccountDto, UpdateBankAccountStatusDto } from './dto/bank-account.dto';
 import { encrypt, decrypt } from '../utils/encryption.util';
 import { VendorWalletWithdraw, VendorWalletWithdrawDocument } from '../wallet/schema/vendor/vendor.wallet.withdraw.schema';
 import { InfluencerWalletWithdraw, InfluencerWalletWithdrawDocument } from '../wallet/schema/influencer/influencer.wallet.withdraw.schema';
@@ -167,7 +167,7 @@ export class BankAccountService {
         return this.decryptAccountInfo(account);
     }
 
-    async updateBankAccountStatus(accountId: string, dto: { status: any, verificationReference?: string }) {
+    async updateBankAccountStatus(accountId: string, dto: UpdateBankAccountStatusDto) {
         const account = await this.bankAccountModel.findOne({
             _id: new Types.ObjectId(accountId),
             isDeleted: false,
@@ -177,9 +177,23 @@ export class BankAccountService {
             throw new NotFoundException('Bank account not found');
         }
 
+        if (dto.status === BankAccountStatus.REJECTED && !dto.rejectionReason) {
+            throw new BadRequestException('Rejection reason is required when rejecting a bank account');
+        }
+
         account.status = dto.status;
         if (dto.verificationReference) {
             account.verificationReference = dto.verificationReference;
+        }
+
+        if (dto.status === BankAccountStatus.VERIFIED) {
+            account.verifiedAt = new Date();
+            account.rejectionReason = undefined;
+            account.rejectedAt = undefined;
+        } else if (dto.status === BankAccountStatus.REJECTED) {
+            account.rejectedAt = new Date();
+            account.rejectionReason = dto.rejectionReason;
+            account.verifiedAt = undefined;
         }
 
         await account.save();

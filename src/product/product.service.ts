@@ -22,6 +22,7 @@ import { ApiResponse } from 'src/common/responses/api-response';
 // import { UpdateCategoryDTO } from './dto/update-category.dto';
 import { CreateProductDto, UpdateProductDto } from './dto/product.dto';
 import { VendorOrder, VendorOrderDocument } from 'src/order/schema/vendor-order.schema';
+import { QuickDeliveryCart, QuickDeliveryCartDocument } from 'src/quick-e-commerce/schema/quick-delivery-cart';
 
 @Injectable()
 export class ProductService {
@@ -32,6 +33,7 @@ export class ProductService {
     @InjectModel(Category.name) private categoryModel: Model<CategoryDocument>,
     @InjectModel(Media.name) private mediaModel: Model<MediaDocument>,
     @InjectModel(VendorOrder.name) private vendorOrderModel: Model<VendorOrderDocument>,
+    @InjectModel(QuickDeliveryCart.name) private quickDeliveryCartModel: Model<QuickDeliveryCartDocument>,
     private documentService: DocumentService,
   ) { }
 
@@ -1007,6 +1009,12 @@ export class ProductService {
         variant.isActive = false;
         await variant.save();
       }
+
+      await this.quickDeliveryCartModel.updateMany(
+        {},
+        { $pull: { items: { product: product._id } } }
+      );
+
       return ApiResponse.success('Product soft deleted because it was ordered previously', null);
     }
 
@@ -1026,6 +1034,11 @@ export class ProductService {
     }
 
     await product.deleteOne();
+
+    await this.quickDeliveryCartModel.updateMany(
+      {},
+      { $pull: { items: { product: product._id } } }
+    );
 
     return ApiResponse.success('Product Deleted Successfully', null);
   }
@@ -1130,6 +1143,12 @@ export class ProductService {
       variant.isDeleted = true;
       variant.isActive = false;
       await variant.save();
+
+      await this.quickDeliveryCartModel.updateMany(
+        {},
+        { $pull: { items: { variant: variant._id } } }
+      );
+
       return ApiResponse.success('Product Variant soft deleted because it was ordered previously', null);
     }
 
@@ -1152,6 +1171,11 @@ export class ProductService {
     await product.save();
 
     await variant.deleteOne();
+
+    await this.quickDeliveryCartModel.updateMany(
+      {},
+      { $pull: { items: { variant: variant._id } } }
+    );
 
     return ApiResponse.success('Product Variant Deleted Successfully', null);
   }

@@ -2,6 +2,7 @@ import { Body, Controller, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { RegisterDTO } from './dto/register.dto';
 import { LoginDTO } from './dto/login.dto';
+import { GoogleLoginDTO } from './dto/google-login.dto';
 import { VerifyEmailDTO } from './dto/verify-email.dto';
 import { VerifyLoginDTO } from './dto/verify-login.dto';
 import { ResetPasswordDTO } from './dto/reset-password.dto';
@@ -23,9 +24,13 @@ export class AuthController {
         return this.authService.login(dto)
     }
 
+    @Post('google')
+    googleLogin(@Body() dto: GoogleLoginDTO) {
+        return this.authService.googleLogin(dto);
+    }
+
     @Post('verify-email')
     verifyEmail(@Body() dto: VerifyEmailDTO, @Req() req: any) {
-        console.log("Req in line 28 : ", req.cookies)
         return this.authService.verifyEmail(dto, req.cookies?.referralCode,)
     }
 

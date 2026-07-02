@@ -6,7 +6,7 @@ import {
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 import { Educator, EducatorDocument, EducatorStatus } from './schema/educator.schema';
-import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
+import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import { Course, CourseDocument } from './schema/course.schema';
 import { CourseEnrollment, CourseEnrollmentDocument } from './schema/course-enrollement.schema';
 import { DocumentService } from 'src/document/document.service';
@@ -71,12 +71,28 @@ export class EducatorService {
             session.startTransaction();
 
             const user = await this.userModel
-                .findOne({ _id: new Types.ObjectId(userId), role: UserRole.EDUCATOR })
+                .findById(userId)
                 .session(session);
+
             if (!user) {
-                throw new NotFoundException('User with role ' + UserRole.EDUCATOR + ' not found');
+                throw new NotFoundException('User not found');
             }
 
+            const educatorStatus = user.roleStatus.get(
+                UserRole.EDUCATOR,
+            );
+
+            if (!educatorStatus) {
+                throw new BadRequestException(
+                    'You have not applied for educator access.',
+                );
+            }
+
+            if (educatorStatus !== RoleStatus.NOT_ONBOARDED) {
+                throw new BadRequestException(
+                    `Educator onboarding is ${educatorStatus.toLowerCase()}.`,
+                );
+            }
             const existing = await this.educatorModel
                 .findOne({ userId: new Types.ObjectId(userId) })
                 .session(session);
@@ -115,6 +131,7 @@ export class EducatorService {
                     $set: {
                         educatorId: educator._id,
                         isEducatorOnboardingCompleted: true,
+                        [`roleStatus.${UserRole.EDUCATOR}`]: RoleStatus.PENDING,
                     },
                 },
                 { session },
@@ -311,6 +328,19 @@ export class EducatorService {
 
         if (isApproved) {
             await this.educatorWalletService.initializeWallet(educator._id.toString());
+        }
+
+        const user = await this.userModel.findOne({ educatorId: educator._id });
+        if (user) {
+            if (isApproved) {
+                user.roleStatus.set(UserRole.EDUCATOR, RoleStatus.APPROVED);
+                if (!user.roles.includes(UserRole.EDUCATOR)) {
+                    user.roles.push(UserRole.EDUCATOR);
+                }
+            } else {
+                user.roleStatus.set(UserRole.EDUCATOR, RoleStatus.REJECTED);
+            }
+            await user.save();
         }
 
         return ApiResponse.success(

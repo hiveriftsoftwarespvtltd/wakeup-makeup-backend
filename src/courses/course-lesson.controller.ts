@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { CourseLessonService } from './course-lesson.service';
 import { CreateCourseLessonDTO, UpdateCourseLessonDTO } from './dto/course-content.dto';
@@ -9,7 +11,7 @@ import { OptionalAuthGuard } from 'src/auth/optional-auth.guards';
 
 @Controller('course-lesson')
 export class CourseLessonController {
-    constructor(private courseLessonService: CourseLessonService) {}
+    constructor(private courseLessonService: CourseLessonService) { }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.EDUCATOR)
@@ -31,7 +33,8 @@ export class CourseLessonController {
         return await this.courseLessonService.getLessonsBySection(sectionId, req.user);
     }
 
-    @UseGuards(OptionalAuthGuard)
+    // @UseGuards(OptionalAuthGuard)
+    @AdminAccess(AdminModule.COURSES, AccessType.READ)
     @Get('list/course/:courseId')
     async getLessonsByCourse(@Param('courseId') courseId: string, @Req() req: any) {
         return await this.courseLessonService.getLessonsByCourse(courseId, req.user);
@@ -43,4 +46,11 @@ export class CourseLessonController {
     async deleteLesson(@Req() req: any, @Param('lessonId') lessonId: string) {
         return await this.courseLessonService.deleteLesson(req.user.educatorId.toString(), lessonId);
     }
+
+    @UseGuards(JwtAuthGuard)
+    @Get('upcoming-live-classes/:courseId')
+    async getUpcomingLiveClasses(@Param('courseId') courseId: string, @Req() req: any) {
+        return await this.courseLessonService.getUpcomingLiveClasses(courseId, req.user._id.toString());
+    }
 }
+

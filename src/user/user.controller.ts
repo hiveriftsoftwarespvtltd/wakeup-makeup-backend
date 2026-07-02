@@ -19,6 +19,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
 import { AddAddressDTO, UpdateAddressDTO } from 'src/address/dto/address.dto';
+import { ApplyRolesDTO } from './dto/apply-roles.dto';
 
 @UseGuards(JwtAuthGuard)
 @Controller('user')
@@ -51,6 +52,16 @@ export class UserController {
   @Get('get-user-avatar')
   getUserAvatar(@Req() req: any) {
     return this.userService.getUserAvatar(req.user._id);
+  }
+
+  @Get('requested-roles')
+  getRequestedRoles(@Req() req: any) {
+    return this.userService.getRequestedRoles(req.user._id);
+  }
+
+  @Post('apply-for-roles')
+  applyRoles(@Req() req: any, @Body() dto: ApplyRolesDTO) {
+    return this.userService.applyRoles(req.user._id, dto.roles);
   }
 
   @Get('user-details')

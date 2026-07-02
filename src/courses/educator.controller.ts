@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import {
     Body,
     Controller,
@@ -28,8 +30,7 @@ export class EducatorController {
     // ===================================================
 
     @Post('onboard')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.EDUCATOR)
+    @UseGuards(JwtAuthGuard)
     @UseInterceptors(FileInterceptor('file'))
     onboard(
         @Req() req: any,
@@ -91,16 +92,18 @@ export class EducatorController {
     // ADMIN ROUTES
     // ===================================================
 
+    @AdminAccess(AdminModule.COURSES, AccessType.READ)
     @Get('pending-approvals')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     listPendingEducators(@Query('page') page: number, @Query('limit') limit: number) {
         return this.educatorService.listPendingEducators(page, limit);
     }
 
+    @AdminAccess(AdminModule.COURSES, AccessType.WRITE)
     @Put('approve/:educatorId')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     approveEducator(
         @Param('educatorId') educatorId: string,
         @Body() dto: ApproveEducatorDTO,
@@ -108,9 +111,10 @@ export class EducatorController {
         return this.educatorService.approveEducator(educatorId, dto.isApproved);
     }
 
+    @AdminAccess(AdminModule.COURSES, AccessType.WRITE)
     @Put('toggle-active/:educatorId')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     toggleActive(
         @Param('educatorId') educatorId: string,
         @Body('isActive') isActive: boolean,

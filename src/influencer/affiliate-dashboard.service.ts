@@ -140,7 +140,7 @@ export class AffiliateDashboardService {
 
         users.forEach(doc => {
             // Count verified users where role is USER
-            if (doc.role === UserRole.USER) {
+            if (doc.roles && doc.roles.includes(UserRole.USER)) {
                 incStat(doc._id, 'userSignups');
             }
         });

@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { InfluencerTaskBarService } from "./influencer-taskbar.service";
 import { CreateInfluencerTaskbarDTO, UpdateInfluencerTaskbarDTO } from "./dto/influencer.dto";
@@ -27,19 +29,20 @@ export class InfluencerTaskbarController {
         return this.influencerTaskbarService.updateTaskbarData(req.user.influencerId, id, dto)
     }
 
-    @Roles(UserRole.INFLUENCER, UserRole.ADMIN)
+    @Roles(UserRole.INFLUENCER, UserRole.SUPER_ADMIN)
     @Get('get-task-data')
     async getTaskData(@Req() req: any) {
         return this.influencerTaskbarService.getTaskdata(req.user.role)
     }
 
-    @Roles(UserRole.INFLUENCER, UserRole.ADMIN)
+    @Roles(UserRole.INFLUENCER, UserRole.SUPER_ADMIN)
     @Delete('delete-task-data/:id')
     async deleteTaskbarData(@Req() req: any, @Param('id') id: string) {
         return this.influencerTaskbarService.deleteTaskbarList(id, req.user.influencerId)
     }
 
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.INFLUENCERS, AccessType.READ)
     @Get('influencer-task-list/:influencerId')
     async getInfluencerTaskList(@Param('influencerId') influencerId: string) {
         return await this.influencerTaskbarService.getListofTaskByInfluencer(influencerId)

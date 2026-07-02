@@ -66,4 +66,8 @@ export class UpdateBankAccountStatusDto {
     @IsOptional()
     @IsString()
     verificationReference?: string;
+
+    @IsOptional()
+    @IsString()
+    rejectionReason?: string;
 }

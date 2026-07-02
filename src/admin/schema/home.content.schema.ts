@@ -20,6 +20,10 @@ export enum RedirectType {
     EXTERNAL_LINK = 'EXTERNAL_LINK',
 }
 
+export enum ContentDocument {
+    IMAGE = "IMAGE",
+    VIDEO = "VIDEO"
+}
 @Schema({ timestamps: true })
 export class HomeContent {
     @Prop({
@@ -30,6 +34,12 @@ export class HomeContent {
 
     @Prop()
     subTitle?: string;
+
+    @Prop({ type: String, enum: ContentDocument, default: ContentDocument.IMAGE })
+    contentDocument!: ContentDocument;
+
+    @Prop({ type: String })
+    videUrl?: string;
 
     @Prop()
     description?: string;

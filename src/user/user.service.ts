@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { User, UserDocument } from './schema/user.schema';
+import { RoleStatus, User, UserDocument, UserRole } from './schema/user.schema';
 import { Model, Types } from 'mongoose';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
@@ -175,512 +175,6 @@ export class UserService {
     return ApiResponse.success('User avatar fetched successfully', user, 200);
   }
 
-  // async fetchProducts(
-  //   userId: string,
-  //   category?: string,
-  //   minPrice?: number,
-  //   maxPrice?: number,
-  // ) {
-  //   const matchStage: any = {
-  //     isDeleted: false,
-  //     isActive: true,
-  //     status: ProductStatus.ACTIVE,
-  //   };
-
-  //   const pipeline: any[] = [
-  //     {
-  //       $match: matchStage,
-  //     },
-
-  //     {
-  //       $lookup: {
-  //         from: 'categories',
-  //         localField: 'categoryId',
-  //         foreignField: '_id',
-  //         as: 'category',
-  //       },
-  //     },
-
-  //     {
-  //       $unwind: {
-  //         path: '$category',
-  //         preserveNullAndEmptyArrays: true,
-  //       },
-  //     },
-
-  //     ...(category
-  //       ? [
-  //           {
-  //             $match: {
-  //               'category.name': {
-  //                 $regex: new RegExp(`^${category}$`, 'i'),
-  //               },
-  //             },
-  //           },
-  //         ]
-  //       : []),
-
-  //     {
-  //       $lookup: {
-  //         from: 'productvariants',
-  //         localField: 'variants',
-  //         foreignField: '_id',
-  //         as: 'variants',
-  //       },
-  //     },
-
-  //     ...(minPrice || maxPrice
-  //       ? [
-  //           {
-  //             $match: {
-  //               variants: {
-  //                 $elemMatch: {
-  //                   ...(minPrice && {
-  //                     price: { $gte: Number(minPrice) },
-  //                   }),
-  //                   ...(maxPrice && {
-  //                     price: { $lte: Number(maxPrice) },
-  //                   }),
-  //                 },
-  //               },
-  //             },
-  //           },
-  //         ]
-  //       : []),
-
-  //     {
-  //       $lookup: {
-  //         from: 'vendors',
-  //         localField: 'vendorId',
-  //         foreignField: '_id',
-  //         as: 'vendor',
-  //       },
-  //     },
-
-  //     {
-  //       $unwind: {
-  //         path: '$vendor',
-  //         preserveNullAndEmptyArrays: true,
-  //       },
-  //     },
-
-  //     {
-  //       $lookup: {
-  //         from: 'media',
-  //         localField: 'variants.thumbnail',
-  //         foreignField: '_id',
-  //         as: 'thumbnails',
-  //       },
-  //     },
-
-  //     // images
-  //     {
-  //       $lookup: {
-  //         from: 'media',
-  //         localField: 'variants.images',
-  //         foreignField: '_id',
-  //         as: 'images',
-  //       },
-  //     },
-
-  //     {
-  //       $project: {
-  //         name: 1,
-  //         slug: 1,
-  //         description: 1,
-
-  //         category: {
-  //           _id: '$category._id',
-  //           name: '$category.name',
-  //         },
-
-  //         vendor: {
-  //           _id: '$vendor._id',
-  //           businessName: '$vendor.businessName',
-  //           vendorPincode: '$vendor.vendorPincode',
-  //         },
-
-  //         variants: {
-  //           $map: {
-  //             input: '$variants',
-  //             as: 'variant',
-  //             in: {
-  //               _id: '$$variant._id',
-  //               sku: '$$variant.sku',
-  //               price: '$$variant.price',
-  //               salesPrice: '$$variant.salesPrice',
-  //               stock: '$$variant.stock',
-
-  //               thumbnail: {
-  //                 $arrayElemAt: [
-  //                   {
-  //                     $filter: {
-  //                       input: '$thumbnails',
-  //                       as: 'thumb',
-  //                       cond: {
-  //                         $eq: ['$$thumb._id', '$$variant.thumbnail'],
-  //                       },
-  //                     },
-  //                   },
-  //                   0,
-  //                 ],
-  //               },
-
-  //               images: {
-  //                 $filter: {
-  //                   input: '$images',
-  //                   as: 'image',
-  //                   cond: {
-  //                     $in: ['$$image._id', '$$variant.images'],
-  //                   },
-  //                 },
-  //               },
-  //             },
-  //           },
-  //         },
-  //       },
-  //     },
-  //   ];
-
-  //   const products = await this.productModel.aggregate(pipeline);
-
-  //   let userPincode: string | null = null;
-
-  //   if (userId) {
-  //     const defaultAddress = await this.addressModel.findOne({
-  //       user: new Types.ObjectId(userId),
-  //     });
-
-  //     if (defaultAddress) {
-  //       userPincode = defaultAddress.pincode;
-  //     }
-  //   }
-
-  //   const updatedProducts = await Promise.all(
-  //     products.map(async (product: any) => {
-  //       const variants = await Promise.all(
-  //         product.variants.map(async (variant: any) => {
-  //           let shipping: any = null;
-
-  //           if (userPincode) {
-  //             shipping =
-  //               await this.shiprocketService.calculateShippingForVariant(
-  //                 product.vendor?.vendorPincode,
-  //                 userPincode,
-  //                 variant,
-  //                 0,
-  //               );
-  //           }
-
-  //           return {
-  //             ...variant,
-  //             shipping,
-  //           };
-  //         }),
-  //       );
-
-  //       return {
-  //         ...product,
-  //         variants,
-  //       };
-  //     }),
-  //   );
-
-  //   return ApiResponse.success(
-  //     'Products fetched successfully',
-  //     updatedProducts,
-  //   );
-  // }
-
-  //   async fetchProducts(
-  //   userId: string,
-  //   category?: string,
-  //   minPrice?: number,
-  //   maxPrice?: number,
-  //   search?: string,
-  // ) {
-  //   const matchStage: any = {
-  //     isDeleted: false,
-  //     isActive: true,
-  //     status: ProductStatus.ACTIVE,
-  //   };
-
-  //   const pipeline: any[] = [
-  //     {
-  //       $match: matchStage,
-  //     },
-
-  //     // Category Lookup
-  //     {
-  //       $lookup: {
-  //         from: 'categories',
-  //         localField: 'categoryId',
-  //         foreignField: '_id',
-  //         as: 'category',
-  //       },
-  //     },
-
-  //     {
-  //       $unwind: {
-  //         path: '$category',
-  //         preserveNullAndEmptyArrays: true,
-  //       },
-  //     },
-
-  //     // Category Filter
-  //     ...(category
-  //       ? [
-  //           {
-  //             $match: {
-  //               'category.name': {
-  //                 $regex: category,
-  //                 $options: 'i',
-  //               },
-  //             },
-  //           },
-  //         ]
-  //       : []),
-
-  //     // Variants Lookup
-  //     {
-  //       $lookup: {
-  //         from: 'productvariants',
-  //         localField: 'variants',
-  //         foreignField: '_id',
-  //         as: 'variants',
-  //       },
-  //     },
-
-  //     // Search Filter
-  //     ...(search
-  //       ? [
-  //           {
-  //             $match: {
-  //               $or: [
-  //                 {
-  //                   name: {
-  //                     $regex: search,
-  //                     $options: 'i',
-  //                   },
-  //                 },
-  //                 {
-  //                   tags: {
-  //                     $elemMatch: {
-  //                       $regex: search,
-  //                       $options: 'i',
-  //                     },
-  //                   },
-  //                 },
-  //                 {
-  //                   'variants.sku': {
-  //                     $regex: search,
-  //                     $options: 'i',
-  //                   },
-  //                 },
-  //                 {
-  //                   'category.name': {
-  //                     $regex: search,
-  //                     $options: 'i',
-  //                   },
-  //                 },
-  //               ],
-  //             },
-  //           },
-  //         ]
-  //       : []),
-
-  //     // Price Filter (using offeredPrice)
-  //     ...(minPrice || maxPrice
-  //       ? [
-  //           {
-  //             $match: {
-  //               variants: {
-  //                 $elemMatch: {
-  //                   offeredPrice: {
-  //                     ...(minPrice
-  //                       ? { $gte: Number(minPrice) }
-  //                       : {}),
-  //                     ...(maxPrice
-  //                       ? { $lte: Number(maxPrice) }
-  //                       : {}),
-  //                   },
-  //                 },
-  //               },
-  //             },
-  //           },
-  //         ]
-  //       : []),
-
-  //     // Vendor Lookup
-  //     {
-  //       $lookup: {
-  //         from: 'vendors',
-  //         localField: 'vendorId',
-  //         foreignField: '_id',
-  //         as: 'vendor',
-  //       },
-  //     },
-
-  //     {
-  //       $unwind: {
-  //         path: '$vendor',
-  //         preserveNullAndEmptyArrays: true,
-  //       },
-  //     },
-
-  //     // Variant Thumbnails
-  //     {
-  //       $lookup: {
-  //         from: 'media',
-  //         localField: 'variants.thumbnail',
-  //         foreignField: '_id',
-  //         as: 'thumbnails',
-  //       },
-  //     },
-
-  //     // Variant Images
-  //     {
-  //       $lookup: {
-  //         from: 'media',
-  //         localField: 'variants.images',
-  //         foreignField: '_id',
-  //         as: 'images',
-  //       },
-  //     },
-
-  //     {
-  //       $project: {
-  //         name: 1,
-  //         slug: 1,
-  //         description: 1,
-  //         averageRating: 1,
-  //         totalReviews: 1,
-  //         isShippingApply: 1,
-
-  //         category: {
-  //           _id: '$category._id',
-  //           name: '$category.name',
-  //           label: '$category.label',
-  //           slug: '$category.slug',
-  //         },
-
-  //         vendor: {
-  //           _id: '$vendor._id',
-  //           businessName: '$vendor.businessName',
-  //           vendorPincode: '$vendor.vendorPincode',
-  //         },
-
-  //         variants: {
-  //           $map: {
-  //             input: '$variants',
-  //             as: 'variant',
-  //             in: {
-  //               _id: '$$variant._id',
-  //               sku: '$$variant.sku',
-
-  //               costPrice: '$$variant.costPrice',
-  //               salesPrice: '$$variant.salesPrice',
-  //               offeredPrice: '$$variant.offeredPrice',
-
-  //               stock: '$$variant.stock',
-
-  //               weight: '$$variant.weight',
-  //               length: '$$variant.length',
-  //               width: '$$variant.width',
-  //               height: '$$variant.height',
-
-  //               attributes: '$$variant.attributes',
-
-  //               thumbnail: {
-  //                 $arrayElemAt: [
-  //                   {
-  //                     $filter: {
-  //                       input: '$thumbnails',
-  //                       as: 'thumb',
-  //                       cond: {
-  //                         $eq: [
-  //                           '$$thumb._id',
-  //                           '$$variant.thumbnail',
-  //                         ],
-  //                       },
-  //                     },
-  //                   },
-  //                   0,
-  //                 ],
-  //               },
-
-  //               images: {
-  //                 $filter: {
-  //                   input: '$images',
-  //                   as: 'image',
-  //                   cond: {
-  //                     $in: [
-  //                       '$$image._id',
-  //                       '$$variant.images',
-  //                     ],
-  //                   },
-  //                 },
-  //               },
-  //             },
-  //           },
-  //         },
-  //       },
-  //     },
-  //   ];
-
-  //   const products = await this.productModel.aggregate(pipeline);
-
-  //   let userPincode: string | null = null;
-
-  //   if (userId) {
-  //     const defaultAddress = await this.addressModel.findOne({
-  //       user: new Types.ObjectId(userId),
-  //     });
-
-  //     if (defaultAddress) {
-  //       userPincode = defaultAddress.pincode;
-  //     }
-  //   }
-
-  //   const updatedProducts = await Promise.all(
-  //     products.map(async (product: any) => {
-  //       const variants = await Promise.all(
-  //         product.variants.map(async (variant: any) => {
-  //           let shipping:any = null;
-
-  //           if (
-  //             userPincode &&
-  //             product.vendor?.vendorPincode &&
-  //             product.isShippingApply
-  //           ) {
-  //             shipping =
-  //               await this.shiprocketService.calculateShippingForVariant(
-  //                 product.vendor.vendorPincode,
-  //                 userPincode,
-  //                 variant,
-  //                 0,
-  //               );
-  //           }
-
-  //           return {
-  //             ...variant,
-  //             shipping,
-  //           };
-  //         }),
-  //       );
-
-  //       return {
-  //         ...product,
-  //         variants,
-  //       };
-  //     }),
-  //   );
-
-  //   return ApiResponse.success(
-  //     'Products fetched successfully',
-  //     updatedProducts,
-  //   );
-  // }
 
   async fetchProducts(
     userId: string,
@@ -1553,5 +1047,43 @@ export class UserService {
     }).filter(p => p !== null);
 
     return ApiResponse.success('Trending products fetched successfully', trendingList);
+  }
+
+  async getRequestedRoles(userId: string) {
+    const user = await this.userModel.findById(new Types.ObjectId(userId));
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const roleStatus = user.roleStatus;
+    return ApiResponse.success('Requested roles fetched successfully', roleStatus);
+  }
+
+  async applyRoles(userId: string, roles: UserRole[]) {
+    const user = await this.userModel.findById(new Types.ObjectId(userId));
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const allowedRoles = [UserRole.EDUCATOR, UserRole.VENDOR, UserRole.SERVICE_PROVIDER];
+    let isModified = false;
+
+    for (const role of roles) {
+      if (!allowedRoles.includes(role)) {
+        throw new BadRequestException(`You cannot apply for the ${role} role directly.`);
+      }
+
+      if (!user.roleStatus.has(role)) {
+        user.roleStatus.set(role, RoleStatus.NOT_ONBOARDED);
+        isModified = true;
+      } else {
+        throw new BadRequestException(`You have already applied for the ${role} role.`);
+      }
+    }
+
+    if (isModified) {
+      await user.save();
+    }
+
+    return ApiResponse.success('Applied for roles successfully', user.roleStatus);
   }
 }

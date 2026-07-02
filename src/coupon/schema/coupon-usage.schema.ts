@@ -24,9 +24,20 @@ export class CouponUsage{
     @Prop({
         type:Types.ObjectId,
         ref:"Order",
-        required:true
     })
-    orderId!:Types.ObjectId
+    orderId?:Types.ObjectId
+
+    @Prop({
+        type:Types.ObjectId,
+        ref:"CoursePurchase",
+    })
+    coursePurchaseId?:Types.ObjectId
+
+    @Prop({
+        type:Types.ObjectId,
+        ref:"ServiceBooking",
+    })
+    serviceBookingId?:Types.ObjectId
 
     @Prop({
         default:1

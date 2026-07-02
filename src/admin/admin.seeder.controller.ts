@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Controller, Post, Body, UseGuards } from '@nestjs/common';
 import { AdminSeederService } from './admin.seeder.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
@@ -13,7 +15,9 @@ import { SeedDataDto } from './dto/seed-data.dto';
 export class AdminSeederController {
   constructor(private readonly adminSeederService: AdminSeederService) { }
 
-  @Roles(UserRole.ADMIN)
+
+  // @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
+  @Roles(UserRole.SUPER_ADMIN)
   @Post('seed-data')
   async seedData(@Body() dto: SeedDataDto) {
     const counts = {

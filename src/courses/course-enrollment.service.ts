@@ -21,6 +21,7 @@ import {
     CommissionOn,
 } from 'src/admin/schema/commission-rate.schema';
 import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
+import { CouponService } from 'src/coupon/coupon.service';
 
 @Injectable()
 export class CourseEnrollmentService {
@@ -36,6 +37,7 @@ export class CourseEnrollmentService {
         private educatorWalletService: EducatorWalletService,
         @InjectConnection() private connection: Connection,
         private affiliateTrackingService: AffiliateTrackingService,
+        private couponService: CouponService,
     ) { }
 
     async enrollUser(learnerId: string, dto: EnrollCourseDTO) {
@@ -106,7 +108,23 @@ export class CourseEnrollmentService {
             }
 
             let walletAmountUsed = 0;
-            const totalAmount = course.offeredPrice > 0 ? course.offeredPrice : course.sellingPrice;
+            let totalAmount = course.offeredPrice > 0 ? course.offeredPrice : course.sellingPrice;
+
+            let appliedCoupon: any = null;
+            let discountAmount = 0;
+
+            if (dto.couponCode) {
+                const couponRes = await this.couponService.validateCouponForAmount(
+                    learnerId,
+                    dto.couponCode,
+                    totalAmount,
+                    educator._id.toString()
+                );
+                appliedCoupon = couponRes.coupon;
+                discountAmount = couponRes.discount;
+                totalAmount -= discountAmount;
+            }
+
             const isPaid = dto.paymentMethod !== PaymentMethod.CASH_ON_DELIVERY;
 
             if (dto.paymentMethod === PaymentMethod.WALLET || dto.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) {
@@ -158,10 +176,17 @@ export class CourseEnrollmentService {
                 platformCommissionRate,
                 platformCommissionOn,
                 platformCommissionAmount,
+                couponId: appliedCoupon ? appliedCoupon._id : undefined,
+                couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+                discountAmount: discountAmount,
                 paymentMeta: {
                     cashbackAwarded: false
                 }
             }], { session });
+
+            if (appliedCoupon) {
+                await this.couponService.recordCourseCouponUsage(learnerId, appliedCoupon._id.toString(), purchase._id.toString(), session);
+            }
 
             // Enroll user immediately on purchase
             await this.courseEnrollmentModel.create([{

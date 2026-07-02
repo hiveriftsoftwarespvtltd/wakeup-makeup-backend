@@ -1,6 +1,7 @@
 import { ToNumber, ToBoolean } from '../../utils/type-tranformer';
 import { Type } from "class-transformer";
-import { IsBoolean, IsMongoId, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { IsBoolean, IsDate, IsEnum, IsMongoId, IsNumber, IsOptional, IsString, Min } from "class-validator";
+import { LessonType } from '../schema/course-lesson.schema';
 
 
 
@@ -68,6 +69,15 @@ export class CreateCourseLessonDTO {
     @ToBoolean()
     @IsBoolean()
     isPreview?: boolean;
+
+    @IsOptional()
+    @IsDate()
+    @Type(() => Date)
+    liveClassStartTime?: Date
+
+    @IsOptional()
+    @IsEnum(LessonType)
+    lessonType?: LessonType
 }
 
 export class UpdateCourseLessonDTO {
@@ -103,4 +113,13 @@ export class UpdateCourseLessonDTO {
     @ToBoolean()
     @IsBoolean()
     isPreview?: boolean;
+
+    @IsOptional()
+    @IsDate()
+    @Type(() => Date)
+    liveClassStartTime?: Date
+
+    @IsOptional()
+    @IsEnum(LessonType)
+    lessonType?: LessonType
 }

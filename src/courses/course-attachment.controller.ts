@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { CourseAttachmentService } from './course-attachment.service';
 import { CreateCourseAttachmentDTO, UpdateCourseAttachmentDTO } from './dto/course-attachment.dto';
@@ -38,6 +40,7 @@ export class CourseAttachmentController {
     }
 
     @UseGuards(OptionalAuthGuard)
+    @AdminAccess(AdminModule.COURSES, AccessType.READ)
     @Get('list/lesson/:lessonId')
     async getAttachmentsByLesson(@Param('lessonId') lessonId: string, @Req() req: any) {
         return await this.courseAttachmentService.getAttachmentsByLesson(lessonId, req.user);
@@ -50,3 +53,4 @@ export class CourseAttachmentController {
         return await this.courseAttachmentService.deleteAttachment(req.user.educatorId.toString(), attachmentId);
     }
 }
+

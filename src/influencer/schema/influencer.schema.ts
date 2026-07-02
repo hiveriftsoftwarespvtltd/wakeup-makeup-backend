@@ -30,6 +30,9 @@ export class Influencer {
   })
   name!: string;
 
+  @Prop({type:Types.ObjectId,ref:"Media"})
+  profilePicture?:Types.ObjectId
+
   // @Prop({
   //   required: true,
   //   unique: true,
@@ -112,7 +115,7 @@ export class Influencer {
   isActive!: boolean;
 }
 
-const InfluencerSchema = SchemaFactory.createForClass(Influencer);
+const InfluencerSchema = SchemaFactory.createForClass(Influencer)
 
 InfluencerSchema.virtual('coupons', {
   ref: 'Coupon',

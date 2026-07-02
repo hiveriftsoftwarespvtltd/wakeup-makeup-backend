@@ -78,8 +78,6 @@ export class AffiliateTrackingController {
         const userAgent =
             req.headers['user-agent'] || '';
 
-
-            console.log("ReferradCode",ipAddress,userAgent)
         try {
             await this.affiliateTrackingService.trackClick(
                 referralCode,

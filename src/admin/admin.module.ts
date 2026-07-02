@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { AdminController } from './admin.controller';
 import { MongooseModule } from '@nestjs/mongoose';
@@ -68,6 +68,13 @@ import { AdminSeederService } from './admin.seeder.service';
 import { AdminCommissionRateController } from './admin.commission-rate.controller';
 import { AdminCommissionRateService } from './admin.commission-rate.service';
 import { CommissionRate, CommissionRateSchema } from './schema/commission-rate.schema';
+import { Admin, AdminSchema } from './schema/admin.schema';
+import { SubAdminService } from './sub-admin.service';
+import { SubAdminController } from './sub-admin.controller';
+import { UserManagementService } from './user-management.service';
+import { UserManagementController } from './user-management.controller';
+import { AdminProfileController } from './admin-profile.controller';
+import { AdminProfileService } from './admin-profile.service';
 
 @Module({
   imports: [
@@ -97,11 +104,13 @@ import { CommissionRate, CommissionRateSchema } from './schema/commission-rate.s
     MongooseModule.forFeature([{ name: InfluencerPayout.name, schema: InfluencerPayoutSchema }, { name: InfluencerInvitation.name, schema: InfluencerInvitationSchema }, { name: ServiceLead.name, schema: ServiceLeadSchema }, { name: ServiceBooking.name, schema: ServiceBookingSchema }, { name: CoursePurchase.name, schema: CoursePurchaseSchema }, { name: UserWallet.name, schema: UserWalletSchema }, { name: WalletTransaction.name, schema: WalletTransactionSchema }, { name: Wishlist.name, schema: WishlistSchema }, { name: Cart.name, schema: cartSchema }, { name: VendorWallet.name, schema: VendorWalletSchema }, { name: InfluencerWallet.name, schema: InfluencerWalletSchema }, { name: Educator.name, schema: EducatorSchema }, { name: EducatorWallet.name, schema: EducatorWalletSchema }, { name: Course.name, schema: CourseSchema }, { name: CourseEnrollment.name, schema: CourseEnrollmentSchema }, { name: ServiceProvider.name, schema: ServiceProviderSchema }, { name: ServiceProviderWallet.name, schema: ServiceProviderWalletSchema }, { name: ServiceQuotation.name, schema: ServiceQuotationSchema }, { name: ProviderSubscription.name, schema: ProviderSubscriptionSchema }, { name: ServiceReview.name, schema: ServiceReviewSchema }, { name: Service.name, schema: ServiceSchema }, { name: ServiceStaff.name, schema: ServiceStaffSchema }]),
     MongooseModule.forFeature([{ name: HomeContent.name, schema: HomeContentSchema }]),
     MongooseModule.forFeature([{ name: CommissionRate.name, schema: CommissionRateSchema }]),
+    MongooseModule.forFeature([{ name: Admin.name, schema: AdminSchema }]),
     DocumentModule,
     InfluencerModule,
-    WalletModule,
+    WalletModule
+
   ],
-  providers: [AdminService, AdminDashboardService, HomeContentService, AdminCleanupService, AdminSeederService, AdminCommissionRateService],
+  providers: [AdminService, AdminDashboardService, HomeContentService, AdminCleanupService, AdminSeederService, AdminCommissionRateService, SubAdminService, UserManagementService, AdminProfileService],
   controllers: [
     AdminController,
     AdminDashboardController,
@@ -110,6 +119,10 @@ import { CommissionRate, CommissionRateSchema } from './schema/commission-rate.s
     AdminCleanupController,
     AdminSeederController,
     AdminCommissionRateController,
+    SubAdminController,
+    UserManagementController,
+    AdminProfileController,
   ],
+  exports: [AdminService, MongooseModule]
 })
-export class AdminModule {}
+export class AdminModule { }

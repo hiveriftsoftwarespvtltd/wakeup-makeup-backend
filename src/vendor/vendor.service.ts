@@ -13,7 +13,7 @@ import { Vendor, VendorDocument } from './schema/vendor.schema';
 import { Model, Types } from 'mongoose';
 import { createVendorDTO } from './dto/create-vendor.dto';
 import { DashboardFilterDTO } from './dto/vendor-analytics.dto';
-import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
+import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
 import { notifyAdmins } from 'src/utils/helper';
 import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
@@ -123,7 +123,8 @@ export class VendorService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
-    if (user.role !== UserRole.VENDOR) {
+
+    if (user.roleStatus.get(UserRole.VENDOR) !== RoleStatus.NOT_ONBOARDED) {
       throw new BadRequestException('You need to register as vendor');
     }
 
@@ -136,8 +137,8 @@ export class VendorService {
       state: dto.state,
     });
 
-    let bannerImageId;
-    let logoImageId;
+    let bannerImageId: any;
+    let logoImageId: any;
 
     if (files?.banner?.length) {
       const uploadedBanner = await this.documentService.upload(
@@ -164,6 +165,7 @@ export class VendorService {
 
     user.vendorId = vendor._id;
     user.isVendorOnboardingCompleted = true;
+    user.roleStatus.set(UserRole.VENDOR, RoleStatus.PENDING);
     await user.save();
 
     await notifyAdmins(
@@ -373,7 +375,7 @@ export class VendorService {
     return ApiResponse.success('Order Details Fetched Successfully', order);
   }
 
- 
+
 
   async updateOrder(dto: UpdateOrderDTO, orderId: string, vendorId: string) {
     const session = await this.connection.startSession();

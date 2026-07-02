@@ -650,3 +650,53 @@ export const adminPendingRequestNotificationTemplate = (
     `,
   );
 };
+
+export const campaignEmailTemplate = (
+  userName: string,
+  title: string,
+  body: string,
+  actionUrl?: string,
+) => {
+  let actionHtml = '';
+  if (actionUrl) {
+    actionHtml = `
+      <div style="text-align:center;margin:40px 0;">
+        <a href="${actionUrl}" style="
+          display:inline-block;
+          background:#ff4d6d;
+          color:#ffffff;
+          text-decoration:none;
+          padding:16px 36px;
+          border-radius:10px;
+          font-size:16px;
+          font-weight:600;
+        ">
+          View Details
+        </a>
+      </div>
+    `;
+  }
+
+  return emailWrapper(
+    title,
+    `Hello ${userName},`,
+    `
+      <div style="
+        background:#ffffff;
+        padding:10px 0;
+        margin:20px 0;
+      ">
+        <p style="
+          color:#4b5563;
+          font-size:16px;
+          line-height:1.8;
+          white-space: pre-wrap;
+        ">
+          ${body}
+        </p>
+
+        ${actionHtml}
+      </div>
+    `,
+  );
+};

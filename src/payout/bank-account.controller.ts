@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Body, Controller, Delete, Get, Param, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { BankAccountService } from './bank-account.service';
 import { CreateBankAccountDto, UpdateBankAccountDto, UpdateBankAccountStatusDto } from './dto/bank-account.dto';
@@ -35,20 +37,23 @@ export class BankAccountController {
         return this.bankAccountService.getMyBankAccounts(req.user._id.toString());
     }
 
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('admin/all')
     getAllBankAccounts() {
         return this.bankAccountService.getAllBankAccounts();
     }
 
-    @Roles(UserRole.ADMIN)
-    @Get('admin/:id')
+
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
+    @Get('details/:id')
     getBankAccountById(@Param('id') id: string) {
         return this.bankAccountService.getBankAccountById(id);
     }
 
-    @Roles(UserRole.ADMIN)
-    @Put('admin/:id/status')
+
+    @AdminAccess(AdminModule.FINANCE, AccessType.WRITE)
+    @Put('update-status/:id')
     updateBankAccountStatus(@Param('id') id: string, @Body() dto: UpdateBankAccountStatusDto) {
         return this.bankAccountService.updateBankAccountStatus(id, dto);
     }

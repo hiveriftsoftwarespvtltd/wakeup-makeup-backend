@@ -23,7 +23,7 @@ import {
   ProductVariantDocument,
 } from 'src/product/schema/product-variant.schema';
 import { Product, ProductDocument } from 'src/product/schema/product.schema';
-import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
+import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import {
   Vendor,
   VendorDocument,
@@ -773,13 +773,19 @@ export class AdminService {
       throw new ConflictException('this vendor already approved');
     }
 
-    // const user = await this.userModel.findOne({vendorId})
-    // if(!user){
-    //   throw new NotFoundException("User Not Exist")
-    // }
+    const user = await this.userModel.findOne({ vendorId: new Types.ObjectId(vendorId) })
+    if (!user) {
+      throw new NotFoundException("User Not Exist")
+    }
 
     vendor.status = 'APPROVED';
     await vendor.save();
+
+    user.roleStatus.set(UserRole.VENDOR, RoleStatus.APPROVED);
+    if (!user.roles.includes(UserRole.VENDOR)) {
+      user.roles.push(UserRole.VENDOR);
+    }
+    await user.save();
 
     await this.vendorWalletService.initializeWallet(vendor._id.toString());
 
@@ -797,7 +803,14 @@ export class AdminService {
     }
 
     vendor.status = 'REJECTED';
-    vendor.save();
+    await vendor.save();
+
+    const user = await this.userModel.findOne({ vendorId });
+    if (user) {
+      user.roleStatus.set(UserRole.VENDOR, RoleStatus.REJECTED);
+      await user.save();
+    }
+
     return vendor;
   }
 

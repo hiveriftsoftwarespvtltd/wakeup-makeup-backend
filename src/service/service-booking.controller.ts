@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import {
   Controller,
   Post,
@@ -95,9 +97,10 @@ export class ServiceBookingController {
     );
   }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
   @Get('admin/list')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+
   getAdminBookings(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
@@ -112,6 +115,7 @@ export class ServiceBookingController {
     );
   }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
   @Get('details/:id')
   @UseGuards(JwtAuthGuard)
   getBookingDetails(@Req() req: any, @Param('id') bookingId: string) {

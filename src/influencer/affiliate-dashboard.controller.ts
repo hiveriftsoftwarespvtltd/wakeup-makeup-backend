@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { AffiliateDashboardService } from './affiliate-dashboard.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
@@ -10,7 +12,8 @@ export class AffiliateDashboardController {
     constructor(private readonly affiliateDashboardService: AffiliateDashboardService) {}
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.INFLUENCERS, AccessType.READ)
     @Get('admin')
     getAdminDashboard(
         @Query('month') month?: string,
@@ -31,7 +34,8 @@ export class AffiliateDashboardController {
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.INFLUENCERS, AccessType.READ)
     @Get('ranking')
     getInfluencerRanking(
         @Query('month') month?: string,

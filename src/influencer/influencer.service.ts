@@ -16,7 +16,7 @@ import {
   UpdateInfluencerDto,
   UpdateSlabDTO,
 } from './dto/influencer.dto';
-import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
+import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
 import {
   CommissionStatus,
@@ -37,12 +37,14 @@ import {
   InfluencerInvitation,
   InfluencerInvitationDocument,
 } from './schema/influencer-invitation.schema';
+import { InfluencerStory, InfluencerStoryDocument } from './schema/influencer-stories.schema';
 import { sendMail } from 'src/utils/helper';
 import { influencerInvitationTemplate } from 'src/utils/email.template';
 import { randomUUID } from 'crypto';
 import { InfluencerWalletService } from 'src/wallet/service/influencer/influencer.wallet.service';
 import { notifyAdmins } from 'src/utils/helper';
 import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
+import { DocumentService } from 'src/document/document.service';
 
 @Injectable()
 export class InfluencerService {
@@ -59,8 +61,11 @@ export class InfluencerService {
     private influencerPayoutModel: Model<InfluencerPayoutDocument>,
     @InjectModel(InfluencerInvitation.name)
     private influencerInvitationModel: Model<InfluencerInvitationDocument>,
+    @InjectModel(InfluencerStory.name)
+    private influencerStoryModel: Model<InfluencerStoryDocument>,
     @InjectConnection() private connection: Connection,
-    private influencerWalletService: InfluencerWalletService
+    private influencerWalletService: InfluencerWalletService,
+    private documentService: DocumentService
   ) { }
 
 
@@ -114,7 +119,6 @@ export class InfluencerService {
             phone: dto.phone,
             email: invitation.email,
             password: hashedPassword,
-            role: UserRole.INFLUENCER,
             isEmailVerified: true,
             isActive: true,
           },
@@ -146,6 +150,8 @@ export class InfluencerService {
         },
         {
           influencerId: influencer[0]._id,
+          isInfluencerOnboardingCompleted: true,
+          [`roleStatus.${UserRole.INFLUENCER}`]: RoleStatus.PENDING,
         },
         { session },
       );
@@ -827,6 +833,125 @@ export class InfluencerService {
     }
     influencer.status = status
     await influencer.save()
+
+    const user = await this.userModel.findOne({ influencerId: influencer._id });
+    if (user) {
+      if (status === InfluencerStatus.ACTIVE) {
+        user.roleStatus.set(UserRole.INFLUENCER, RoleStatus.APPROVED);
+        user.roleStatus.set(UserRole.USER, RoleStatus.APPROVED)
+        if (!user.roles.includes(UserRole.INFLUENCER)) {
+          user.roles.push(UserRole.INFLUENCER);
+        }
+      } else if (status === InfluencerStatus.REJECTED) {
+        user.roleStatus.set(UserRole.INFLUENCER, RoleStatus.REJECTED);
+        user.roleStatus.set(UserRole.USER, RoleStatus.APPROVED)
+      }
+      await user.save();
+    }
+
     return ApiResponse.success("Influencer status changed successfully", influencer)
+  }
+
+  async submitStoryLink(influencerId: string, storyUrl: string) {
+    const influencer = await this.influencerModel.findById(influencerId);
+    if (!influencer) throw new NotFoundException('Influencer not found');
+
+    const newStory = new this.influencerStoryModel({
+      influencerId,
+      storyUrl
+    });
+    await newStory.save();
+    return ApiResponse.success('Story submitted successfully', newStory);
+  }
+
+  async uploadProfilePicture(influencerId: string, file: any) {
+    let influencer = await this.influencerModel.findById(influencerId);
+    if (!influencer) throw new NotFoundException('Influencer not found');
+
+    let mediaId;
+    if (influencer.profilePicture) {
+      try {
+        await this.documentService.replace(influencer.profilePicture.toString(), file);
+        mediaId = influencer.profilePicture;
+      } catch (e) {
+        const uploadedMedia = await this.documentService.upload(file, 'influencer-profiles', influencer.userId.toString());
+        mediaId = uploadedMedia._id;
+      }
+    } else {
+      const uploadedMedia = await this.documentService.upload(file, 'influencer-profiles', influencer.userId.toString());
+      mediaId = uploadedMedia._id;
+    }
+
+    influencer = await this.influencerModel.findByIdAndUpdate(
+      influencerId,
+      { profilePicture: mediaId },
+      { new: true }
+    );
+    
+    return ApiResponse.success('Profile picture updated successfully', influencer);
+  }
+
+  async getPublicStories() {
+    const stories = await this.influencerStoryModel.find({
+      isActive: true,
+      expiresAt: { $gt: new Date() }
+    })
+      .populate({
+        path: 'influencerId',
+        select: 'name profilePicture',
+        populate: {
+          path: 'profilePicture',
+          select: 'url'
+        }
+      })
+      .exec();
+
+    const publicStories = stories.map(story => {
+      const influencer: any = story.influencerId;
+      return {
+        _id: story._id,
+        storyUrl: story.storyUrl,
+        influencerName: influencer?.name,
+        thumbnail: influencer?.profilePicture?.url || null,
+        expiresAt: story.expiresAt,
+      };
+    });
+
+    return ApiResponse.success('Public stories fetched successfully', publicStories);
+  }
+
+  async deleteStory(storyId: string, userRoles: string[], influencerId?: string) {
+    const story = await this.influencerStoryModel.findById(storyId);
+    if (!story) throw new NotFoundException('Story not found');
+
+    if (!userRoles.includes(UserRole.SUPER_ADMIN)) {
+      if (story.influencerId.toString() !== influencerId?.toString()) {
+        throw new BadRequestException('You do not have permission to delete this story');
+      }
+    }
+
+    await this.influencerStoryModel.findByIdAndDelete(storyId);
+    return ApiResponse.success('Story deleted successfully');
+  }
+
+  async deleteProfilePicture(influencerId: string) {
+    const influencer = await this.influencerModel.findById(influencerId);
+    if (!influencer) throw new NotFoundException('Influencer not found');
+
+    if (influencer.profilePicture) {
+      try {
+        await this.documentService.deleteMedia(influencer.profilePicture.toString());
+      } catch (e) {
+        // ignore if media is already deleted or not found
+      }
+    }
+
+    const updatedInfluencer = await this.influencerModel.findByIdAndUpdate(
+      influencerId,
+      { $unset: { profilePicture: "" } },
+      { new: true }
+    );
+    
+    return ApiResponse.success('Profile picture deleted successfully', updatedInfluencer);
   }
 }

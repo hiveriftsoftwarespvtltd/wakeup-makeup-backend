@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Controller, Get, Post, Body, Param, Delete, Put, Query, UseGuards, UseInterceptors, UploadedFiles, Req, BadRequestException } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { HomeContentService } from './home.content.service';
@@ -13,7 +15,8 @@ export class HomeContentController {
     constructor(private readonly homeContentService: HomeContentService) { }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
     @Post('add')
     @UseInterceptors(FileFieldsInterceptor([
         { name: 'computerImage', maxCount: 1 },
@@ -42,7 +45,8 @@ export class HomeContentController {
 
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.READ)
     @Get('get-details/:id')
     findOne(@Param('id') id: string) {
         return this.homeContentService.findOne(id);
@@ -50,7 +54,8 @@ export class HomeContentController {
 
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
     @Put('update/:id')
     @UseInterceptors(FileFieldsInterceptor([
         { name: 'computerImage', maxCount: 1 },
@@ -75,7 +80,8 @@ export class HomeContentController {
 
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
     @Delete('delete-home-content/:id')
     remove(@Param('id') id: string) {
         return this.homeContentService.remove(id);

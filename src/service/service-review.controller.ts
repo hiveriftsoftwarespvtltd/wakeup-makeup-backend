@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import {
   Body,
   Controller,
@@ -52,7 +54,8 @@ export class ServiceReviewController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+
+  @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
   @Delete('delete/:id')
   async deleteReview(@Param('id') id: string) {
     const result = await this.serviceReviewService.deleteReview(id);

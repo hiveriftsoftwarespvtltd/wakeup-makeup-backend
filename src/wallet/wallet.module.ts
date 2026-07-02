@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 
 // User
@@ -62,6 +62,9 @@ import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
 import { Influencer, InfluencerSchema } from 'src/influencer/schema/influencer.schema';
 import { ServiceProvider, ServiceProviderSchema } from 'src/service/schema/service-provider.schema';
 import { Educator, EducatorSchema } from 'src/courses/schema/educator.schema';
+import { AdminModule } from 'src/admin/admin.module';
+import { Admin } from 'openai/resources';
+import { AdminSchema } from 'src/admin/schema/admin.schema';
 
 @Module({
   imports: [
@@ -102,7 +105,10 @@ import { Educator, EducatorSchema } from 'src/courses/schema/educator.schema';
 
       // Cashback
       { name: CashbackSlab.name, schema: CashbackSlabSchema },
+      { name: Admin.name, schema: AdminSchema }
+
     ]),
+    
   ],
   controllers: [
     UserWalletController,
@@ -114,6 +120,7 @@ import { Educator, EducatorSchema } from 'src/courses/schema/educator.schema';
     PlatformWalletController,
     AdminWalletController,
     AdminCashbackSlabController,
+
   ],
   providers: [
     UserWalletService,

@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Controller, Get, Delete, Param, UseGuards, Req, Post, Body, Put } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
 import { RolesGuard } from 'src/auth/roles.guard';
@@ -10,13 +12,15 @@ import { BookLeadDTO } from './dto/service.dto';
 export class ServiceLeadController {
   constructor(private readonly serviceLeadService: ServiceLeadService) { }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+
   getAllLeadsForAdmin() {
     return this.serviceLeadService.getAllLeadsForAdmin();
   }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
   @Get('provider/my-leads')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SERVICE_PROVIDER)
@@ -26,11 +30,12 @@ export class ServiceLeadController {
 
   @Delete('admin/delete-lead/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+
   deleteLeadByUser(@Req() req: any, @Param('id') leadId: string) {
     return this.serviceLeadService.deleteLeadByAdmin(req.user._id, leadId);
   }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
   @Post('apply/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SERVICE_PROVIDER)

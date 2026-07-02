@@ -64,6 +64,7 @@ import { LeadBooking, LeadBookingSchema } from './schema/service-lead-booking.sc
 import { StaffAllocation, StaffAllocationSchema } from './schema/staff-allocation.schema';
 import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commission-rate.schema';
 import { InfluencerModule } from 'src/influencer/influencer.module';
+import { Admin, AdminSchema } from 'src/admin/schema/admin.schema';
 
 @Module({
   imports: [
@@ -90,6 +91,7 @@ import { InfluencerModule } from 'src/influencer/influencer.module';
       { name: LeadBooking.name, schema: LeadBookingSchema },
       { name: StaffAllocation.name, schema: StaffAllocationSchema },
       { name: CommissionRate.name, schema: CommissionRateSchema },
+      { name: Admin.name, schema: AdminSchema },
     ]),
     DocumentModule,
     WalletModule,
