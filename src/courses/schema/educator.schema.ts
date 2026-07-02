@@ -1,6 +1,13 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { Document, Types } from "mongoose";
 
+export enum EducatorStatus {
+    PENDING = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED',
+    BLOCKED = 'BLOCKED',
+}
+
 export type EducatorDocument = Educator & Document
 
 @Schema({ timestamps: true })
@@ -24,6 +31,9 @@ export class Educator {
 
     @Prop({ default: false })
     isApproved: boolean;
+
+    @Prop({ enum: EducatorStatus, default: EducatorStatus.PENDING })
+    status: EducatorStatus
 
     @Prop({ type: Number, default: 15 })
     comissionRate: number;

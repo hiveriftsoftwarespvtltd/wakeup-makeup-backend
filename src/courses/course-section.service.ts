@@ -34,7 +34,7 @@ export class CourseSectionService {
             throw new ForbiddenException('You do not own this course');
         }
 
-        const isExist = await this.courseSectionModel.findOne({ _id: { $ne: new Types.ObjectId(dto.courseId) }, title: dto.title, order: dto.order })
+        const isExist = await this.courseSectionModel.findOne({ courseId: new Types.ObjectId(dto.courseId), title: dto.title, order: dto.order })
 
         if (isExist) {
             throw new BadRequestException('Section already exists with this Title or Order');

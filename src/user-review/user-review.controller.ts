@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import {
   Body,
   Controller,
@@ -77,9 +79,10 @@ export class ReviewController {
     );
   }
 
+  @AdminAccess(AdminModule.VENDORS, AccessType.WRITE)
   @Delete('delete/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+
   async deleteReview(
     @Param('id') id: string,
   ) {
@@ -88,6 +91,7 @@ export class ReviewController {
     );
   }
 
+  @AdminAccess(AdminModule.VENDORS, AccessType.READ)
   @Get('product-reviews/:productId')
   @UseGuards(OptionalAuthGuard)
   async getProductReviews(

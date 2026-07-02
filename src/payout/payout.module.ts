@@ -29,38 +29,41 @@ import { CoursePurchase, CoursePurchaseSchema } from 'src/courses/schema/course-
 import { ServiceBooking, ServiceBookingSchema } from 'src/service/schema/service-booking.schema';
 import { PlatformWallet, PlatformWalletSchema } from 'src/wallet/schema/platform/platform.wallet.schema';
 import { PlatformWalletTransaction, PlatformWalletTransactionSchema } from 'src/wallet/schema/platform/platform.wallet.transactions';
+import { Admin } from 'openai/resources';
+import { AdminSchema } from 'src/admin/schema/admin.schema';
 
 @Module({
-  imports:[
+  imports: [
     MongooseModule.forFeature([
-      {name:Vendor.name,schema:VendorSchema},
-      {name:Influencer.name,schema:InfluencerSchema},
-      {name:VendorPayout.name,schema:VendorPayoutSchema},
-      {name:InfluencerPayout.name,schema:InfluencerPayoutSchema},
-      {name:InfluencerCommission.name,schema:InfluencerCommissionSchema},
-      {name:influencerCommissonSlab.name,schema:influencerCommissionSlabSchema},
-      {name:Order.name,schema:OrderSchema},
-      {name:VendorOrder.name,schema:VendorOrderSchema},
-      {name:BankAccount.name,schema:BankAccountSchema},
-      {name:VendorWalletWithdraw.name,schema:VendorWalletWithdrawSchema},
-      {name:InfluencerWalletWithdraw.name,schema:InfluencerWalletWithdrawSchema},
-      {name:ServiceProviderWalletWithdraw.name,schema:ServiceProviderWalletWithdrawSchema},
-      {name:EducatorWalletWithdraw.name,schema:EducatorWalletWithdrawSchema},
-      {name:VendorWallet.name,schema:VendorWalletSchema},
-      {name:VendorWalletTransaction.name,schema:VendorWalletTransactionSchema},
-      {name:InfluencerWallet.name,schema:InfluencerWalletSchema},
-      {name:InfluencerWalletTransaction.name,schema:InfluencerWalletTransactionSchema},
-      {name:ServiceProviderWallet.name,schema:ServiceProviderWalletSchema},
-      {name:ServiceProviderWalletTransaction.name,schema:ServiceProviderWalletTransactionSchema},
-      {name:EducatorWallet.name,schema:EducatorWalletSchema},
-      {name:EducatorWalletTransaction.name,schema:EducatorWalletTransactionSchema},
-      {name:CoursePurchase.name,schema:CoursePurchaseSchema},
-      {name:ServiceBooking.name,schema:ServiceBookingSchema},
-      {name:PlatformWallet.name,schema:PlatformWalletSchema},
-      {name:PlatformWalletTransaction.name,schema:PlatformWalletTransactionSchema},
+      { name: Vendor.name, schema: VendorSchema },
+      { name: Influencer.name, schema: InfluencerSchema },
+      { name: VendorPayout.name, schema: VendorPayoutSchema },
+      { name: InfluencerPayout.name, schema: InfluencerPayoutSchema },
+      { name: InfluencerCommission.name, schema: InfluencerCommissionSchema },
+      { name: influencerCommissonSlab.name, schema: influencerCommissionSlabSchema },
+      { name: Order.name, schema: OrderSchema },
+      { name: VendorOrder.name, schema: VendorOrderSchema },
+      { name: BankAccount.name, schema: BankAccountSchema },
+      { name: VendorWalletWithdraw.name, schema: VendorWalletWithdrawSchema },
+      { name: InfluencerWalletWithdraw.name, schema: InfluencerWalletWithdrawSchema },
+      { name: ServiceProviderWalletWithdraw.name, schema: ServiceProviderWalletWithdrawSchema },
+      { name: EducatorWalletWithdraw.name, schema: EducatorWalletWithdrawSchema },
+      { name: VendorWallet.name, schema: VendorWalletSchema },
+      { name: VendorWalletTransaction.name, schema: VendorWalletTransactionSchema },
+      { name: InfluencerWallet.name, schema: InfluencerWalletSchema },
+      { name: InfluencerWalletTransaction.name, schema: InfluencerWalletTransactionSchema },
+      { name: ServiceProviderWallet.name, schema: ServiceProviderWalletSchema },
+      { name: ServiceProviderWalletTransaction.name, schema: ServiceProviderWalletTransactionSchema },
+      { name: EducatorWallet.name, schema: EducatorWalletSchema },
+      { name: EducatorWalletTransaction.name, schema: EducatorWalletTransactionSchema },
+      { name: CoursePurchase.name, schema: CoursePurchaseSchema },
+      { name: ServiceBooking.name, schema: ServiceBookingSchema },
+      { name: PlatformWallet.name, schema: PlatformWalletSchema },
+      { name: PlatformWalletTransaction.name, schema: PlatformWalletTransactionSchema },
+      { name: Admin.name, schema: AdminSchema },
     ])
   ],
   providers: [PayoutService, BankAccountService],
   controllers: [PayoutController, BankAccountController]
 })
-export class PayoutModule {}
+export class PayoutModule { }

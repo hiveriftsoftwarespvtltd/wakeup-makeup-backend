@@ -8,6 +8,7 @@ import { ReviewService } from './user-review.service';
 import { Product, ProductSchema } from 'src/product/schema/product.schema';
 import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
 import { VendorOrder, VendorOrderSchema } from 'src/order/schema/vendor-order.schema';
+import { Admin, AdminSchema } from 'src/admin/schema/admin.schema';
 
 @Module({
   imports: [
@@ -16,10 +17,11 @@ import { VendorOrder, VendorOrderSchema } from 'src/order/schema/vendor-order.sc
     ]),
     MongooseModule.forFeature([{ name: Product.name, schema: ProductSchema }]),
     MongooseModule.forFeature([{ name: Vendor.name, schema: VendorSchema }]),
-    MongooseModule.forFeature([{name:VendorOrder.name,schema:VendorOrderSchema}]),
+    MongooseModule.forFeature([{ name: VendorOrder.name, schema: VendorOrderSchema }]),
+    MongooseModule.forFeature([{ name: Admin.name, schema: AdminSchema }]),
     DocumentModule
   ],
   controllers: [ReviewController],
   providers: [ReviewService],
 })
-export class UserReviewModule {}
+export class UserReviewModule { }

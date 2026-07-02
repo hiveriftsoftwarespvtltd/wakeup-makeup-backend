@@ -1,7 +1,7 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { CourseLesson, CourseLessonDocument } from './schema/course-lesson.schema';
+import { CourseLesson, CourseLessonDocument, LessonType } from './schema/course-lesson.schema';
 import { CourseSection, CourseSectionDocument } from './schema/course-section.schema';
 import { Course, CourseDocument } from './schema/course.schema';
 import { CreateCourseLessonDTO, UpdateCourseLessonDTO } from './dto/course-content.dto';
@@ -66,6 +66,18 @@ export class CourseLessonService {
             );
         }
 
+        if (dto.lessonType === LessonType.LIVE_CLASS) {
+            if (!dto.liveClassStartTime) {
+                throw new ConflictException('Live class start time is required');
+            }
+
+            if (dto.liveClassStartTime <= new Date()) {
+                throw new ConflictException(
+                    'Live class start time must be in the future',
+                );
+            }
+        }
+
         const existingLesson = await this.courseLessonModel.findOne({
             sectionId: section._id,
             $or: [
@@ -98,6 +110,8 @@ export class CourseLessonService {
             durationInSeconds: dto.durationInSeconds,
             order: dto.order,
             isPreview: dto.isPreview,
+            lessonType: dto.lessonType || LessonType.VIDEO,
+            liveClassStartTime: dto.lessonType === LessonType.LIVE_CLASS ? dto.liveClassStartTime : undefined,
         });
 
         await this.updateCourseStats(course._id);
@@ -209,18 +223,94 @@ export class CourseLessonService {
         return true;
     }
 
-    async getLessonsBySection(sectionId: string, user: any) {
-        const section = await this.courseSectionModel.findById(new Types.ObjectId(sectionId));
-        if (!section) throw new NotFoundException('Section not found');
+    private async hasFullAccess(courseId: string, user?: any): Promise<boolean> {
+        const course = await this.courseModel.findById(
+            new Types.ObjectId(courseId),
+        );
 
-        await this.checkAccess(section.courseId.toString(), user);
+        if (!course) {
+            throw new NotFoundException('Course not found');
+        }
 
-        const lessons = await this.courseLessonModel.find({ sectionId: new Types.ObjectId(sectionId) }).sort({ order: 1 }).lean();
-        return ApiResponse.success('Course lessons retrieved successfully', lessons);
+        // Admin can access everything
+        if (user?.role === UserRole.ADMIN) {
+            return true;
+        }
+
+        // Course owner can access everything
+        if (
+            user?.role === UserRole.EDUCATOR &&
+            course.educatorId.toString() === user.educatorId?.toString()
+        ) {
+            return true;
+        }
+
+        // Not logged in -> preview only
+        if (!user) {
+            return false;
+        }
+
+        // Check enrollment
+        const enrollment = await this.courseEnrollmentModel.findOne({
+            learnerId: new Types.ObjectId(user._id),
+            courseId: new Types.ObjectId(courseId),
+            status: {
+                $in: [
+                    EnrollmentStatus.ACTIVE,
+                    EnrollmentStatus.COMPLETED,
+                ],
+            },
+        });
+
+        return !!enrollment;
+    }
+
+    // async getLessonsBySection(sectionId: string, user: any) {
+    //     const section = await this.courseSectionModel.findById(new Types.ObjectId(sectionId));
+    //     if (!section) throw new NotFoundException('Section not found');
+
+    //     await this.checkAccess(section.courseId.toString(), user);
+
+    //     const lessons = await this.courseLessonModel.find({ sectionId: new Types.ObjectId(sectionId) }).sort({ order: 1 }).lean();
+    //     return ApiResponse.success('Course lessons retrieved successfully', lessons);
+    // }
+
+    async getLessonsBySection(sectionId: string, user?: any) {
+        const section = await this.courseSectionModel.findById(
+            new Types.ObjectId(sectionId),
+        );
+
+        if (!section) {
+            throw new NotFoundException('Section not found');
+        }
+
+        const hasFullAccess = await this.hasFullAccess(
+            section.courseId.toString(),
+            user,
+        );
+
+        const filter: any = {
+            sectionId: new Types.ObjectId(sectionId),
+        };
+
+        // If not enrolled or not logged in, show only preview lessons
+        if (!hasFullAccess) {
+            filter.isPreview = true;
+        }
+
+        const lessons = await this.courseLessonModel
+            .find(filter)
+            .sort({ order: 1 })
+            .lean();
+
+        return ApiResponse.success(
+            'Course lessons retrieved successfully',
+            lessons,
+        );
     }
 
     async getLessonsByCourse(courseId: string, user: any) {
-        await this.checkAccess(courseId, user);
+        // await this.checkAccess(courseId, user);
 
         const lessons = await this.courseLessonModel.find({ courseId: new Types.ObjectId(courseId) }).sort({ sectionId: 1, order: 1 }).lean();
         return ApiResponse.success('Course lessons retrieved successfully', lessons);
@@ -232,15 +322,42 @@ export class CourseLessonService {
             throw new NotFoundException('Course lesson not found');
         }
 
-        const course = await this.courseModel.findById(lesson.courseId);
-        if (!course || course.isDeleted || course.educatorId.toString() !== educatorId) {
+        const course = await this.courseModel.findOne({ _id: lesson.courseId, educatorId: new Types.ObjectId(educatorId) });
+        if (!course) {
             throw new ForbiddenException('You do not own this course or course not found');
         }
 
         await lesson.deleteOne();
 
+        // Re-order remaining lessons
+        await this.courseLessonModel.updateMany(
+            { sectionId: lesson.sectionId, order: { $gt: lesson.order } },
+            { $inc: { order: -1 } }
+        );
+
         await this.updateCourseStats(course._id);
 
         return ApiResponse.success('Course lesson deleted successfully');
+    }
+
+    async getUpcomingLiveClasses(courseId: string, userId: string) {
+        const enrollment = await this.courseEnrollmentModel.findOne({
+            courseId: new Types.ObjectId(courseId),
+            learnerId: new Types.ObjectId(userId),
+            status: EnrollmentStatus.ACTIVE
+        });
+
+        if (!enrollment) {
+            throw new ForbiddenException('You must be enrolled in this course to view its live classes');
+        }
+
+        const now = new Date();
+        const upcomingLessons = await this.courseLessonModel.find({
+            courseId: new Types.ObjectId(courseId),
+            lessonType: LessonType.LIVE_CLASS,
+            liveClassStartTime: { $gt: now },
+        }).sort({ liveClassStartTime: 1 }).select('title description liveClassStartTime durationInSeconds videoUrl videoId order');
+
+        return ApiResponse.success('Upcoming live classes retrieved successfully', upcomingLessons);
     }
 }

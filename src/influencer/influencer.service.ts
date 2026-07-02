@@ -9,14 +9,14 @@ import * as bcrypt from 'bcryptjs';
 import { InjectConnection, InjectModel } from '@nestjs/mongoose';
 import { Connection, Model, Types } from 'mongoose';
 
-import { Influencer, InfluencerDocument } from './schema/influencer.schema';
+import { Influencer, InfluencerDocument, InfluencerStatus } from './schema/influencer.schema';
 import {
   CreateInfluencerDto,
   createSlabDTO,
   UpdateInfluencerDto,
   UpdateSlabDTO,
 } from './dto/influencer.dto';
-import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
+import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
 import {
   CommissionStatus,
@@ -37,10 +37,14 @@ import {
   InfluencerInvitation,
   InfluencerInvitationDocument,
 } from './schema/influencer-invitation.schema';
+import { InfluencerStory, InfluencerStoryDocument } from './schema/influencer-stories.schema';
 import { sendMail } from 'src/utils/helper';
 import { influencerInvitationTemplate } from 'src/utils/email.template';
 import { randomUUID } from 'crypto';
 import { InfluencerWalletService } from 'src/wallet/service/influencer/influencer.wallet.service';
+import { notifyAdmins } from 'src/utils/helper';
+import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
+import { DocumentService } from 'src/document/document.service';
 
 @Injectable()
 export class InfluencerService {
@@ -57,187 +61,151 @@ export class InfluencerService {
     private influencerPayoutModel: Model<InfluencerPayoutDocument>,
     @InjectModel(InfluencerInvitation.name)
     private influencerInvitationModel: Model<InfluencerInvitationDocument>,
-    @InjectConnection() private connection:Connection,
-    private influencerWalletService: InfluencerWalletService
-  ) {}
+    @InjectModel(InfluencerStory.name)
+    private influencerStoryModel: Model<InfluencerStoryDocument>,
+    @InjectConnection() private connection: Connection,
+    private influencerWalletService: InfluencerWalletService,
+    private documentService: DocumentService
+  ) { }
 
-  // async create(dto: CreateInfluencerDto, token: string) {
-  //   const invitation = await this.influencerInvitationModel.findOne({
-  //     token,
-  //     isUsed: false,
-  //   });
-  //   if (!invitation) {
-  //     throw new BadRequestException('Invalid invitation link');
-  //   }
 
-  //   if (invitation.expiresAt < new Date()) {
-  //     throw new BadRequestException('Invitation link has expired');
-  //   }
-  //   const user = await this.userModel.findOne({
-  //     email: dto.email,
-  //   });
-
-  //   if (user) {
-  //     throw new ConflictException('User already exists with this email');
-  //   }
-
-  //   const hashedPassword = await bcrypt.hash(dto.password, 10);
-
-  //   const newUser = await this.userModel.create({
-  //     name: dto.name,
-
-  //     email: dto.email,
-
-  //     password: hashedPassword,
-
-  //     role: UserRole.INFLUENCER,
-
-  //     isEmailVerified: true,
-  //   });
-
-  //   const influencer = await this.influencerModel.create({
-  //     name: dto.name,
-
-  //     bio: dto.bio,
-
-  //     instagram: dto.instagram,
-
-  //     youtube: dto.youtube,
-
-  //     tiktok: dto.tiktok,
-
-  //     // commissionRate:
-  //     //   dto.commissionRate || 5,
-
-  //     userId: newUser._id,
-  //   });
-
-  //   newUser.influencerId = influencer._id;
-  //   await newUser.save();
-
-  //   invitation.isUsed = true;
-  //   invitation.usedAt = new Date();
-  //   await invitation.save();
-
-  //   return await this.influencerModel
-  //     .findById(influencer._id)
-  //     .populate('userId', '-password')
-  //     .populate('coupons');
-  // }
 
   async create(
-  dto: CreateInfluencerDto,
-  // token: string,
-) {
-  const session =
-    await this.connection.startSession();
+    dto: CreateInfluencerDto,
+    // token: string,
+  ) {
+    const session =
+      await this.connection.startSession();
 
-  try {
-    session.startTransaction();
+    try {
+      session.startTransaction();
 
-    const invitation =
-      await this.influencerInvitationModel.findOne({
-        token:dto.token,
-        isUsed: false,
-      });
+      const invitation =
+        await this.influencerInvitationModel.findOne({
+          token: dto.token,
+          isUsed: false,
+        });
 
-    if (!invitation) {
-      throw new BadRequestException(
-        'Invalid invitation link',
-      );
-    }
+      if (!invitation) {
+        throw new BadRequestException(
+          'Invalid invitation link',
+        );
+      }
 
-    if (invitation.expiresAt < new Date()) {
-      throw new BadRequestException(
-        'Invitation link has expired',
-      );
-    }
+      if (invitation.expiresAt < new Date()) {
+        throw new BadRequestException(
+          'Invitation link has expired',
+        );
+      }
 
-    const existingUser =
-      await this.userModel.findOne({
-        email: invitation.email,
-      });
-
-    if (existingUser) {
-      throw new BadRequestException(
-        'User already exists with this email',
-      );
-    }
-
-    const hashedPassword =
-      await bcrypt.hash(dto.password, 10);
-
-    const user = await this.userModel.create(
-      [
-        {
-          name: invitation.name,
+      const existingUser =
+        await this.userModel.findOne({
           email: invitation.email,
-          password: hashedPassword,
-          role: UserRole.INFLUENCER,
-          isEmailVerified: true,
-          isActive: true,
-        },
-      ],
-      { session },
-    );
+        });
 
-    const influencer =
-      await this.influencerModel.create(
+      if (existingUser) {
+        throw new BadRequestException(
+          'User already exists with this email',
+        );
+      }
+
+      const hashedPassword =
+        await bcrypt.hash(dto.password, 10);
+
+      const user = await this.userModel.create(
         [
           {
-            userId: user[0]._id,
             name: invitation.name,
-            bio: dto.bio,
-            instagram: dto.instagram,
-            youtube: dto.youtube,
-            tiktok: dto.tiktok,
-            followers: dto.followers || 0,
+            phone: dto.phone,
+            email: invitation.email,
+            password: hashedPassword,
+            isEmailVerified: true,
+            isActive: true,
           },
         ],
         { session },
       );
 
-    await this.userModel.updateOne(
-      {
-        _id: user[0]._id,
-      },
-      {
-        influencerId: influencer[0]._id,
-      },
-      { session },
-    );
+      const influencer =
+        await this.influencerModel.create(
+          [
+            {
+              userId: user[0]._id,
+              name: invitation.name,
+              bio: dto.bio,
+              instagram: dto.instagram,
+              youtube: dto.youtube,
+              snapchat: dto.snapchat,
+              facebook: dto.facebook,
+              followers: dto.followers || 0,
+              invitedBy: new Types.ObjectId(invitation.invitedBy),
+            },
+          ],
+          { session },
+        );
 
-    await this.influencerInvitationModel.updateOne(
-      {
-        _id: invitation._id,
-      },
-      {
-        isUsed: true,
-        usedAt: new Date(),
-      },
-      { session },
-    );
+      await this.userModel.updateOne(
+        {
+          _id: user[0]._id,
+        },
+        {
+          influencerId: influencer[0]._id,
+          isInfluencerOnboardingCompleted: true,
+          [`roleStatus.${UserRole.INFLUENCER}`]: RoleStatus.PENDING,
+        },
+        { session },
+      );
 
-    await session.commitTransaction();
+      await this.influencerInvitationModel.updateOne(
+        {
+          _id: invitation._id,
+        },
+        {
+          isUsed: true,
+          usedAt: new Date(),
+        },
+        { session },
+      );
 
-    await this.influencerWalletService.initializeWallet(influencer[0]._id.toString());
+      await session.commitTransaction();
 
-    return await this.influencerModel
-      .findById(influencer[0]._id)
-      .populate('userId', '-password')
-      .populate('coupons');
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
+      await notifyAdmins(
+        this.userModel,
+        'New Influencer Onboarding Request',
+        adminPendingRequestNotificationTemplate('Influencer', user[0].name, user[0].email, {
+          Bio: influencer[0].bio,
+          Instagram: influencer[0].instagram,
+          YouTube: influencer[0].youtube,
+          Facebook: influencer[0].facebook,
+          Snapchat: influencer[0].snapchat,
+          Followers: influencer[0].followers,
+        })
+      );
+
+      await this.influencerWalletService.initializeWallet(influencer[0]._id.toString());
+
+      return await this.influencerModel
+        .findById(influencer[0]._id)
+        .populate('userId', '-password')
+        .populate('coupons');
+    } catch (error) {
+      await session.abortTransaction();
+      throw error;
+    } finally {
+      session.endSession();
+    }
   }
-}
-  async findAll() {
+  async findAll(page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
     return await this.influencerModel
-      .find({ isDeleted: false })
+      .find({ isDeleted: false }).populate("invitedBy", 'name email phone role')
       .populate('userId', '-password')
       .populate('coupons')
+      .skip(skip)
+      .limit(pageSize)
       .lean();
   }
 
@@ -282,8 +250,12 @@ export class InfluencerService {
       influencer.youtube = dto.youtube;
     }
 
-    if (dto.tiktok !== undefined) {
-      influencer.tiktok = dto.tiktok;
+    if (dto.snapchat !== undefined) {
+      influencer.snapchat = dto.snapchat;
+    }
+
+    if (dto.facebook !== undefined) {
+      influencer.facebook = dto.facebook;
     }
 
     // if (
@@ -606,59 +578,6 @@ export class InfluencerService {
     );
   }
 
-  // async settleMonthlyCommission(
-  //   influencerId: string,
-  //   month: number,
-  //   year: number,
-  // ) {
-  //   const stats = await this.calculateMonthlySales(influencerId, month, year);
-
-  //   const slab = await this.getCommissionSlab(stats.totalSales);
-
-  //   const totalCommission = (stats.totalProfit * slab.commissionRate) / 100;
-
-  //   const payout = await this.influencerPayoutModel.create({
-  //     influencerId: new Types.ObjectId(influencerId),
-
-  //     influencerUserId: influencer.userId,
-
-  //     totalOrders: stats.totalOrders,
-
-  //     totalSales: stats.totalSales,
-
-  //     totalProfit: stats.totalProfit,
-
-  //     commissionRate: slab.commissionRate,
-
-  //     totalCommission,
-
-  //     payoutMonth: month,
-
-  //     payoutYear: year,
-  //   });
-
-  //   await this.commissionModel.updateMany(
-  //     {
-  //       influencerId: new Types.ObjectId(influencerId),
-
-  //       commissionMonth: month,
-
-  //       commissionYear: year,
-
-  //       isSettled: false,
-  //     },
-
-  //     {
-  //       $set: {
-  //         isSettled: true,
-  //         settledAt: new Date(),
-  //       },
-  //     },
-  //   );
-
-  //   return payout;
-  // }
-
   async markPayoutPaid(payoutId: string, transactionId: string) {
     const payout = await this.influencerPayoutModel.findById(payoutId);
 
@@ -803,8 +722,12 @@ export class InfluencerService {
     return updatedSlab;
   }
 
-  async getAllCommissionSlabs() {
-    const slabs = await this.slabModel.find().lean();
+  async getAllCommissionSlabs(page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
+    const slabs = await this.slabModel.find().skip(skip).limit(pageSize).lean();
     return ApiResponse.success('All Slabs', slabs);
   }
 
@@ -830,7 +753,7 @@ export class InfluencerService {
   async sendInfluencerInvitationLink(
     email: string,
     name: string,
-    adminId?: string,
+    invitedBy?: string,
   ) {
     email = email.toLowerCase().trim();
 
@@ -867,7 +790,7 @@ export class InfluencerService {
         $set: {
           name,
           token,
-          invitedBy: adminId,
+          invitedBy: new Types.ObjectId(invitedBy),
           expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       },
@@ -887,5 +810,148 @@ export class InfluencerService {
       invitationId: invitation._id,
       expiresAt: invitation.expiresAt,
     });
+  }
+
+  async getAllPendingInfluencersRequests(page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
+    const list = await this.influencerModel.find({
+      status: InfluencerStatus.PENDING
+    }).populate("invitedBy", 'name email phone role').sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize)
+      .lean()
+    return ApiResponse.success('Influencer Requests', list)
+  }
+
+  async changeInfluencerStatus(influencerId: string, status: InfluencerStatus) {
+    const influencer = await this.influencerModel.findById(new Types.ObjectId(influencerId))
+    if (!influencer) {
+      throw new NotFoundException("Influencer not found")
+    }
+    influencer.status = status
+    await influencer.save()
+
+    const user = await this.userModel.findOne({ influencerId: influencer._id });
+    if (user) {
+      if (status === InfluencerStatus.ACTIVE) {
+        user.roleStatus.set(UserRole.INFLUENCER, RoleStatus.APPROVED);
+        user.roleStatus.set(UserRole.USER, RoleStatus.APPROVED)
+        if (!user.roles.includes(UserRole.INFLUENCER)) {
+          user.roles.push(UserRole.INFLUENCER);
+        }
+      } else if (status === InfluencerStatus.REJECTED) {
+        user.roleStatus.set(UserRole.INFLUENCER, RoleStatus.REJECTED);
+        user.roleStatus.set(UserRole.USER, RoleStatus.APPROVED)
+      }
+      await user.save();
+    }
+
+    return ApiResponse.success("Influencer status changed successfully", influencer)
+  }
+
+  async submitStoryLink(influencerId: string, storyUrl: string) {
+    const influencer = await this.influencerModel.findById(influencerId);
+    if (!influencer) throw new NotFoundException('Influencer not found');
+
+    const newStory = new this.influencerStoryModel({
+      influencerId,
+      storyUrl
+    });
+    await newStory.save();
+    return ApiResponse.success('Story submitted successfully', newStory);
+  }
+
+  async uploadProfilePicture(influencerId: string, file: any) {
+    let influencer = await this.influencerModel.findById(influencerId);
+    if (!influencer) throw new NotFoundException('Influencer not found');
+
+    let mediaId;
+    if (influencer.profilePicture) {
+      try {
+        await this.documentService.replace(influencer.profilePicture.toString(), file);
+        mediaId = influencer.profilePicture;
+      } catch (e) {
+        const uploadedMedia = await this.documentService.upload(file, 'influencer-profiles', influencer.userId.toString());
+        mediaId = uploadedMedia._id;
+      }
+    } else {
+      const uploadedMedia = await this.documentService.upload(file, 'influencer-profiles', influencer.userId.toString());
+      mediaId = uploadedMedia._id;
+    }
+
+    influencer = await this.influencerModel.findByIdAndUpdate(
+      influencerId,
+      { profilePicture: mediaId },
+      { new: true }
+    );
+    
+    return ApiResponse.success('Profile picture updated successfully', influencer);
+  }
+
+  async getPublicStories() {
+    const stories = await this.influencerStoryModel.find({
+      isActive: true,
+      expiresAt: { $gt: new Date() }
+    })
+      .populate({
+        path: 'influencerId',
+        select: 'name profilePicture',
+        populate: {
+          path: 'profilePicture',
+          select: 'url'
+        }
+      })
+      .exec();
+
+    const publicStories = stories.map(story => {
+      const influencer: any = story.influencerId;
+      return {
+        _id: story._id,
+        storyUrl: story.storyUrl,
+        influencerName: influencer?.name,
+        thumbnail: influencer?.profilePicture?.url || null,
+        expiresAt: story.expiresAt,
+      };
+    });
+
+    return ApiResponse.success('Public stories fetched successfully', publicStories);
+  }
+
+  async deleteStory(storyId: string, userRoles: string[], influencerId?: string) {
+    const story = await this.influencerStoryModel.findById(storyId);
+    if (!story) throw new NotFoundException('Story not found');
+
+    if (!userRoles.includes(UserRole.SUPER_ADMIN)) {
+      if (story.influencerId.toString() !== influencerId?.toString()) {
+        throw new BadRequestException('You do not have permission to delete this story');
+      }
+    }
+
+    await this.influencerStoryModel.findByIdAndDelete(storyId);
+    return ApiResponse.success('Story deleted successfully');
+  }
+
+  async deleteProfilePicture(influencerId: string) {
+    const influencer = await this.influencerModel.findById(influencerId);
+    if (!influencer) throw new NotFoundException('Influencer not found');
+
+    if (influencer.profilePicture) {
+      try {
+        await this.documentService.deleteMedia(influencer.profilePicture.toString());
+      } catch (e) {
+        // ignore if media is already deleted or not found
+      }
+    }
+
+    const updatedInfluencer = await this.influencerModel.findByIdAndUpdate(
+      influencerId,
+      { $unset: { profilePicture: "" } },
+      { new: true }
+    );
+    
+    return ApiResponse.success('Profile picture deleted successfully', updatedInfluencer);
   }
 }

@@ -91,6 +91,12 @@ export class Course {
     @Prop({ default: false })
     isFree: boolean;
 
+    @Prop({ default: 1, min: 1, max: 5 })
+    averageRating: number;
+
+    @Prop({ default: 0 })
+    totalRating: number
+
     @Prop({
         enum: CourseStatus,
         default: CourseStatus.DRAFT,

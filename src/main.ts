@@ -6,6 +6,7 @@ import * as express from 'express';
 import { join } from 'path';
 import { Get, ValidationPipe } from '@nestjs/common';
 import { winstonLogger } from './common/logger/winston.logger';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -21,6 +22,7 @@ async function bootstrap() {
   app.setGlobalPrefix('/api/v1');
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalFilters(new GlobalExceptionFilter());
+  app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -28,7 +30,13 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     }),
   );
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'http://localhost:5173',
+      'https://wakeup-makeup.com',
+    ],
+    credentials: true,
+  });
   await app.listen(process.env.PORT ?? 3000);
 
   console.log(`backend running on http://localhost:${process.env.PORT ?? 3000}`);

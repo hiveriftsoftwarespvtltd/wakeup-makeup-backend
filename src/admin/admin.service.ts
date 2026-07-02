@@ -23,7 +23,7 @@ import {
   ProductVariantDocument,
 } from 'src/product/schema/product-variant.schema';
 import { Product, ProductDocument } from 'src/product/schema/product.schema';
-import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
+import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import {
   Vendor,
   VendorDocument,
@@ -126,17 +126,26 @@ export class AdminService {
     private vendorWalletService: VendorWalletService
   ) { }
 
-  async fetchAllVendors() {
+  async fetchAllVendors(page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
     return await this.userModel
       .find({ role: UserRole.VENDOR })
       .populate('vendorId')
+      .skip(skip)
+      .limit(pageSize)
       .lean();
   }
 
-  async fetchAllUsers() {
+  async fetchAllUsers(page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
     return await this.userModel
       .find({ role: UserRole.USER })
       .select('-password')
+      .skip(skip)
+      .limit(limit)
       .lean();
   }
 
@@ -743,8 +752,15 @@ export class AdminService {
     };
   }
 
-  async fetchPendingVendors() {
-    return await this.vendorModel.find({ status: 'PENDING' });
+  async fetchPendingVendors(page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
+    return await this.vendorModel
+      .find({ status: 'PENDING' })
+      .skip(skip)
+      .limit(pageSize);
   }
 
   async acceptPendingVendor(vendorId: string) {
@@ -757,13 +773,19 @@ export class AdminService {
       throw new ConflictException('this vendor already approved');
     }
 
-    // const user = await this.userModel.findOne({vendorId})
-    // if(!user){
-    //   throw new NotFoundException("User Not Exist")
-    // }
+    const user = await this.userModel.findOne({ vendorId: new Types.ObjectId(vendorId) })
+    if (!user) {
+      throw new NotFoundException("User Not Exist")
+    }
 
     vendor.status = 'APPROVED';
     await vendor.save();
+
+    user.roleStatus.set(UserRole.VENDOR, RoleStatus.APPROVED);
+    if (!user.roles.includes(UserRole.VENDOR)) {
+      user.roles.push(UserRole.VENDOR);
+    }
+    await user.save();
 
     await this.vendorWalletService.initializeWallet(vendor._id.toString());
 
@@ -781,7 +803,14 @@ export class AdminService {
     }
 
     vendor.status = 'REJECTED';
-    vendor.save();
+    await vendor.save();
+
+    const user = await this.userModel.findOne({ vendorId });
+    if (user) {
+      user.roleStatus.set(UserRole.VENDOR, RoleStatus.REJECTED);
+      await user.save();
+    }
+
     return vendor;
   }
 
@@ -843,8 +872,15 @@ export class AdminService {
     return ApiResponse.success('Product deleted successfully', null);
   }
 
-  async fetchProducts() {
-    const products = await this.productModel.find({});
+  async fetchProducts(page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
+    const products = await this.productModel
+      .find({})
+      .skip(skip)
+      .limit(pageSize);
 
     return ApiResponse.success('Products Fetched Successfully', products || []);
   }
@@ -884,7 +920,11 @@ export class AdminService {
   //   return ApiResponse.success('Order Deleted Successfully');
   // }
 
-  async fetchAllOrders() {
+  async fetchAllOrders(page?: number, limit?: number) {
+    const pageNumber = Number(page) || 1;
+    const pageSize = Number(limit) || 10;
+    const skip = (pageNumber - 1) * pageSize;
+
     const orders = await this.orderModel
       .find({ isDeleted: false })
       .populate('userId', '-password')
@@ -904,6 +944,8 @@ export class AdminService {
         ],
       })
       .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(pageSize)
       .lean();
 
     return ApiResponse.success('Orders Fetched Successfully', orders);

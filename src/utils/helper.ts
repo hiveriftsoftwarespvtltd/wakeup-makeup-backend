@@ -143,3 +143,17 @@ export const geocodePincode = async (
 export const filteredObject = (dto: any) => {
   return Object.fromEntries(Object.entries(dto).filter(([key, value]) => (value !== null && value !== undefined && (typeof value !== 'string' || value.trim().length > 0))))
 }
+
+export const notifyAdmins = async (
+  userModel: any,
+  subject: string,
+  html: string,
+): Promise<void> => {
+  try {
+    const admins = await userModel.find({ role: 'admin', isActive: true, isDeleted: false });
+    const emailPromises = admins.map((admin: any) => safeSendMail(admin.email, subject, html));
+    await Promise.allSettled(emailPromises);
+  } catch (error) {
+    console.error('Failed to notify admins:', error);
+  }
+};

@@ -15,6 +15,14 @@ import { DocumentModule } from 'src/document/document.module';
 import { User, UserSchema } from 'src/user/schema/user.schema';
 import { CashbackSlab, CashbackSlabSchema } from 'src/wallet/schema/cashback/cashbacks.slabs.schema';
 import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commission-rate.schema';
+import { CourseCommentSection, CourseCommentSectionSchema } from './schema/course-comment-section';
+import { CourseReview, CourseReviewSchema } from './schema/course-review.schema';
+import { CourseCommentController } from './course-comment.controller';
+import { CourseCommentService } from './course-comment.service';
+import { CourseReplyController } from './course-reply.controller';
+import { CourseReplyService } from './course-reply.service';
+import { CourseReviewController } from './course-review.controller';
+import { CourseReviewService } from './course-review.service';
 import { EducatorController } from './educator.controller';
 import { EducatorService } from './educator.service';
 import { CourseSectionController } from './course-section.controller';
@@ -30,6 +38,9 @@ import { DashboardService } from './dashboard.service';
 import { WalletModule } from 'src/wallet/wallet.module';
 import { LearnerController } from './learner.controller';
 import { LearnerService } from './learner.service';
+import { InfluencerModule } from 'src/influencer/influencer.module';
+import { Admin, AdminSchema } from 'src/admin/schema/admin.schema';
+import { CouponModule } from 'src/coupon/coupon.module';
 
 @Module({
   imports: [MongooseModule.forFeature([
@@ -45,10 +56,13 @@ import { LearnerService } from './learner.service';
     { name: User.name, schema: UserSchema },
     { name: CashbackSlab.name, schema: CashbackSlabSchema },
     { name: CommissionRate.name, schema: CommissionRateSchema },
-  ]), DocumentModule, WalletModule],
-  controllers: [CoursesController, EducatorController, CourseSectionController, CourseLessonController, CourseEnrollmentController, CourseAttachmentController, DashboardController, LearnerController],
-  providers: [CoursesService, EducatorService, CourseSectionService, CourseLessonService, CourseEnrollmentService, CourseAttachmentService, DashboardService, LearnerService],
-  exports: [CoursesService, EducatorService, CourseSectionService, CourseLessonService, CourseEnrollmentService, CourseAttachmentService, DashboardService, LearnerService, MongooseModule]
+    { name: CourseCommentSection.name, schema: CourseCommentSectionSchema },
+    { name: CourseReview.name, schema: CourseReviewSchema },
+    { name: Admin.name, schema: AdminSchema },
+  ]), DocumentModule, WalletModule, InfluencerModule, CouponModule],
+  controllers: [CoursesController, EducatorController, CourseSectionController, CourseLessonController, CourseEnrollmentController, CourseAttachmentController, DashboardController, LearnerController, CourseCommentController, CourseReplyController, CourseReviewController],
+  providers: [CoursesService, EducatorService, CourseSectionService, CourseLessonService, CourseEnrollmentService, CourseAttachmentService, DashboardService, LearnerService, CourseCommentService, CourseReplyService, CourseReviewService],
+  exports: [CoursesService, EducatorService, CourseSectionService, CourseLessonService, CourseEnrollmentService, CourseAttachmentService, DashboardService, LearnerService, CourseCommentService, CourseReplyService, CourseReviewService, MongooseModule]
 })
 
 

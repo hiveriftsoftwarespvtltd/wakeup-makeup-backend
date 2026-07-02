@@ -1,7 +1,7 @@
-import { IsEmail,IsString,MinLength,IsEnum,IsOptional,IsMongoId } from "class-validator";
+import { IsEmail, IsString, MinLength, IsEnum, IsOptional, IsMongoId, IsArray } from "class-validator";
 import { UserRole } from "src/user/schema/user.schema";
 
-export class RegisterDTO{
+export class RegisterDTO {
     @IsString()
     name!: string
 
@@ -10,20 +10,25 @@ export class RegisterDTO{
 
     @IsString()
     @MinLength(6)
-    password!:string
+    password!: string
 
-    @IsOptional()
+    // @IsOptional()
     @IsString()
-    phone?:string
+    phone?: string
 
-    @IsEnum(UserRole)
+    @IsArray()
+    @IsEnum(UserRole, { each: true })
     @IsOptional()
-    role?:UserRole
+    roles?: UserRole[]
 
     @IsMongoId()
     @IsOptional()
-    tenantId!:string
+    tenantId!: string
 
     @IsOptional()
-    isActive?:boolean
+    isActive?: boolean
+
+    @IsString()
+    @IsOptional()
+    referralCode?: string
 }

@@ -26,13 +26,25 @@ export class RolesGuard implements CanActivate {
 
 
 
+
         // console.log("User in line 25",user)
 
         if (!user) {
             throw new ForbiddenException("No user found in request")
         }
-        if (!requiredRoles.includes(user.role)) {
-            throw new ForbiddenException("Access denied")
+        // if (!requiredRoles.includes(user.role)) {
+        //     throw new ForbiddenException("Access denied")
+        // }
+
+        console.log("required role", requiredRoles)
+        console.log("user role", user.roles)
+
+        if (
+            !requiredRoles.some(role =>
+                user.roles.includes(role),
+            )
+        ) {
+            throw new ForbiddenException("Access Denied");
         }
         return true
     }

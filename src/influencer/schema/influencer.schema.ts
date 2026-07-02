@@ -12,6 +12,7 @@ export enum InfluencerStatus {
   ACTIVE = 'active',
   BLOCKED = 'blocked',
   PENDING = 'pending',
+  REJECTED = 'rejected'
 }
 
 @Schema({ timestamps: true })
@@ -28,6 +29,9 @@ export class Influencer {
     required: true,
   })
   name!: string;
+
+  @Prop({type:Types.ObjectId,ref:"Media"})
+  profilePicture?:Types.ObjectId
 
   // @Prop({
   //   required: true,
@@ -49,6 +53,12 @@ export class Influencer {
   @Prop()
   tiktok?: string;
 
+  @Prop()
+  facebook?: string;
+
+  @Prop()
+  snapchat?: string;
+
   @Prop({
     default: 0,
   })
@@ -62,7 +72,7 @@ export class Influencer {
 
   @Prop({
     enum: InfluencerStatus,
-    default: InfluencerStatus.ACTIVE,
+    default: InfluencerStatus.PENDING,
   })
   status!: InfluencerStatus;
 
@@ -71,8 +81,8 @@ export class Influencer {
   })
   totalSales!: number;
 
-  @Prop({default:0})
-  totalOrders!:number
+  @Prop({ default: 0 })
+  totalOrders!: number
 
   @Prop({
     default: 0,
@@ -90,6 +100,12 @@ export class Influencer {
   paidCommission!: number;
 
   @Prop({
+    type: Types.ObjectId, ref: "User",
+    default: null
+  })
+  invitedBy?: Types.ObjectId
+
+  @Prop({
     default: false,
   })
   isDeleted!: boolean;
@@ -99,7 +115,7 @@ export class Influencer {
   isActive!: boolean;
 }
 
-const InfluencerSchema = SchemaFactory.createForClass(Influencer);
+const InfluencerSchema = SchemaFactory.createForClass(Influencer)
 
 InfluencerSchema.virtual('coupons', {
   ref: 'Coupon',

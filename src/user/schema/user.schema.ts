@@ -4,6 +4,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 export type UserDocument = User & Document;
 
 export enum UserRole {
+  SUPER_ADMIN = "super_admin",
   ADMIN = 'admin',
   VENDOR = 'vendor',
   INFLUENCER = 'influencer',
@@ -17,6 +18,16 @@ export enum AuthType {
   EMAIL = 'EMAIL',
   GOOGLE = 'GOOGLE',
 }
+
+export enum RoleStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  NOT_ONBOARDED = 'NOT_ONBOARDED',
+  DEACTIVATED = "DEACTIVATED"
+}
+
+
 
 @Schema({ timestamps: true })
 export class User {
@@ -41,8 +52,22 @@ export class User {
   @Prop()
   googleId?: string;
 
-  @Prop({ type: String, enum: UserRole, default: UserRole.USER })
-  role!: UserRole;
+  @Prop({ type: [String], enum: UserRole, default: [UserRole.USER] })
+  roles!: UserRole[];
+
+  @Prop({
+    type: Map,
+    of: String,
+    default: {},
+  })
+  roleStatus!: Map<UserRole, RoleStatus>;
+
+  @Prop({
+    type: Map,
+    of: String,
+    default: {},
+  })
+  rejectionReasons!: Map<UserRole, string>;
 
   @Prop()
   otp?: string;
@@ -98,9 +123,23 @@ export class User {
   })
   educatorId?: Types.ObjectId;
 
+  @Prop({ type: Types.ObjectId, ref: "AffliateProgram" })
+  affliateProgramId?: Types.ObjectId;
+
+  @Prop({ type: Types.ObjectId, ref: 'Influencer' })
+  referredByInfluencerId?: Types.ObjectId;
+
   @Prop({ default: false })
   isEducatorOnboardingCompleted!: boolean;
 
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
+
+UserSchema.set('toObject', {
+  flattenMaps: true,
+});
+
+UserSchema.set('toJSON', {
+  flattenMaps: true,
+});

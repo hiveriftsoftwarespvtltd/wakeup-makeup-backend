@@ -10,11 +10,13 @@ import { JwtService } from '@nestjs/jwt';
 import { UserService } from 'src/user/user.service';
 import * as bcrypt from 'bcryptjs';
 import { InjectModel } from '@nestjs/mongoose';
-import { User, UserRole } from 'src/user/schema/user.schema';
+import { User, UserRole, AuthType, RoleStatus } from 'src/user/schema/user.schema';
 import { Model, Types } from 'mongoose';
+import { OAuth2Client } from 'google-auth-library';
 import { RegisterDTO } from './dto/register.dto';
 import { ApiResponse } from 'src/common/responses/api-response';
 import { LoginDTO } from './dto/login.dto';
+import { GoogleLoginDTO } from './dto/google-login.dto';
 import {
   forgotPasswordTemplate,
   loginOtpTemplate,
@@ -28,6 +30,10 @@ import { ForgotPasswordOTPDTO } from './dto/verify-forgot-password-otp.dto';
 import { Vendor } from 'src/vendor/schema/vendor.schema';
 import { ServiceProvider } from 'src/service/schema/service-provider.schema';
 import { UserWalletService } from 'src/wallet/service/user/user.wallet.service';
+import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
+import { Influencer, InfluencerDocument, InfluencerStatus } from 'src/influencer/schema/influencer.schema';
+import { Educator, EducatorDocument, EducatorStatus } from 'src/courses/schema/educator.schema';
+import { Admin, AdminDocument } from 'src/admin/schema/admin.schema';
 
 @Injectable()
 export class AuthService {
@@ -35,9 +41,13 @@ export class AuthService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(Vendor.name) private vendorModel: Model<Vendor>,
     @InjectModel(ServiceProvider.name) private serviceProviderModel: Model<ServiceProvider>,
+    @InjectModel(Influencer.name) private influencerModel: Model<InfluencerDocument>,
+    @InjectModel(Educator.name) private educatorModel: Model<EducatorDocument>,
+    @InjectModel(Admin.name) private adminModel: Model<AdminDocument>,
     private userService: UserService,
     private jwtService: JwtService,
     private userWalletService: UserWalletService,
+    private affiliateTrackingService: AffiliateTrackingService,
   ) { }
 
   async register(dto: RegisterDTO) {
@@ -46,15 +56,14 @@ export class AuthService {
     });
 
     // block restricted roles
-    if (dto.role) {
-      if (
-        [UserRole.ADMIN, UserRole.INFLUENCER, UserRole.DISTRIBUTOR].includes(
-          dto.role,
-        )
-      ) {
-        throw new BadRequestException(
-          `You are not authorized to create ${dto.role} account`,
-        );
+    if (dto.roles && dto.roles.length > 0) {
+      const restrictedRoles = [UserRole.ADMIN, UserRole.INFLUENCER, UserRole.DISTRIBUTOR, UserRole.SUPER_ADMIN];
+      for (const r of dto.roles) {
+        if (restrictedRoles.includes(r)) {
+          throw new BadRequestException(
+            `You are not authorized to create ${r} account`,
+          );
+        }
       }
     }
 
@@ -107,8 +116,11 @@ export class AuthService {
       if (existingUser.phone) {
         existingUser.phone = dto.phone;
       }
-      if (dto.role) {
-        existingUser.role = dto.role;
+      if (dto.roles) {
+        existingUser.roles = dto.roles as any;
+        const roleStatus = new Map<UserRole, RoleStatus>();
+        dto.roles.forEach((r) => roleStatus.set(r, RoleStatus.NOT_ONBOARDED));
+        existingUser.roleStatus = roleStatus;
       }
 
       existingUser.otp = otp;
@@ -117,7 +129,7 @@ export class AuthService {
       existingUser.isDeleted = false;
       existingUser.isEmailVerified = false;
 
-      existingUser.isActive = dto.role === UserRole.VENDOR ? false : true;
+      existingUser.isActive = (dto.roles && dto.roles.includes(UserRole.VENDOR)) ? false : true;
 
       await existingUser.save();
 
@@ -134,9 +146,46 @@ export class AuthService {
       );
     }
 
+    const requestedRoles = dto.roles ?? [];
+
     // new user creation
+    const initialRoles = Array.from(
+      new Set([
+        UserRole.USER
+
+      ]),
+    );
+
+    const initialRoleStatuses = new Map<UserRole, RoleStatus>();
+
+    initialRoleStatuses.set(
+      UserRole.USER,
+      RoleStatus.APPROVED,
+    );
+
+    requestedRoles.forEach((role) => {
+      if (role !== UserRole.USER) {
+        initialRoleStatuses.set(
+          role,
+          RoleStatus.NOT_ONBOARDED,
+        );
+      }
+    });
+    // const initialRoles = dto.roles || [UserRole.USER];
+    // const initialRoleStatuses = new Map<UserRole, RoleStatus>();
+    // initialRoles.forEach((role) => {
+    //   initialRoleStatuses.set(
+    //     role,
+    //     role === UserRole.USER
+    //       ? RoleStatus.APPROVED
+    //       : RoleStatus.NOT_ONBOARDED,
+    //   );
+    // });
+
     const user = await this.userModel.create({
       ...dto,
+      roles: initialRoles,
+      roleStatus: initialRoleStatuses,
       email: dto.email.toLowerCase(),
       password: hashedPassword,
       otp,
@@ -144,6 +193,8 @@ export class AuthService {
       isEmailVerified: false,
       isActive: true,
     });
+
+
 
     await sendMail(
       user.email,
@@ -187,7 +238,7 @@ export class AuthService {
     );
   }
 
-  async verifyEmail(dto: VerifyEmailDTO) {
+  async verifyEmail(dto: VerifyEmailDTO, referralCode?: string) {
     const user = await this.userModel.findOne({
       email: dto.email.toLowerCase(),
     });
@@ -208,6 +259,16 @@ export class AuthService {
       throw new BadRequestException('OTP expired');
     }
 
+    console.log("Referral Code", referralCode)
+    if (referralCode) {
+      const program = await this.affiliateTrackingService.trackSignup(user._id, referralCode);
+      console.log("Referral Code", program)
+      user.affliateProgramId = program?._id
+      user.referredByInfluencerId = program?.influencerId
+      // user.save()
+
+    }
+
     user.isEmailVerified = true;
 
     user.otp = undefined;
@@ -215,7 +276,7 @@ export class AuthService {
 
     await user.save();
 
-    if (user.role === UserRole.USER) {
+    if (user.roles && user.roles.includes(UserRole.USER)) {
       await this.userWalletService.initializeWallet(user._id.toString());
     }
 
@@ -243,7 +304,7 @@ export class AuthService {
       throw new NotAcceptableException('Your account is not active');
     }
 
-    if (user.role === UserRole.VENDOR) {
+    if (user.roles && user.roles.includes(UserRole.VENDOR)) {
       const vendor = await this.vendorModel.findOne({ ownerId: user._id });
 
       if (vendor?.status === 'PENDING') {
@@ -253,13 +314,35 @@ export class AuthService {
       }
     }
 
-    if (user.role === UserRole.SERVICE_PROVIDER) {
+    if (user.roles && user.roles.includes(UserRole.SERVICE_PROVIDER)) {
       const serviceProvider = await this.serviceProviderModel.findOne({ ownerId: new Types.ObjectId(user._id) });
 
       if (serviceProvider?.verificationStatus === 'PENDING') {
         throw new ConflictException('You account is not approved by admin');
       } else if (serviceProvider?.verificationStatus === 'REJECTED') {
         throw new ConflictException('Your account is rejected by admin');
+      }
+    }
+
+    if (user.roles && user.roles.includes(UserRole.INFLUENCER)) {
+      const influencer = await this.influencerModel.findOne({ userId: new Types.ObjectId(user._id) })
+      if (influencer?.status === InfluencerStatus.PENDING) {
+        throw new ConflictException("You account is not approved by admin");
+      } else if (influencer?.status === InfluencerStatus.REJECTED) {
+        throw new ConflictException("Your account is rejected by admin");
+      } else if (influencer?.status === InfluencerStatus.BLOCKED) {
+        throw new ConflictException("Your account is blocked by admin");
+      }
+    }
+
+    if (user.roles && user.roles.includes(UserRole.EDUCATOR)) {
+      const educator = await this.educatorModel.findOne({ userId: new Types.ObjectId(user._id) })
+      if (educator?.status === EducatorStatus.PENDING) {
+        throw new ConflictException("You account is not approved by admin");
+      } else if (educator?.status === EducatorStatus.REJECTED) {
+        throw new ConflictException("Your account is rejected by admin");
+      } else if (educator?.status === EducatorStatus.BLOCKED) {
+        throw new ConflictException("Your account is blocked by admin");
       }
     }
 
@@ -284,7 +367,7 @@ export class AuthService {
     const payload = {
       sub: user._id,
       email: user.email,
-      role: user.role,
+      roles: user.roles,
     };
 
 
@@ -292,14 +375,163 @@ export class AuthService {
 
     const { password, ...safeUser } = user.toObject();
 
+    let moduleAccess: any = undefined;
+    if (user.roles && (user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.SUPER_ADMIN))) {
+      const adminData = await this.adminModel.findOne({ userId: user._id });
+      if (adminData) {
+        moduleAccess = adminData.moduleAccess;
+      }
+    }
+
     return ApiResponse.success(
       'Login successful',
       {
         safeUser,
         access_token: token,
+        ...(moduleAccess && { moduleAccess }),
       },
       200,
     );
+  }
+
+  async googleLogin(dto: GoogleLoginDTO) {
+    const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+    try {
+      const ticket = await client.verifyIdToken({
+        idToken: dto.idToken,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+      const payload = ticket.getPayload();
+
+      if (!payload || !payload.email) {
+        throw new UnauthorizedException('Invalid Google Token');
+      }
+
+      const email = payload.email.toLowerCase();
+      let user = await this.userModel.findOne({ email });
+
+      if (!user) {
+        // Check restricted roles for registration
+        if (dto.roles && dto.roles.length > 0) {
+          const restrictedRoles = [UserRole.ADMIN, UserRole.INFLUENCER, UserRole.DISTRIBUTOR];
+          for (const r of dto.roles) {
+            if (restrictedRoles.includes(r)) {
+              throw new BadRequestException(`You are not authorized to create ${r} account`);
+            }
+          }
+        }
+
+        const initialRoles = dto.roles || [UserRole.USER];
+        const initialRoleStatuses = new Map<UserRole, RoleStatus>();
+        initialRoles.forEach((r) => initialRoleStatuses.set(r, RoleStatus.NOT_ONBOARDED));
+
+        // Create user
+        user = await this.userModel.create({
+          name: payload.name || 'Google User',
+          email,
+          googleId: payload.sub,
+          isEmailVerified: true,
+          isActive: (dto.roles && dto.roles.includes(UserRole.VENDOR)) ? false : true,
+          roles: initialRoles,
+          roleStatus: initialRoleStatuses,
+          authTypes: [AuthType.GOOGLE]
+        });
+
+        if (user.roles.includes(UserRole.USER)) {
+          await this.userWalletService.initializeWallet(user._id.toString());
+        }
+      } else {
+        // User exists, update googleId and authTypes if not present
+        if (!user.googleId) {
+          user.googleId = payload.sub;
+          if (!user.authTypes) user.authTypes = [];
+          if (!user.authTypes.includes(AuthType.GOOGLE)) {
+            user.authTypes.push(AuthType.GOOGLE);
+          }
+          user.isEmailVerified = true;
+          await user.save();
+        }
+
+        if (user.isDeleted) {
+          throw new UnauthorizedException('Your account is deleted');
+        }
+        if (!user.isActive) {
+          throw new NotAcceptableException('Your account is not active');
+        }
+
+        if (user.roles && user.roles.includes(UserRole.VENDOR)) {
+          const vendor = await this.vendorModel.findOne({ ownerId: user._id });
+          if (vendor?.status === 'PENDING') {
+            throw new ConflictException('You account is not approved by admin');
+          } else if (vendor?.status === 'REJECTED') {
+            throw new ConflictException('Your account is rejected by admin');
+          }
+        }
+
+        if (user.roles && user.roles.includes(UserRole.SERVICE_PROVIDER)) {
+          const serviceProvider = await this.serviceProviderModel.findOne({ ownerId: new Types.ObjectId(user._id) });
+          if (serviceProvider?.verificationStatus === 'PENDING') {
+            throw new ConflictException('You account is not approved by admin');
+          } else if (serviceProvider?.verificationStatus === 'REJECTED') {
+            throw new ConflictException('Your account is rejected by admin');
+          }
+        }
+
+        if (user.roles && user.roles.includes(UserRole.INFLUENCER)) {
+          const influencer = await this.influencerModel.findOne({ userId: new Types.ObjectId(user._id) })
+          if (influencer?.status === InfluencerStatus.PENDING) {
+            throw new ConflictException("You account is not approved by admin");
+          } else if (influencer?.status === InfluencerStatus.REJECTED) {
+            throw new ConflictException("Your account is rejected by admin");
+          } else if (influencer?.status === InfluencerStatus.BLOCKED) {
+            throw new ConflictException("Your account is blocked by admin");
+          }
+        }
+
+        if (user.roles && user.roles.includes(UserRole.EDUCATOR)) {
+          const educator = await this.educatorModel.findOne({ userId: new Types.ObjectId(user._id) })
+          if (educator?.status === EducatorStatus.PENDING) {
+            throw new ConflictException("You account is not approved by admin");
+          } else if (educator?.status === EducatorStatus.REJECTED) {
+            throw new ConflictException("Your account is rejected by admin");
+          } else if (educator?.status === EducatorStatus.BLOCKED) {
+            throw new ConflictException("Your account is blocked by admin");
+          }
+        }
+      }
+
+      const jwtPayload = {
+        sub: user._id,
+        email: user.email,
+        roles: user.roles,
+      };
+
+      const token = await this.jwtService.signAsync(jwtPayload);
+      const { password, ...safeUser } = user.toObject();
+
+      let moduleAccess: any = undefined;
+      if (user.roles && (user.roles.includes(UserRole.ADMIN) || user.roles.includes(UserRole.SUPER_ADMIN))) {
+        const adminData = await this.adminModel.findOne({ userId: user._id });
+        if (adminData) {
+          moduleAccess = adminData.moduleAccess;
+        }
+      }
+
+      return ApiResponse.success(
+        'Google login successful',
+        {
+          safeUser,
+          access_token: token,
+          ...(moduleAccess && { moduleAccess }),
+        },
+        200,
+      );
+    } catch (e: any) {
+      if (e instanceof UnauthorizedException || e instanceof ConflictException || e instanceof NotAcceptableException || e instanceof BadRequestException) {
+        throw e;
+      }
+      throw new UnauthorizedException('Invalid Google Token');
+    }
   }
 
   async verifyLoginOtp(dto: VerifyLoginDTO) {
@@ -329,7 +561,7 @@ export class AuthService {
     const payload = {
       sub: user._id,
       email: user.email,
-      role: user.role,
+      roles: user.roles,
     };
 
     const token = await this.jwtService.signAsync(payload);

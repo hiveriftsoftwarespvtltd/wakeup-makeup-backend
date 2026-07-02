@@ -63,6 +63,8 @@ import { WalletModule } from 'src/wallet/wallet.module';
 import { LeadBooking, LeadBookingSchema } from './schema/service-lead-booking.schema';
 import { StaffAllocation, StaffAllocationSchema } from './schema/staff-allocation.schema';
 import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commission-rate.schema';
+import { InfluencerModule } from 'src/influencer/influencer.module';
+import { Admin, AdminSchema } from 'src/admin/schema/admin.schema';
 
 @Module({
   imports: [
@@ -89,9 +91,11 @@ import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commissio
       { name: LeadBooking.name, schema: LeadBookingSchema },
       { name: StaffAllocation.name, schema: StaffAllocationSchema },
       { name: CommissionRate.name, schema: CommissionRateSchema },
+      { name: Admin.name, schema: AdminSchema },
     ]),
     DocumentModule,
     WalletModule,
+    InfluencerModule,
   ],
   controllers: [ServiceController, ServiceSearchController, ServiceBookingController, ServiceLeadController, ServiceReviewController, ServiceProviderReviewController, ServiceQuotationController],
   providers: [ServiceService, ServiceSearchService, ServiceBookingService, ServiceLeadService, ServiceReviewService, ServiceProviderReviewService, ServiceQuotationService],

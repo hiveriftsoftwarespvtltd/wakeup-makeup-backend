@@ -12,6 +12,7 @@ import { Course, CourseDocument, CourseStatus } from './schema/course.schema';
 import { CoursePurchase, CoursePurchaseDocument, CoursePurchaseStatus } from './schema/course-purchase.schema';
 import { UserRole } from 'src/user/schema/user.schema';
 import { CourseEnrollment, CourseEnrollmentDocument, EnrollmentStatus } from './schema/course-enrollement.schema';
+import { CourseLesson, CourseLessonDocument } from './schema/course-lesson.schema';
 
 @Injectable()
 export class CoursesService {
@@ -20,6 +21,7 @@ export class CoursesService {
         @InjectModel(Course.name) private courseModel: Model<CourseDocument>,
         @InjectModel(CoursePurchase.name) private coursePurchaseModel: Model<CoursePurchaseDocument>,
         @InjectModel(CourseEnrollment.name) private courseEnrollmentModel: Model<CourseEnrollmentDocument>,
+        @InjectModel(CourseLesson.name) private courseLessonModel: Model<CourseLessonDocument>,
         @InjectConnection() private connection: Connection,
         private documentService: DocumentService
     ) { }
@@ -206,8 +208,13 @@ export class CoursesService {
                 );
             }
 
-            if (dto.costPrice > dto.sellingPrice || dto.sellingPrice > dto.offeredPrice) {
+            if (dto.costPrice > dto.sellingPrice || dto.sellingPrice < dto.offeredPrice) {
                 throw new BadRequestException("Cost price should be less than selling price and selling price should be less than offered price");
+            }
+
+            const coursecategory = await this.courseCategoryModel.findOne({ _id: new Types.ObjectId(dto.categoryId), isActive: true, isDeleted: false })
+            if (!coursecategory) {
+                throw new NotFoundException("Course category not found")
             }
 
             let thumbnailId: Types.ObjectId | null = null;
@@ -224,6 +231,8 @@ export class CoursesService {
                 thumbnailId = media._id;
             }
 
+
+
             const payload: any = {
                 ...dto,
                 educatorId: new Types.ObjectId(educatorId),
@@ -232,7 +241,7 @@ export class CoursesService {
 
             if (payload.costPrice !== undefined && payload.sellingPrice !== undefined && payload.offeredPrice !== undefined) {
                 // if (!payload.isFree) {
-                if (payload.costPrice > payload.sellingPrice || payload.sellingPrice > payload.offeredPrice) {
+                if (payload.costPrice > payload.sellingPrice || payload.sellingPrice < payload.offeredPrice) {
                     throw new BadRequestException("Cost price should be less than selling price and selling price should be less than offered price");
                     // }
                 }
@@ -312,7 +321,7 @@ export class CoursesService {
             const finalIsFree = updatedFields.isFree !== undefined ? updatedFields.isFree : course.isFree;
 
             if (!finalIsFree) {
-                if (finalCostPrice > finalSellingPrice || finalSellingPrice > finalOfferedPrice) {
+                if (finalCostPrice > finalSellingPrice || finalSellingPrice < finalOfferedPrice) {
                     throw new BadRequestException("Cost price should be less than selling price and selling price should be less than offered price");
                 }
             }
@@ -360,6 +369,10 @@ export class CoursesService {
 
             if (thumbnailId) {
                 updatedFields.thumbnail = thumbnailId;
+            }
+
+            if (dto.categoryId) {
+                updatedFields.categoryId = new Types.ObjectId(dto.categoryId);
             }
 
             Object.assign(course, updatedFields);
@@ -443,7 +456,15 @@ export class CoursesService {
             }
         }
 
-        return ApiResponse.success('Course details', { ...course, isPurchased, isEnrolled });
+        const previewLesson = await this.courseLessonModel.findOne({
+            courseId: new Types.ObjectId(courseId),
+            isPreview: true
+        }).sort({ sectionId: 1, order: 1 }).lean();
+
+        const isPreviewAvailable = !!previewLesson;
+        const preview = previewLesson ? previewLesson.videoUrl : null;
+
+        return ApiResponse.success('Course details', { ...course, isPurchased, isEnrolled, isPreviewAvailable, preview });
     }
 
     async listUserCourses(user: any, educatorId?: string, categoryId?: string, page: number = 1, limit: number = 10) {
@@ -478,27 +499,57 @@ export class CoursesService {
 
         let enhancedCourses: any[] = courses;
 
-        if (user && user._id && courses.length > 0) {
+        if (courses.length > 0) {
             const courseIds = courses.map(c => c._id);
-            const purchases = await this.coursePurchaseModel.find({
-                learnerId: new Types.ObjectId(user._id),
-                courseId: { $in: courseIds },
-                status: CoursePurchaseStatus.PAID
-            }).lean();
-            const purchasedCourseIds = new Set(purchases.map(p => p.courseId.toString()));
 
-            const enrollments = await this.courseEnrollmentModel.find({
-                learnerId: new Types.ObjectId(user._id),
-                courseId: { $in: courseIds },
-                status: { $in: [EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED] }
-            }).lean();
-            const enrolledCourseIds = new Set(enrollments.map(e => e.courseId.toString()));
+            const stats = await this.courseLessonModel.aggregate([
+                { $match: { courseId: { $in: courseIds } } },
+                {
+                    $group: {
+                        _id: "$courseId",
+                        totalLessons: { $sum: 1 },
+                        totalDurationInSeconds: { $sum: "$durationInSeconds" }
+                    }
+                }
+            ]);
 
-            enhancedCourses = courses.map(course => ({
-                ...course,
-                isPurchased: purchasedCourseIds.has(course._id.toString()),
-                isEnrolled: enrolledCourseIds.has(course._id.toString())
-            }));
+            const statsMap = new Map();
+            stats.forEach(stat => {
+                statsMap.set(stat._id.toString(), {
+                    totalLessons: stat.totalLessons,
+                    totalDurationInMinutes: Math.round((stat.totalDurationInSeconds || 0) / 60)
+                });
+            });
+
+            let purchasedCourseIds = new Set<string>();
+            let enrolledCourseIds = new Set<string>();
+
+            if (user && user._id) {
+                const purchases = await this.coursePurchaseModel.find({
+                    learnerId: new Types.ObjectId(user._id),
+                    courseId: { $in: courseIds },
+                    status: CoursePurchaseStatus.PAID
+                }).lean();
+                purchasedCourseIds = new Set(purchases.map(p => p.courseId.toString()));
+
+                const enrollments = await this.courseEnrollmentModel.find({
+                    learnerId: new Types.ObjectId(user._id),
+                    courseId: { $in: courseIds },
+                    status: { $in: [EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED] }
+                }).lean();
+                enrolledCourseIds = new Set(enrollments.map(e => e.courseId.toString()));
+            }
+
+            enhancedCourses = courses.map(course => {
+                const courseStats = statsMap.get(course._id.toString()) || { totalLessons: 0, totalDurationInMinutes: 0 };
+                return {
+                    ...course,
+                    totalLessons: courseStats.totalLessons,
+                    totalDurationInMinutes: courseStats.totalDurationInMinutes,
+                    isPurchased: purchasedCourseIds.has(course._id.toString()),
+                    isEnrolled: enrolledCourseIds.has(course._id.toString())
+                };
+            });
         }
 
         const totalItems = await this.courseModel.countDocuments(query);
@@ -552,27 +603,57 @@ export class CoursesService {
 
         let enhancedCourses: any[] = courses;
 
-        if (userId && courses.length > 0) {
+        if (courses.length > 0) {
             const courseIds = courses.map(c => c._id);
-            const purchases = await this.coursePurchaseModel.find({
-                learnerId: new Types.ObjectId(userId),
-                courseId: { $in: courseIds },
-                status: CoursePurchaseStatus.PAID
-            }).lean();
-            const purchasedCourseIds = new Set(purchases.map(p => p.courseId.toString()));
 
-            const enrollments = await this.courseEnrollmentModel.find({
-                learnerId: new Types.ObjectId(userId),
-                courseId: { $in: courseIds },
-                status: { $in: [EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED] }
-            }).lean();
-            const enrolledCourseIds = new Set(enrollments.map(e => e.courseId.toString()));
+            const stats = await this.courseLessonModel.aggregate([
+                { $match: { courseId: { $in: courseIds } } },
+                {
+                    $group: {
+                        _id: "$courseId",
+                        totalLessons: { $sum: 1 },
+                        totalDurationInSeconds: { $sum: "$durationInSeconds" }
+                    }
+                }
+            ]);
 
-            enhancedCourses = courses.map(course => ({
-                ...course,
-                isPurchased: purchasedCourseIds.has(course._id.toString()),
-                isEnrolled: enrolledCourseIds.has(course._id.toString())
-            }));
+            const statsMap = new Map();
+            stats.forEach(stat => {
+                statsMap.set(stat._id.toString(), {
+                    totalLessons: stat.totalLessons,
+                    totalDurationInMinutes: Math.round((stat.totalDurationInSeconds || 0) / 60)
+                });
+            });
+
+            let purchasedCourseIds = new Set<string>();
+            let enrolledCourseIds = new Set<string>();
+
+            if (userId) {
+                const purchases = await this.coursePurchaseModel.find({
+                    learnerId: new Types.ObjectId(userId),
+                    courseId: { $in: courseIds },
+                    status: CoursePurchaseStatus.PAID
+                }).lean();
+                purchasedCourseIds = new Set(purchases.map(p => p.courseId.toString()));
+
+                const enrollments = await this.courseEnrollmentModel.find({
+                    learnerId: new Types.ObjectId(userId),
+                    courseId: { $in: courseIds },
+                    status: { $in: [EnrollmentStatus.ACTIVE, EnrollmentStatus.COMPLETED] }
+                }).lean();
+                enrolledCourseIds = new Set(enrollments.map(e => e.courseId.toString()));
+            }
+
+            enhancedCourses = courses.map(course => {
+                const courseStats = statsMap.get(course._id.toString()) || { totalLessons: 0, totalDurationInMinutes: 0 };
+                return {
+                    ...course,
+                    totalLessons: courseStats.totalLessons,
+                    totalDurationInMinutes: courseStats.totalDurationInMinutes,
+                    isPurchased: purchasedCourseIds.has(course._id.toString()),
+                    isEnrolled: enrolledCourseIds.has(course._id.toString())
+                };
+            });
         }
 
         const totalItems = await this.courseModel.countDocuments(query);

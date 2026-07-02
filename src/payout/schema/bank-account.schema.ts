@@ -87,6 +87,12 @@ export class BankAccount {
     verifiedAt?: Date;
 
     @Prop()
+    rejectionReason?: string;
+
+    @Prop()
+    rejectedAt?: Date;
+
+    @Prop()
     verificationReference?: string;
 
     @Prop({

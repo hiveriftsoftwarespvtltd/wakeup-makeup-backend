@@ -16,6 +16,9 @@ export class PurchaseCourseDTO {
 
     @IsEnum(PaymentMethod)
     paymentMethod: PaymentMethod;
+
+    @IsOptional()
+    couponCode?: string;
 }
 
 export class UpdateLessonProgressDTO {

@@ -67,6 +67,7 @@ import {
   CommissionEntityType,
   CommissionOn,
 } from 'src/admin/schema/commission-rate.schema';
+import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
 
 @Injectable()
 export class OrderService {
@@ -119,6 +120,8 @@ export class OrderService {
 
     @InjectModel(CommissionRate.name)
     private readonly commissionRateModel: Model<CommissionRateDocument>,
+
+    private readonly affiliateTrackingService: AffiliateTrackingService,
   ) { }
 
 
@@ -881,6 +884,8 @@ export class OrderService {
           }
         }
       }
+
+      await this.affiliateTrackingService.createPendingCommission(userId, 'PRODUCT', order._id, orderGrandTotal);
 
       await session.commitTransaction();
 

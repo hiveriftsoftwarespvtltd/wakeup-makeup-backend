@@ -36,6 +36,7 @@ import {
   CommissionEntityType,
   CommissionOn,
 } from 'src/admin/schema/commission-rate.schema';
+import { AffiliateTrackingService } from 'src/influencer/affiliate-tracking.service';
 
 @Injectable()
 export class ServiceBookingService {
@@ -58,6 +59,7 @@ export class ServiceBookingService {
     private serviceProviderWalletService: ServiceProviderWalletService,
     @InjectModel(StaffAllocation.name) private staffAllocationModel: Model<StaffAllocationDocument>,
     @InjectConnection() private connection: Connection,
+    private affiliateTrackingService: AffiliateTrackingService,
   ) { }
 
 
@@ -164,15 +166,6 @@ export class ServiceBookingService {
         });
       }
 
-      // Generate slot end time from total service duration
-      // const startMinutes = toMinutes(
-      //   dto.slotStartTime,
-      // );
-
-      // const slotEndTime = toTimeString(
-      //   startMinutes + totalDurationMinutes,
-      // );
-
       const slotStartTime = new Date(dto.slotStartTime);
 
       const slotEndTime = new Date(
@@ -189,28 +182,6 @@ export class ServiceBookingService {
 
       const availableSlots =
         availableSlotsResponse.data?.slots || [];
-
-
-
-
-      // const selectedSlot = availableSlots.find(
-      //   (slot) =>
-      //     slot.startTime === dto.slotStartTime &&
-      //     slot.availableStaff.some(
-      //       (s) =>
-      //         s._id.toString() ===
-      //         staff._id.toString(),
-      //     ),
-      // );
-
-      // const selectedSlot = availableSlots.find(
-      //   (slot) =>
-      //     new Date(slot.startTime).toISOString() ===
-      //     new Date(dto.slotStartTime).toISOString() &&
-      //     slot.availableStaff.some(
-      //       (s: any) => s._id.toString() === staff._id.toString(),
-      //     ),
-      // )
 
       const selectedSlot = availableSlots.find(
         (slot) =>
@@ -286,6 +257,7 @@ export class ServiceBookingService {
 
       let couponDiscount = 0;
       let couponId: Types.ObjectId | undefined;
+      let couponCode: string | undefined;
 
       // ---------------- COUPON LOGIC ----------------
 
@@ -391,10 +363,16 @@ export class ServiceBookingService {
 
         couponId =
           coupon._id as Types.ObjectId;
+        couponCode = coupon.code;
       }
 
       const totalAmount =
         subtotal - couponDiscount;
+
+      const advanceAmount = parseFloat((totalAmount * 0.2).toFixed(2));
+      const remainingAmount = parseFloat(
+        (totalAmount - advanceAmount).toFixed(2),
+      );
 
       // ── Resolve commission from admin CommissionRate schema ──────────────
       const DEFAULT_COMMISSION_RATE = 25;
@@ -402,8 +380,7 @@ export class ServiceBookingService {
 
       const commissionDoc = await this.commissionRateModel.findOne().session(session);
       const providerSlab = commissionDoc?.commissions?.find(
-        (s) => s.entityType === CommissionEntityType.SERVICE_PROVIDER,
-      );
+        (s) => s.entityType === CommissionEntityType.SERVICE_PROVIDER,);
 
       const platformCommissionRate =
         providerSlab?.commissionPercentage ?? DEFAULT_COMMISSION_RATE;
@@ -432,38 +409,61 @@ export class ServiceBookingService {
 
 
       let walletAmountUsed = 0;
-      let actualPaymentStatus: any
-      if (!dto.paymentMethod) {
-        actualPaymentStatus = BookingPaymentStatus.PENDING
-      } else {
-        actualPaymentStatus = dto.paymentMethod === PaymentMethod.CASH_ON_DELIVERY ? BookingPaymentStatus.PENDING : BookingPaymentStatus.PAID;
+      // let actualPaymentStatus: any
+      // if (!dto.paymentMethod) {
+      //   actualPaymentStatus = BookingPaymentStatus.PENDING
+      // } else {
+      //   actualPaymentStatus = dto.paymentMethod === PaymentMethod.CASH_ON_DELIVERY ? BookingPaymentStatus.PENDING : BookingPaymentStatus.PAID;
+      // }
+
+      // if (dto.paymentMethod === PaymentMethod.WALLET || dto.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) {
+      //   const userWallet = await this.userWalletService.getBalance(userId);
+
+      //   if (dto.paymentMethod === PaymentMethod.WALLET) {
+      //     if (userWallet.balance < totalAmount) {
+      //       throw new BadRequestException('Insufficient wallet balance to cover the entire booking');
+      //     }
+      //     walletAmountUsed = totalAmount;
+      //   } else if (dto.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) {
+      //     if (userWallet.balance <= 0) {
+      //       throw new BadRequestException('Insufficient wallet balance');
+      //     }
+      //     walletAmountUsed = Math.min(userWallet.balance, totalAmount);
+      //   }
+
+      //   if (walletAmountUsed > 0) {
+      //     await this.userWalletService.deductBalance(
+      //       userId,
+      //       walletAmountUsed,
+      //       WalletTransactionReason.BOOKING_PAYMENT,
+      //       `Payment for Service Booking`,
+      //       session
+      //     );
+      //   }
+      // }
+
+      const userWallet = await this.userWalletService.getBalance(userId);
+
+      if (userWallet.balance < advanceAmount) {
+        throw new BadRequestException(
+          `Minimum ₹${advanceAmount} wallet balance required as advance payment`,
+        );
       }
 
-      if (dto.paymentMethod === PaymentMethod.WALLET || dto.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) {
-        const userWallet = await this.userWalletService.getBalance(userId);
+      walletAmountUsed = advanceAmount;
 
-        if (dto.paymentMethod === PaymentMethod.WALLET) {
-          if (userWallet.balance < totalAmount) {
-            throw new BadRequestException('Insufficient wallet balance to cover the entire booking');
-          }
-          walletAmountUsed = totalAmount;
-        } else if (dto.paymentMethod === PaymentMethod.WALLET_PLUS_ONLINE) {
-          if (userWallet.balance <= 0) {
-            throw new BadRequestException('Insufficient wallet balance');
-          }
-          walletAmountUsed = Math.min(userWallet.balance, totalAmount);
-        }
+      await this.userWalletService.deductBalance(
+        userId,
+        advanceAmount,
+        WalletTransactionReason.BOOKING_ADVANCE_PAYMENT,
+        `Advance payment for service booking`,
+        session,
+      );
 
-        if (walletAmountUsed > 0) {
-          await this.userWalletService.deductBalance(
-            userId,
-            walletAmountUsed,
-            WalletTransactionReason.BOOKING_PAYMENT,
-            `Payment for Service Booking`,
-            session
-          );
-        }
-      }
+      const actualPaymentStatus =
+        advanceAmount > 0
+          ? BookingPaymentStatus.PARTIALLY_PAID
+          : BookingPaymentStatus.PENDING;
 
 
 
@@ -488,6 +488,8 @@ export class ServiceBookingService {
                 dto.serviceAddress,
 
               subtotal,
+              couponId,
+              couponCode,
               couponDiscount,
               influencerDiscount: 0,
               platformCommissionRate,
@@ -495,20 +497,37 @@ export class ServiceBookingService {
               platformCommissionAmount,
               providerPayoutAmount,
               totalAmount,
+              advanceAmount,
+              remainingAmount,
 
               bookingStatus:
                 BookingStatus.CONFIRMED,
 
-              paymentMethod: dto.paymentMethod || PaymentMethod.CASH_ON_DELIVERY,
+              paymentMethod: PaymentMethod.WALLET,
               paymentStatus: actualPaymentStatus,
               walletAmountUsed,
               paymentMeta: {
                 cashbackAwarded: false
-              }
+              },
+
             },
           ],
           { session },
         );
+
+      if (couponId) {
+        await this.couponUsageModel.create(
+          [
+            {
+              userId: new Types.ObjectId(userId),
+              couponId: couponId,
+              serviceBookingId: booking._id,
+              usedCount: 1,
+            },
+          ],
+          { session },
+        );
+      }
 
       await this.staffAllocationModel.create(
         [
@@ -526,52 +545,41 @@ export class ServiceBookingService {
         { session },
       );
 
-      if (couponId) {
-        await this.couponUsageModel.create(
-          [
-            {
-              couponId,
-              userId:
-                new Types.ObjectId(userId),
-              orderId: booking._id,
-              usedCount: 1,
-            },
-          ],
-          { session },
-        );
-      }
 
-      if (actualPaymentStatus === BookingPaymentStatus.PAID) {
-        const applicableSlab = await this.cashbackSlabModel.findOne({
-          isActive: true,
-          minValue: { $lte: totalAmount },
-          maxValue: { $gte: totalAmount }
-        }).session(session);
 
-        if (applicableSlab) {
-          let cashbackAmount = 0;
-          if (applicableSlab.cashbackType === CashbackType.PERCENTAGE) {
-            cashbackAmount = (totalAmount * applicableSlab.cashbackValue) / 100;
-            if (applicableSlab.maxCashback && applicableSlab.maxCashback > 0 && cashbackAmount > applicableSlab.maxCashback) {
-              cashbackAmount = applicableSlab.maxCashback;
-            }
-          } else {
-            cashbackAmount = applicableSlab.cashbackValue;
-          }
+      // if (actualPaymentStatus === BookingPaymentStatus.PAID) {
+      //   const applicableSlab = await this.cashbackSlabModel.findOne({
+      //     isActive: true,
+      //     minValue: { $lte: totalAmount },
+      //     maxValue: { $gte: totalAmount }
+      //   }).session(session);
 
-          if (cashbackAmount > 0) {
-            await this.userWalletService.addBalance(
-              userId,
-              cashbackAmount,
-              WalletTransactionReason.CASHBACK,
-              `Cashback for Service Booking`,
-              session
-            );
-            booking.paymentMeta.cashbackAwarded = true;
-            await booking.save({ session });
-          }
-        }
-      }
+      //   if (applicableSlab) {
+      //     let cashbackAmount = 0;
+      //     if (applicableSlab.cashbackType === CashbackType.PERCENTAGE) {
+      //       cashbackAmount = (totalAmount * applicableSlab.cashbackValue) / 100;
+      //       if (applicableSlab.maxCashback && applicableSlab.maxCashback > 0 && cashbackAmount > applicableSlab.maxCashback) {
+      //         cashbackAmount = applicableSlab.maxCashback;
+      //       }
+      //     } else {
+      //       cashbackAmount = applicableSlab.cashbackValue;
+      //     }
+
+      //     if (cashbackAmount > 0) {
+      //       await this.userWalletService.addBalance(
+      //         userId,
+      //         cashbackAmount,
+      //         WalletTransactionReason.CASHBACK,
+      //         `Cashback for Service Booking`,
+      //         session
+      //       );
+      //       booking.paymentMeta.cashbackAwarded = true;
+      //       await booking.save({ session });
+      //     }
+      //   }
+      // }
+
+      await this.affiliateTrackingService.createPendingCommission(userId, 'SERVICE', booking._id, totalAmount);
 
       await session.commitTransaction();
       safeSendMail(
@@ -604,8 +612,6 @@ export class ServiceBookingService {
       await session.endSession();
     }
   }
-
-
 
   async cancelBooking(userId: string, bookingId: string) {
     const booking = await this.serviceBookingModel
@@ -1067,6 +1073,10 @@ export class ServiceBookingService {
         );
       }
 
+      if (booking.bookingStatus === BookingStatus.COMPLETED && booking.paymentStatus === BookingPaymentStatus.PAID) {
+        await this.affiliateTrackingService.updateCommissionStatus(booking._id, 'SERVICE', 'PAID');
+      }
+
       await session.commitTransaction();
 
       return ApiResponse.success('Service Booking updated successfully', booking);
@@ -1127,9 +1137,9 @@ export class ServiceBookingService {
     if (status) {
       filter.bookingStatus = status;
     }
-    
+
     if (providerId) {
-       filter.providerId = new Types.ObjectId(providerId);
+      filter.providerId = new Types.ObjectId(providerId);
     }
 
     const skip = (page - 1) * limit;

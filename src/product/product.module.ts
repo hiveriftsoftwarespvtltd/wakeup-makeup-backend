@@ -35,6 +35,11 @@ import {
   UserSchema,
 } from 'src/user/schema/user.schema';
 
+import {
+  QuickDeliveryCart,
+  QuickDeliveryCartSchema,
+} from 'src/quick-e-commerce/schema/quick-delivery-cart';
+
 import { DocumentModule } from 'src/document/document.module';
 
 @Module({
@@ -67,6 +72,10 @@ import { DocumentModule } from 'src/document/document.module';
       {
         name: VendorOrder.name,
         schema: VendorOrderSchema,
+      },
+      {
+        name: QuickDeliveryCart.name,
+        schema: QuickDeliveryCartSchema,
       },
     ]),
 

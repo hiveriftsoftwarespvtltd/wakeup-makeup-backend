@@ -21,6 +21,7 @@ export enum CommissionEntityType {
     EDUCATOR = "EDUCATOR",
     SERVICE_PROVIDER = "SERVICE_PROVIDER",
     INFLUENCER = "INFLUENCER",
+    AFFLIATE_LINK = "AFFLIATE_LINK",
 }
 
 @Schema({ _id: false })

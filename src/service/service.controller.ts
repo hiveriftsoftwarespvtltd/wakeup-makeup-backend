@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import {
     Body,
     Controller,
@@ -49,9 +51,10 @@ export class ServiceController {
     // SERVICE CATEGORY (Admin)
     // ===================================================
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Post('create-service-category')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     @UseInterceptors(FileInterceptor('file'))
     createCategory(
         @UploadedFile() file: any,
@@ -61,9 +64,10 @@ export class ServiceController {
         return this.serviceService.createServiceCategory(dto, file, req.user._id);
     }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Put('update-service-category/:id')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     @UseInterceptors(FileInterceptor('file'))
     updateCategory(
         @Param('id') id: string,
@@ -74,6 +78,7 @@ export class ServiceController {
         return this.serviceService.updateCategory(dto, file, req.user._id, id);
     }
 
+    // @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
     @Get('get-all-service-categories')
     getAllCategories() {
         return this.serviceService.getAllServiceCategories();
@@ -84,9 +89,10 @@ export class ServiceController {
         return this.serviceService.serviceCategoryDetails(id);
     }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Delete('delete-service-category/:id')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     deleteCategory(@Param('id') id: string) {
         return this.serviceService.deleteServiceCategory(id);
     }
@@ -95,16 +101,18 @@ export class ServiceController {
     // SUBSCRIPTION PLAN (Admin)
     // ===================================================
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Post('create-service-subscription-plan')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     createSubscriptionPlan(@Body() dto: CreateServiceSubscriptionPlanDTO) {
         return this.serviceService.createServiceSubscriptionPlan(dto);
     }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Put('update-service-subscription-plan/:id')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     updateSubscriptionPlan(
         @Param('id') id: string,
         @Body() dto: UpdateServiceSubscriptionPlanDTO,
@@ -112,6 +120,7 @@ export class ServiceController {
         return this.serviceService.updateServiceSubscriptionPlan(dto, id);
     }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
     @Get('get-all-service-subscription-plans')
     allSubscriptionPlans() {
         return this.serviceService.allSubscriptionPlans();
@@ -122,9 +131,10 @@ export class ServiceController {
         return this.serviceService.subscriptionPlanDetails(id);
     }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Delete('delete-service-subscription-plan/:id')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     deleteSubscriptionPlan(@Param('id') id: string) {
         return this.serviceService.deletePlan(id);
     }
@@ -133,9 +143,10 @@ export class ServiceController {
     // SERVICE PROVIDER
     // ===================================================
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Post('register-service-provider')
-    @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.SERVICE_PROVIDER)
+    @UseGuards(JwtAuthGuard)
+    
     @UseInterceptors(FileInterceptor('file'))
     registerProvider(
         @Req() req: any,
@@ -169,13 +180,14 @@ export class ServiceController {
     }
 
     @Get('get-all-service-providers')
-    listProviders() {
-        return this.serviceService.listServiceProviders();
+    listProviders(@Query('page') page: number, @Query('limit') limit: number) {
+        return this.serviceService.listServiceProviders(page, limit);
     }
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Put('service-provider/:id/verify')
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
     approveProvider(
         @Param('id') id: string,
         @Body('status') status: ServiceProviderVerificationStatus,
@@ -187,6 +199,7 @@ export class ServiceController {
     // SERVICE CRUD
     // ===================================================
 
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Post('create-service')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.SERVICE_PROVIDER)
@@ -228,13 +241,15 @@ export class ServiceController {
     listServices(
         @Query('categoryId') categoryId?: string,
         @Query('providerId') providerId?: string,
+        @Query('page') page?: number,
+        @Query('limit') limit?: number,
     ) {
-        return this.serviceService.listServices(categoryId, providerId);
+        return this.serviceService.listServices(categoryId, providerId, page, limit);
     }
 
     @Get('get-all-services/:providerId')
-    listServicesByProvider(@Param('providerId') providerId: string) {
-        return this.serviceService.listServices(undefined, providerId);
+    listServicesByProvider(@Param('providerId') providerId: string, @Query('page') page: number, @Query('limit') limit: number) {
+        return this.serviceService.listServices(undefined, providerId, page, limit);
     }
 
     // ===================================================
@@ -348,8 +363,8 @@ export class ServiceController {
 
     @Get('user-service-leads')
     @UseGuards(JwtAuthGuard)
-    userListLeads(@Req() req: any, @Query('categoryId') categoryId?: string) {
-        return this.serviceService.userListLeads(req.user._id, categoryId);
+    userListLeads(@Req() req: any, @Query('categoryId') categoryId?: string, @Query('page') page?: number, @Query('limit') limit?: number) {
+        return this.serviceService.userListLeads(req.user._id, categoryId, page, limit);
     }
 
 

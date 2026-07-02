@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Controller, Post, Param, UseGuards, Get } from '@nestjs/common';
 import { AdminWalletService } from '../../service/admin/admin.wallet.service';
 import { VendorWalletService } from '../../service/vendor/vendor.wallet.service';
@@ -18,7 +20,7 @@ import { EducatorWithdrawalStatus } from 'src/wallet/schema/educator/educator.wa
 import { BadRequestException } from '@nestjs/common';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+
 @Controller('wallet/admin')
 export class AdminWalletController {
     constructor(
@@ -31,77 +33,91 @@ export class AdminWalletController {
         private readonly educatorWalletService: EducatorWalletService,
     ) { }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.WRITE)
     @Post('initialize/:userId')
     async initializeUserWallet(@Param('userId') userId: string) {
         return this.adminWalletService.initializeUserWallet(userId);
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.WRITE)
     @Post('sync-all')
     async syncAllWallets() {
         return this.adminWalletService.syncAllWallets();
     }
 
     // --- Admin's Own (Platform) ---
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('platform/balance')
     async getPlatformBalance() {
         return this.platformWalletService.getBalance();
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('platform/transactions')
     async getPlatformTransactions() {
         return this.platformWalletService.getTransactions();
     }
 
     // --- Educator ---
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('educator/:educatorId/balance')
     async getEducatorBalance(@Param('educatorId') educatorId: string) {
         return this.educatorWalletService.getBalance(educatorId);
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('educator/:educatorId/transactions')
     async getEducatorTransactions(@Param('educatorId') educatorId: string) {
         return this.educatorWalletService.getTransactions(educatorId);
     }
 
     // --- Vendor ---
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('vendor/:vendorId/balance')
     async getVendorBalance(@Param('vendorId') vendorId: string) {
         return this.vendorWalletService.getBalance(vendorId);
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('vendor/:vendorId/transactions')
     async getVendorTransactions(@Param('vendorId') vendorId: string) {
         return this.vendorWalletService.getTransactions(vendorId);
     }
 
     // --- Service Provider ---
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('service-provider/:providerId/balance')
     async getServiceProviderBalance(@Param('providerId') providerId: string) {
         return this.serviceProviderWalletService.getBalance(providerId);
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('service-provider/:providerId/transactions')
     async getServiceProviderTransactions(@Param('providerId') providerId: string) {
         return this.serviceProviderWalletService.getTransactions(providerId);
     }
 
     // --- Influencer ---
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('influencer/:influencerId/balance')
     async getInfluencerBalance(@Param('influencerId') influencerId: string) {
         return this.influencerWalletService.getBalance(influencerId);
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('influencer/:influencerId/transactions')
     async getInfluencerTransactions(@Param('influencerId') influencerId: string) {
         return this.influencerWalletService.getTransactions(influencerId);
     }
 
     // --- User ---
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('user/:userId/balance')
     async getUserBalance(@Param('userId') userId: string) {
         return this.userWalletService.getBalance(userId);
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('user/:userId/transactions')
     async getUserTransactions(@Param('userId') userId: string) {
         return this.userWalletService.getTransactions(userId);
@@ -109,37 +125,44 @@ export class AdminWalletController {
 
     // --- ALL BALANCES FOR TABLES ---
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('balances/users')
     async getAllUserBalances() {
         return this.userWalletService.getAllWallets();
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('balances/vendors')
     async getAllVendorBalances() {
         return this.vendorWalletService.getAllWallets();
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('balances/influencers')
     async getAllInfluencerBalances() {
         return this.influencerWalletService.getAllWallets();
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('balances/service-providers')
     async getAllServiceProviderBalances() {
         return this.serviceProviderWalletService.getAllWallets();
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('balances/educators')
     async getAllEducatorBalances() {
         return this.educatorWalletService.getAllWallets();
     }
 
+    @AdminAccess(AdminModule.FINANCE, AccessType.READ)
     @Get('balances/platform')
     async getAllPlatformBalances() {
         return this.platformWalletService.getAllWallets();
     }
 
     // --- WITHDRAWALS ---
+    @AdminAccess(AdminModule.FINANCE, AccessType.WRITE)
     @Put('withdrawals/:type/:id/status')
     async updateWithdrawalStatus(
         @Param('type') type: 'vendor' | 'influencer' | 'service-provider' | 'educator',

@@ -66,6 +66,18 @@ export class CoursePurchase {
 
     @Prop({ default: 0 })
     platformCommissionAmount!: number;
+
+    @Prop({
+        type: Types.ObjectId,
+        ref: 'Coupon',
+    })
+    couponId?: Types.ObjectId;
+
+    @Prop()
+    couponCode?: string;
+
+    @Prop({ default: 0 })
+    discountAmount!: number;
 }
 
 export const CoursePurchaseSchema = SchemaFactory.createForClass(CoursePurchase);

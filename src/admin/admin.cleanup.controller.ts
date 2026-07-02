@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Controller, Delete, UseGuards } from '@nestjs/common';
 import { AdminCleanupService } from './admin.cleanup.service';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guad';
@@ -11,7 +13,9 @@ import { UserRole } from 'src/user/schema/user.schema';
 export class AdminCleanupController {
     constructor(private readonly adminCleanupService: AdminCleanupService) { }
 
-    @Roles(UserRole.ADMIN)
+
+    // @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
+    @Roles(UserRole.SUPER_ADMIN)
     @Delete('all-data')
     async wipeAllData() {
         return await this.adminCleanupService.wipeAllData(['shiprockettokens']);

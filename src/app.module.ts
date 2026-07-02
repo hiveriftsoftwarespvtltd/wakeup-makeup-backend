@@ -23,7 +23,10 @@ import { PayoutModule } from './payout/payout.module';
 import { WalletModule } from './wallet/wallet.module';
 import { CoursesModule } from './courses/courses.module';
 import { AiFeaturesModule } from './ai-features/ai-features.module';
-
+import { TicketModule } from './ticket/ticket.module';
+import { QuickECommerceModule } from './quick-e-commerce/quick-e-commerce.module';
+import { NotificationModule } from './notification/notification.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -61,7 +64,11 @@ import { AiFeaturesModule } from './ai-features/ai-features.module';
     PayoutModule,
     WalletModule,
     CoursesModule,
-    AiFeaturesModule
+    AiFeaturesModule,
+    TicketModule,
+    QuickECommerceModule,
+    NotificationModule,
+    ScheduleModule.forRoot()
   ],
   controllers: [AppController],
   providers: [AppService],

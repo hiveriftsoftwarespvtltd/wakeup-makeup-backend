@@ -1,3 +1,5 @@
+import { AdminAccess } from 'src/auth/admin-access.decorator';
+import { AdminModule, AccessType } from 'src/admin/schema/admin.schema';
 import { Body, Controller, Delete, Get, Param, Post, Put, Query, Req, UploadedFile, UseFilters, UseGuards, UseInterceptors } from '@nestjs/common';
 import { CoursesService } from './courses.service';
 import { AddCourseCategoryDTO, UpdateCourseCategoryDTO, CreateCourseDTO, UpdateCourseDTO } from './dto/course.dto';
@@ -14,7 +16,8 @@ export class CoursesController {
 
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.COURSES, AccessType.WRITE)
     @Post('add-course-category')
     @UseInterceptors(FileInterceptor('file'))
     async createCourseCategory(@Body() dto: AddCourseCategoryDTO, @Req() req: any, @UploadedFile() file: Express.Multer.File) {
@@ -36,14 +39,16 @@ export class CoursesController {
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.COURSES, AccessType.WRITE)
     @Delete('delete-course-category/:courseCategoryId')
     async deleteCourseCategory(@Param('courseCategoryId') courseCategoryId: string) {
         return await this.courseService.deleteCourseCategory(courseCategoryId)
     }
 
     @UseGuards(JwtAuthGuard, RolesGuard)
-    @Roles(UserRole.ADMIN)
+
+    @AdminAccess(AdminModule.COURSES, AccessType.WRITE)
     @Put('update-course-category/:courseCategoryId')
     @UseInterceptors(FileInterceptor('file'))
     async updateCourseCategory(@Param('courseCategoryId') courseCategoryId: string, @Body() dto: UpdateCourseCategoryDTO, @Req() req: any, @UploadedFile() file: Express.Multer.File) {

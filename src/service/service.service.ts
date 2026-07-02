@@ -69,8 +69,9 @@ import { DocumentService } from 'src/document/document.service';
 import { StaffAllocation, StaffAllocationStatus } from './schema/staff-allocation.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
 import { MediaFolderName } from 'src/constants';
-import { getWeekDay, toSlug } from 'src/utils/helper';
-import { User, UserDocument, UserRole } from 'src/user/schema/user.schema';
+import { getWeekDay, notifyAdmins, toSlug } from 'src/utils/helper';
+import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
+import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import { Coupon, CouponDocument, CouponType } from 'src/coupon/schema/coupon.schema';
 import { CouponUsage, CouponUsageDocument } from 'src/coupon/schema/coupon-usage.schema';
 
@@ -447,9 +448,31 @@ export class ServiceService {
         try {
             session.startTransaction();
 
-            const user = await this.userModel.findById(new Types.ObjectId(userId))
+            const user = await this.userModel
+                .findById(userId)
+                .session(session);
+
             if (!user) {
-                throw new NotFoundException('User not found')
+                throw new NotFoundException('User not found');
+            }
+
+            const serviceProviderStatus = user.roleStatus.get(
+                UserRole.SERVICE_PROVIDER,
+            );
+
+            if (!serviceProviderStatus) {
+                throw new BadRequestException(
+                    'You have not applied for service provider access.',
+                );
+            }
+
+            if (
+                serviceProviderStatus !==
+                RoleStatus.NOT_ONBOARDED
+            ) {
+                throw new BadRequestException(
+                    `Service provider onboarding is ${serviceProviderStatus.toLowerCase()}.`,
+                );
             }
 
             // Check if user already has a provider profile
@@ -494,13 +517,27 @@ export class ServiceService {
                     $set: {
                         // role: UserRole.SERVICE_PROVIDER,
                         serviceProviderId: provider._id,
-                        isServiceProviderOnboardingCompleted: true
+                        isServiceProviderOnboardingCompleted: true,
+                        [`roleStatus.${UserRole.SERVICE_PROVIDER}`]: RoleStatus.PENDING
                     },
                 },
                 { session },
             );
 
             await session.commitTransaction();
+
+            await notifyAdmins(
+                this.userModel,
+                'New Service Provider Onboarding Request',
+                adminPendingRequestNotificationTemplate('Service Provider', user.name, user.email, {
+                    BusinessName: provider.businessName,
+                    Phone: provider.phone,
+                    Email: provider.email,
+                    City: provider.city,
+                    State: provider.state,
+                })
+            );
+
             return ApiResponse.success(
                 'Service provider registered successfully',
                 provider,
@@ -583,7 +620,11 @@ export class ServiceService {
         });
     }
 
-    async listServiceProviders() {
+    async listServiceProviders(page?: number, limit?: number) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const providers = await this.serviceProviderModel
             .find({
                 isDeleted: false,
@@ -592,6 +633,8 @@ export class ServiceService {
             })
             .populate('userId', 'name email avatar')
             .sort({ isFeatured: -1, rating: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('Service providers', providers);
@@ -689,6 +732,19 @@ export class ServiceService {
                         },
                     );
                 }
+            }
+
+            const user = await this.userModel.findOne({ serviceProviderId: provider._id }).session(session);
+            if (user) {
+                if (status === ServiceProviderVerificationStatus.APPROVED) {
+                    user.roleStatus.set(UserRole.SERVICE_PROVIDER, RoleStatus.APPROVED);
+                    if (!user.roles.includes(UserRole.SERVICE_PROVIDER)) {
+                        user.roles.push(UserRole.SERVICE_PROVIDER);
+                    }
+                } else if (status === ServiceProviderVerificationStatus.REJECTED) {
+                    user.roleStatus.set(UserRole.SERVICE_PROVIDER, RoleStatus.REJECTED);
+                }
+                await user.save({ session });
             }
 
             await session.commitTransaction();
@@ -931,7 +987,11 @@ export class ServiceService {
         return ApiResponse.success('Service details', service);
     }
 
-    async listServices(categoryId?: string, providerId?: string) {
+    async listServices(categoryId?: string, providerId?: string, page?: number, limit?: number) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const filter: any = { isActive: true };
         if (categoryId) {
             filter.categoryId = new Types.ObjectId(categoryId);
@@ -946,6 +1006,8 @@ export class ServiceService {
             .populate('providerId', 'businessName rating')
             .populate('images')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('Services list', services);
@@ -1499,7 +1561,11 @@ export class ServiceService {
     }
 
 
-    async userListLeads(userId: string, categoryId?: string) {
+    async userListLeads(userId: string, categoryId?: string, page?: number, limit?: number) {
+        const pageNumber = Number(page) || 1;
+        const pageSize = Number(limit) || 10;
+        const skip = (pageNumber - 1) * pageSize;
+
         const filter: any = { userId: new Types.ObjectId(userId) };
         if (categoryId) {
             filter.categoryIds = new Types.ObjectId(categoryId);
@@ -1510,6 +1576,8 @@ export class ServiceService {
             .populate('userId', 'name email phone')
             .populate('categoryIds', 'name label')
             .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(pageSize)
             .lean();
 
         return ApiResponse.success('Leads list', leads);

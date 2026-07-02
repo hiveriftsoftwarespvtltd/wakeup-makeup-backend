@@ -41,7 +41,7 @@ export class CouponService {
     private productModel: Model<ProductDocument>,
     @InjectModel(ProductVariant.name)
     private productVariantModel: Model<ProductVariantDocument>,
-  ) {}
+  ) { }
 
   async create(dto: CreateCouponDto) {
     const existing = await this.couponModel.findOne({
@@ -237,7 +237,7 @@ export class CouponService {
         throw new BadRequestException(`${product.name} is unavailable`);
       }
 
-      const variant = await this.productVariantModel.findById(item.variant).populate("images","url publicId _id").populate("thumbnail","url publicId _id");
+      const variant = await this.productVariantModel.findById(item.variant).populate("images", "url publicId _id").populate("thumbnail", "url publicId _id");
 
       if (!variant) {
         throw new NotFoundException('Variant not found');
@@ -309,7 +309,7 @@ export class CouponService {
       isActive: true,
     });
 
-    
+
 
     if (!coupon) {
       throw new BadRequestException('Coupon not found');
@@ -397,5 +397,90 @@ export class CouponService {
 
       cartItems,
     });
+  }
+  async validateCouponForAmount(userId: string, couponCode: string, amount: number, vendorId?: string) {
+    const coupon = await this.couponModel.findOne({
+      code: couponCode.trim().toUpperCase(),
+      isActive: true,
+    });
+
+    if (!coupon) {
+      throw new BadRequestException('Coupon not found');
+    }
+
+    const now = new Date();
+
+    if (coupon.startsAt && now < coupon.startsAt) {
+      throw new BadRequestException('Coupon not started yet');
+    }
+
+    if (coupon.expiresAt && now >= coupon.expiresAt) {
+      throw new BadRequestException('Coupon expired');
+    }
+
+    if (
+      coupon.totalUsageLimit > 0 &&
+      coupon.totalUsed >= coupon.totalUsageLimit
+    ) {
+      throw new BadRequestException('Coupon usage limit exceeded');
+    }
+
+    const userCouponUsage = await this.couponUsageModel.countDocuments({
+      userId: new Types.ObjectId(userId),
+      couponId: coupon._id,
+    });
+
+    if (
+      coupon.usageLimitPerUser > 0 &&
+      userCouponUsage >= coupon.usageLimitPerUser
+    ) {
+      throw new BadRequestException('You already used this coupon');
+    }
+
+    if (coupon.minimumOrderAmount > 0 && amount < coupon.minimumOrderAmount) {
+      throw new BadRequestException(
+        `Minimum order amount should be ₹${coupon.minimumOrderAmount}`,
+      );
+    }
+
+    if (coupon.scope === CouponScope.VENDOR && coupon.vendorId && vendorId) {
+      if (coupon.vendorId.toString() !== vendorId) {
+        throw new BadRequestException('Coupon not applicable for this course');
+      }
+    }
+
+    let discount = 0;
+
+    if (coupon.type === CouponType.PERCENTAGE) {
+      discount = (amount * coupon.value) / 100;
+
+      if (coupon.maximumDiscount && discount > coupon.maximumDiscount) {
+        discount = coupon.maximumDiscount;
+      }
+    } else {
+      discount = coupon.value;
+    }
+
+    if (discount > amount) {
+      discount = amount;
+    }
+
+    return {
+      coupon,
+      discount,
+    };
+  }
+
+  async recordCourseCouponUsage(userId: string, couponId: string, coursePurchaseId: string, session?: any) {
+    await this.couponUsageModel.create([{
+      userId: new Types.ObjectId(userId),
+      couponId: new Types.ObjectId(couponId),
+      coursePurchaseId: new Types.ObjectId(coursePurchaseId),
+      usedCount: 1
+    }], { session });
+
+    await this.couponModel.findByIdAndUpdate(new Types.ObjectId(couponId), {
+      $inc: { totalUsed: 1 }
+    }, { session });
   }
 }
