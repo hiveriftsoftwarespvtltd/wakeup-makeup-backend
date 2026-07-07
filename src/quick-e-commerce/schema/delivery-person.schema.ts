@@ -7,30 +7,75 @@ export enum VehicleType {
     WALKING = 'walking'
 }
 
+export enum DeliveryStatus {
+    AVAILABLE = 'AVAILABLE',
+    ON_DELIVERY = 'ON_DELIVERY',
+    OFFLINE = 'OFFLINE',
+    BREAK = 'BREAK',
+}
 export type DeliveryPersonDocument = DeliveryPerson & Document
 @Schema({ timestamps: true })
 export class DeliveryPerson {
 
-    @Prop({ type: Types.ObjectId, ref: 'Vendor' })
-    vendorId!: Types.ObjectId
+    @Prop({
+        type: [{ type: Types.ObjectId, ref: 'Vendor' }],
+        default: [],
+    })
+    assignedVendorIds!: Types.ObjectId[];
 
     @Prop({ required: true })
     name!: string
 
     @Prop({ required: true })
-    phone!: number
+    phone!: string
+
+    @Prop({ type: Types.ObjectId, ref: 'User', required: true })
+    userId!: Types.ObjectId
+
+    @Prop({ type: Types.ObjectId, ref: 'Media' })
+    profilePhoto!: Types.ObjectId
+
+    @Prop({ type: String, required: true })
+    aadharNumber!: string
 
     @Prop({ type: String, enum: VehicleType, default: VehicleType.MOTORCYCLE })
     vehicleType!: VehicleType
 
-    @Prop()
+    @Prop({ type: String, default: null })
     vehicleNumber?: string
+
+    @Prop({ type: String, enum: DeliveryStatus, default: DeliveryStatus.AVAILABLE })
+    status!: DeliveryStatus
 
     @Prop({ default: true })
     isActive!: boolean
 
+    @Prop({ default: true })
+    isOnline!: boolean
+
     @Prop({ default: false })
     isDeleted!: boolean
+
+    @Prop({ type: Types.ObjectId, ref: 'User' })
+    addedBy!: Types.ObjectId
+
+    @Prop({
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point',
+        },
+        coordinates: {
+            type: [Number],
+            default: [0, 0], // [longitude, latitude]
+        },
+    })
+    location!: {
+        type: 'Point';
+        coordinates: number[];
+    };
 }
 
 export const DeliveryPersonSchema = SchemaFactory.createForClass(DeliveryPerson)
+
+DeliveryPersonSchema.index({ location: '2dsphere' });

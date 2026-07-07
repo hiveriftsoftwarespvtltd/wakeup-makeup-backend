@@ -69,7 +69,7 @@ import { DocumentService } from 'src/document/document.service';
 import { StaffAllocation, StaffAllocationStatus } from './schema/staff-allocation.schema';
 import { ApiResponse } from 'src/common/responses/api-response';
 import { MediaFolderName } from 'src/constants';
-import { getWeekDay, notifyAdmins, toSlug } from 'src/utils/helper';
+import { getWeekDay, notifyAdmins, toSlug, formatTimeIST, formatDateTimeIST } from 'src/utils/helper';
 import { adminPendingRequestNotificationTemplate } from 'src/utils/email.template';
 import { User, UserDocument, UserRole, RoleStatus } from 'src/user/schema/user.schema';
 import { Coupon, CouponDocument, CouponType } from 'src/coupon/schema/coupon.schema';
@@ -802,6 +802,19 @@ export class ServiceService {
                 throw new BadRequestException(`Provider only serves ${providerAny.providedGenderService}, cannot create a service for ${serviceGender}`);
             }
 
+            if (dto.costPrice >= dto.sellingPrice) {
+                throw new BadRequestException('Cost price must be less than selling price');
+            }
+
+            if (dto.sellingPrice > dto.offeredPrice) {
+                throw new BadRequestException('Selling price must be less than or equal to offered price');
+            }
+
+            const category = await this.serviceCategoryModel.findById(dto.categoryId);
+            if (!category) {
+                throw new BadRequestException('Invalid category ID');
+            }
+
             const [service] = await this.serviceModel.create(
                 [
                     {
@@ -873,7 +886,22 @@ export class ServiceService {
                 throw new BadRequestException(`Provider only serves ${providerAny.providedGenderService}, cannot update a service for ${serviceGender}`);
             }
 
+            const finalCostPrice = dto.costPrice !== undefined ? dto.costPrice : service.costPrice;
+            const finalSellingPrice = dto.sellingPrice !== undefined ? dto.sellingPrice : service.sellingPrice;
+            const finalOfferedPrice = dto.offeredPrice !== undefined ? dto.offeredPrice : service.offeredPrice;
+
+            if (finalCostPrice >= finalSellingPrice) {
+                throw new BadRequestException('Cost price must be less than selling price');
+            }
+            if (finalSellingPrice > finalOfferedPrice) {
+                throw new BadRequestException('Selling price must be less than or equal to offered price');
+            }
+
             if (dto.categoryId) {
+                const category = await this.serviceCategoryModel.findById(dto.categoryId);
+                if (!category) {
+                    throw new BadRequestException('Invalid category ID');
+                }
                 filtered.categoryId = new Types.ObjectId(dto.categoryId);
             }
 
@@ -1382,6 +1410,8 @@ export class ServiceService {
 
         const dayOfWeek = getWeekDay(bookingDate);
 
+        console.log("ServiceIds in line 1413", dto.serviceIds)
+
         const requestedServiceIds = dto.serviceIds.map(id => new Types.ObjectId(id));
         const services = await this.serviceModel.find({
             _id: { $in: requestedServiceIds }
@@ -1444,9 +1474,19 @@ export class ServiceService {
             totalDurationMinutes,
         );
 
-        const earliestSlot = slots.find(s => s.isAvailable) || null;
+        const formattedSlots = slots.map(slot => {
+            return {
+                ...slot,
+                utcStartTime: slot.startTime,
+                utcEndTime: slot.endTime,
+                startTime: formatTimeIST(slot.startTime),
+                endTime: formatTimeIST(slot.endTime)
+            };
+        });
 
-        return ApiResponse.success('Available slots', { slots, earliestSlot });
+        const earliestSlot = formattedSlots.find(s => s.isAvailable) || null;
+
+        return ApiResponse.success('Available slots', { slots: formattedSlots, earliestSlot });
     }
 
     private generateTimeSlots(
@@ -1544,6 +1584,20 @@ export class ServiceService {
 
         const { categoryIds, ...rest } = dto;
 
+        // Validate that all provided categoryIds actually exist
+        if (categoryIds && categoryIds.length > 0) {
+            const categoryObjectIds = categoryIds.map((id) => new Types.ObjectId(id));
+            const existingCategories = await this.serviceCategoryModel.find({
+                _id: { $in: categoryObjectIds },
+            }).select('_id');
+
+            if (existingCategories.length !== categoryIds.length) {
+                const foundIds = existingCategories.map((c) => c._id.toString());
+                const missingIds = categoryIds.filter((id) => !foundIds.includes(id.toString()));
+                throw new NotFoundException(`This category does not exist: ${missingIds.join(', ')}`);
+            }
+        }
+
         const lead = await this.serviceLeadModel.create({
             userId: new Types.ObjectId(userId),
             categoryIds: categoryIds.map(
@@ -1561,7 +1615,7 @@ export class ServiceService {
     }
 
 
-    async userListLeads(userId: string, categoryId?: string, page?: number, limit?: number) {
+    async userListLeads(userId: string, categoryId?: string, page?: number, limit?: number): Promise<any> {
         const pageNumber = Number(page) || 1;
         const pageSize = Number(limit) || 10;
         const skip = (pageNumber - 1) * pageSize;
@@ -1580,6 +1634,13 @@ export class ServiceService {
             .limit(pageSize)
             .lean();
 
-        return ApiResponse.success('Leads list', leads);
+        const formattedLeads = leads.map(lead => {
+            return {
+                ...lead,
+                preferredDateAndTime: lead.preferredDateAndTime ? formatDateTimeIST(lead.preferredDateAndTime) : lead.preferredDateAndTime
+            };
+        });
+
+        return ApiResponse.success('Leads list', formattedLeads);
     }
 }

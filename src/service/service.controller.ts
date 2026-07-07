@@ -78,7 +78,7 @@ export class ServiceController {
         return this.serviceService.updateCategory(dto, file, req.user._id, id);
     }
 
-    // @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
+    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
     @Get('get-all-service-categories')
     getAllCategories() {
         return this.serviceService.getAllServiceCategories();
@@ -143,10 +143,10 @@ export class ServiceController {
     // SERVICE PROVIDER
     // ===================================================
 
-    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
+    
     @Post('register-service-provider')
     @UseGuards(JwtAuthGuard)
-    
+
     @UseInterceptors(FileInterceptor('file'))
     registerProvider(
         @Req() req: any,
@@ -199,7 +199,7 @@ export class ServiceController {
     // SERVICE CRUD
     // ===================================================
 
-    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
+    // @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
     @Post('create-service')
     @UseGuards(JwtAuthGuard, RolesGuard)
     @Roles(UserRole.SERVICE_PROVIDER)
@@ -366,8 +366,5 @@ export class ServiceController {
     userListLeads(@Req() req: any, @Query('categoryId') categoryId?: string, @Query('page') page?: number, @Query('limit') limit?: number) {
         return this.serviceService.userListLeads(req.user._id, categoryId, page, limit);
     }
-
-
-
-
+    
 }

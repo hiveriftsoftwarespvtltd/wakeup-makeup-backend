@@ -1,7 +1,16 @@
-import { IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
-import { VehicleType } from '../schema/delivery-person.schema';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsMongoId, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { VehicleType, DeliveryStatus } from '../schema/delivery-person.schema';
 import { PartialType } from '@nestjs/mapped-types';
-import { Type } from 'class-transformer';
+import { Type, Transform } from 'class-transformer';
+
+export class LocationDto {
+  @IsEnum(['Point'])
+  type: 'Point';
+
+  @IsArray()
+  @IsNumber({}, { each: true })
+  coordinates: number[];
+}
 
 export class CreateDeliveryPersonDto {
   @IsNotEmpty()
@@ -9,8 +18,43 @@ export class CreateDeliveryPersonDto {
   name: string;
 
   @IsNotEmpty()
-  @IsNumber()
-  phone: number;
+  @IsString()
+  phone: string;
+
+  @IsOptional()
+  @IsMongoId()
+  userId?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  email: string;
+
+  @IsNotEmpty()
+  @IsString()
+  password: string;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  })
+  @IsArray()
+  @IsMongoId({ each: true })
+  assignedVendorIds?: string[];
+
+  @IsOptional()
+  @IsMongoId()
+  profilePhoto?: string;
+
+  @IsNotEmpty()
+  @IsString()
+  aadharNumber: string;
 
   @IsOptional()
   @IsEnum(VehicleType)
@@ -19,27 +63,73 @@ export class CreateDeliveryPersonDto {
   @IsOptional()
   @IsString()
   vehicleNumber?: string;
+
+  // @IsOptional()
+  // @Transform(({ value }) => {
+  //   if (typeof value === 'string') {
+  //     try {
+  //       return JSON.parse(value);
+  //     } catch {
+  //       return value;
+  //     }
+  //   }
+  //   return value;
+  // })
+  // @IsObject()
+  // @ValidateNested()
+  // @Type(() => LocationDto)
+  // location?: LocationDto;
+
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    return value;
+  })
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(2)
+  @IsNumber({}, { each: true })
+  location?: number[];
 }
 
-export class UpdateDeliveryPersonDto {
+export class UpdateDeliveryPersonDto extends PartialType(CreateDeliveryPersonDto) {
   @IsOptional()
-  @IsString()
-  name: string;
-
-  @IsOptional()
-  @IsNumber()
-  phone: number;
-
-  @IsOptional()
-  @IsEnum(VehicleType)
-  vehicleType?: VehicleType;
-
-  @IsOptional()
-  @IsString()
-  vehicleNumber?: string;
-
-  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
   @IsBoolean()
-  @Type(() => Boolean)
-  isActive: boolean;
+  isActive?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  @IsBoolean()
+  isOnline?: boolean;
+}
+
+export class UpdateDeliveryPersonStatusDto {
+  @IsOptional()
+  @IsEnum(DeliveryStatus)
+  status?: DeliveryStatus;
+
+  @IsOptional()
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      return JSON.parse(value);
+    }
+    return value;
+  })
+  @IsArray()
+  @ArrayMinSize(2)
+  @ArrayMaxSize(2)
+  @IsNumber({}, { each: true })
+  location?: number[];
 }

@@ -568,7 +568,7 @@ export class CreateLeadDTO {
   budget!: number;
 
   @IsDateString()
-  preferredDate!: string;
+  preferredDateAndTime!: string;
 
   @IsString()
   address!: string;

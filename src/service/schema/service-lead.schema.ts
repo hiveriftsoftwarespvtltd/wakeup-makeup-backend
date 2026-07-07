@@ -59,10 +59,10 @@ export class ServiceLead {
   budget!: number;
 
   @Prop()
-  preferredDate!: Date;
+  preferredDateAndTime!: Date;
 
-  @Prop()
-  preferredStartTime?: Date;
+  // @Prop()
+  // preferredStartTime?: Date;
 
   @Prop({ default: 1 })
   totalPersons?: number;

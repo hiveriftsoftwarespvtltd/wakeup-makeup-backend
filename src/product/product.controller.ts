@@ -107,11 +107,24 @@ export class ProductController {
         };
       }
 
+      const numericFields = [
+        'salesPrice',
+        'costPrice',
+        'offeredPrice',
+        'stock',
+        'weight',
+        'length',
+        'width',
+        'height',
+      ];
+
       // attributes.color
       if (field.startsWith('attributes.')) {
         const attrKey = field.replace('attributes.', '');
 
         variantsMap[index].attributes[attrKey] = body[key];
+      } else if (numericFields.includes(field)) {
+        variantsMap[index][field] = Number(body[key]);
       } else {
         variantsMap[index][field] = body[key];
       }
@@ -194,11 +207,24 @@ export class ProductController {
         };
       }
 
+      const numericFields = [
+        'salesPrice',
+        'costPrice',
+        'offeredPrice',
+        'stock',
+        'weight',
+        'length',
+        'width',
+        'height',
+      ];
+
       // attributes.color
       if (field.startsWith('attributes.')) {
         const attrKey = field.replace('attributes.', '');
 
         variantsMap[index].attributes[attrKey] = body[key];
+      } else if (numericFields.includes(field)) {
+        variantsMap[index][field] = Number(body[key]);
       } else {
         variantsMap[index][field] = body[key];
       }

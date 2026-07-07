@@ -12,6 +12,7 @@ export enum UserRole {
   DISTRIBUTOR = 'distributor',
   USER = 'user',
   EDUCATOR = 'educator',
+  DELIVERY_PERSON = 'delivery_person'
 }
 
 export enum AuthType {

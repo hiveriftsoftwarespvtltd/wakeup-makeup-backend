@@ -32,7 +32,7 @@ export class TicketController {
 
 
 
-  @AdminAccess(AdminModule.TICKETS, AccessType.READ)
+  @AdminAccess(AdminModule.PLATFORM, AccessType.READ)
   @Get('get-all-tickets')
   getAllTickets() {
     return this.ticketService.getAllTickets();
@@ -54,7 +54,7 @@ export class TicketController {
 
 
 
-  @AdminAccess(AdminModule.TICKETS, AccessType.WRITE)
+  @AdminAccess(AdminModule.PLATFORM, AccessType.WRITE)
   @Delete('delete/:id')
   deleteTicket(@Param('id') id: string, @Req() req: any) {
     return this.ticketService.deleteTicket(id, req.user);

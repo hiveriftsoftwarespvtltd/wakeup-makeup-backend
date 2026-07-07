@@ -91,7 +91,7 @@ export class ReviewController {
     );
   }
 
-  @AdminAccess(AdminModule.VENDORS, AccessType.READ)
+  
   @Get('product-reviews/:productId')
   @UseGuards(OptionalAuthGuard)
   async getProductReviews(

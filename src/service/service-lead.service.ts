@@ -8,7 +8,7 @@ import { ServiceBooking, ServiceBookingDocument, BookingStatus } from './schema/
 import { Service, ServiceDocument } from './schema/service.schema';
 import { LeadBooking, LeadBookingDocument, LeadBookingStatus } from './schema/service-lead-booking.schema';
 import { StaffAllocation, StaffAllocationDocument, AllocationType, StaffAllocationStatus } from './schema/staff-allocation.schema';
-import { calculateEndTime } from 'src/utils/helper';
+import { calculateEndTime, formatDateTimeIST } from 'src/utils/helper';
 import { BookLeadDTO } from './dto/service.dto';
 
 @Injectable()
@@ -23,16 +23,24 @@ export class ServiceLeadService {
     @InjectConnection() private connection: Connection
   ) { }
 
-  async getAllLeadsForAdmin() {
-    return this.leadModel.find()
+  async getAllLeadsForAdmin(): Promise<any> {
+    const leads = await this.leadModel.find()
       .populate('userId', 'name email phone avatar')
       .populate('categoryIds', 'name label')
       .populate('assignedProviderId', 'businessName phone email')
       .sort({ createdAt: -1 })
+      .lean()
       .exec();
+
+    return leads.map(lead => {
+      return {
+        ...lead,
+        preferredDateAndTime: lead.preferredDateAndTime ? formatDateTimeIST(lead.preferredDateAndTime) : lead.preferredDateAndTime
+      };
+    });
   }
 
-  async getLeadsForProvider(userId: string) {
+  async getLeadsForProvider(userId: string): Promise<any> {
     const provider = await this.providerModel.findOne({ userId });
     if (!provider) {
       throw new NotFoundException('Provider profile not found');
@@ -79,6 +87,7 @@ export class ServiceLeadService {
         delete leadObj.email;
         delete leadObj.phoneNumber;
       }
+      leadObj.preferredDateAndTime = leadObj.preferredDateAndTime ? formatDateTimeIST(leadObj.preferredDateAndTime) : leadObj.preferredDateAndTime;
       return leadObj;
     });
   }

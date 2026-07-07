@@ -185,7 +185,7 @@ export class ServiceBookingService {
 
       const selectedSlot = availableSlots.find(
         (slot) =>
-          new Date(slot.startTime).getTime() ===
+          new Date(slot.utcStartTime || slot.startTime).getTime() ===
           new Date(dto.slotStartTime).getTime() &&
           slot.availableStaff.some(
             (s: any) =>

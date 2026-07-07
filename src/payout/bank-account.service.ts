@@ -20,21 +20,31 @@ export class BankAccountService {
         @InjectModel(EducatorWalletWithdraw.name) private educatorWithdrawModel: Model<EducatorWalletWithdrawDocument>,
     ) { }
 
-    private determineOwnerType(role: string): BankAccountOwnerType {
-        switch (role) {
-            case UserRole.VENDOR:
-                return BankAccountOwnerType.VENDOR;
-            case UserRole.INFLUENCER:
-                return BankAccountOwnerType.INFLUENCER;
-            case UserRole.SERVICE_PROVIDER:
-                return BankAccountOwnerType.SERVICE_PROVIDER;
-            case UserRole.EDUCATOR:
-                return BankAccountOwnerType.EDUCATOR;
-            case UserRole.USER:
-            case UserRole.ADMIN:
-            default:
-                return BankAccountOwnerType.USER;
+    private determineOwnerTypes(roles: string[]): BankAccountOwnerType[] {
+        const ownerTypes: BankAccountOwnerType[] = [];
+        if (!roles || roles.length === 0) return [BankAccountOwnerType.USER];
+        for (const role of roles) {
+            switch (role) {
+                case UserRole.VENDOR:
+                    ownerTypes.push(BankAccountOwnerType.VENDOR);
+                    break;
+                case UserRole.INFLUENCER:
+                    ownerTypes.push(BankAccountOwnerType.INFLUENCER);
+                    break;
+                case UserRole.SERVICE_PROVIDER:
+                    ownerTypes.push(BankAccountOwnerType.SERVICE_PROVIDER);
+                    break;
+                case UserRole.EDUCATOR:
+                    ownerTypes.push(BankAccountOwnerType.EDUCATOR);
+                    break;
+                case UserRole.USER:
+                case UserRole.ADMIN:
+                default:
+                    ownerTypes.push(BankAccountOwnerType.USER);
+                    break;
+            }
         }
+        return [...new Set(ownerTypes)];
     }
 
     private async hasTransactions(accountId: string): Promise<boolean> {
@@ -49,8 +59,8 @@ export class BankAccountService {
         return !!(vendorTx || influencerTx || spTx || eduTx);
     }
 
-    async addBankAccount(userId: string, role: string, dto: CreateBankAccountDto) {
-        const ownerType = this.determineOwnerType(role);
+    async addBankAccount(userId: string, roles: string[], dto: CreateBankAccountDto) {
+        const ownerTypes = this.determineOwnerTypes(roles);
 
         // Check if it's the first account
         const existingAccountsCount = await this.bankAccountModel.countDocuments({
@@ -70,7 +80,7 @@ export class BankAccountService {
 
         const account = await this.bankAccountModel.create({
             ownerId: new Types.ObjectId(userId),
-            ownerType,
+            ownerTypes,
             accountHolderName: dto.accountHolderName,
             bankName: dto.bankName,
             ifscCode: encrypt(dto.ifscCode),

@@ -57,7 +57,7 @@ export class AuthService {
 
     // block restricted roles
     if (dto.roles && dto.roles.length > 0) {
-      const restrictedRoles = [UserRole.ADMIN, UserRole.INFLUENCER, UserRole.DISTRIBUTOR, UserRole.SUPER_ADMIN];
+      const restrictedRoles = [UserRole.ADMIN, UserRole.INFLUENCER, UserRole.DISTRIBUTOR, UserRole.SUPER_ADMIN, UserRole.DELIVERY_PERSON];
       for (const r of dto.roles) {
         if (restrictedRoles.includes(r)) {
           throw new BadRequestException(

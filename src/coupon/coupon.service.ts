@@ -59,6 +59,7 @@ export class CouponService {
       influencerId: dto.influencerId
         ? new Types.ObjectId(dto.influencerId)
         : undefined,
+      // ownerId:new Types.Object
     });
 
     return coupon;

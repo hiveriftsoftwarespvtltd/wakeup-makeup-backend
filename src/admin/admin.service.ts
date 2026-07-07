@@ -878,7 +878,24 @@ export class AdminService {
     const skip = (pageNumber - 1) * pageSize;
 
     const products = await this.productModel
-      .find({})
+      .find({}).populate([
+        {
+          path: 'vendorId', select: 'businessName location vendorPincode',
+          populate: [
+            { path: 'logo', select: 'url publicId _id' },
+            { path: 'banner', select: 'url publicId _id' },
+            { path: 'ownerId', select: '_id name email phone roles' }
+          ]
+        },
+        { path: 'categoryId', select: 'name label slug' },
+        {
+          path: 'variants', select: '-createdAt',
+          populate: [
+            { path: 'thumbnail', select: '_id url publicId size' },
+            { path: 'images', select: '_id url publicId size' }
+          ],
+        },
+      ])
       .skip(skip)
       .limit(pageSize);
 

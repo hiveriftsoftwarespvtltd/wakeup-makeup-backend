@@ -12,7 +12,7 @@ import { BookLeadDTO } from './dto/service.dto';
 export class ServiceLeadController {
   constructor(private readonly serviceLeadService: ServiceLeadService) { }
 
-    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
+  @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
   @Get('admin/all')
   @UseGuards(JwtAuthGuard, RolesGuard)
 
@@ -20,7 +20,7 @@ export class ServiceLeadController {
     return this.serviceLeadService.getAllLeadsForAdmin();
   }
 
-    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
+  // @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.READ)
   @Get('provider/my-leads')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SERVICE_PROVIDER)
@@ -35,7 +35,7 @@ export class ServiceLeadController {
     return this.serviceLeadService.deleteLeadByAdmin(req.user._id, leadId);
   }
 
-    @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
+  // @AdminAccess(AdminModule.SERVICE_PROVIDERS, AccessType.WRITE)
   @Post('apply/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SERVICE_PROVIDER)
