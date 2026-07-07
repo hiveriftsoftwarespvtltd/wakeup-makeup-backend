@@ -15,6 +15,7 @@ export enum PaymentStatus {
 export enum QuickOrderStatus {
     PLACED = "PLACED",
     PROCESSING = "PROCESSING",
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY",
     PARTIALLY_DELIVERED = "PARTIALLY_DELIVERED",
     DELIVERED = "DELIVERED",
     PARTIALLY_CANCELLED = "PARTIALLY_CANCELLED",
@@ -25,7 +26,6 @@ export enum OrderItemStatus {
     PENDING = 'pending',
     CONFIRMED = 'confirmed',
     PROCESSING = 'processing',
-    SHIPPED = 'shipped',
     DELIVERED = 'delivered',
     CANCELLED = 'cancelled',
     RETURNED = 'returned',
@@ -82,6 +82,16 @@ export class OrderItem {
 
     @Prop({ required: true })
     totalPrice!: number;
+
+    @Prop({ type: Types.ObjectId, ref: 'Coupon' })
+    couponId?: Types.ObjectId
+
+    @Prop({ type: String })
+    couponCode?: string
+
+    @Prop({type:Number})
+    appliedCouponDiscountAmount?:number
+
 
     // allocated discount
     @Prop({ default: 0 })
@@ -198,7 +208,8 @@ export class QuickOrder {
     @Prop({ type: ShippingAddressSchema, required: true })
     shippingAddress: ShippingAddress
 
-    @Prop({})
+    @Prop({ type: [OrderItemSchema], default: [] })
+    items: OrderItem[]
 
     @Prop({
         enum: PaymentMethod,
@@ -212,7 +223,7 @@ export class QuickOrder {
     })
     paymentStatus: PaymentStatus;
 
-    @Prop({ type: [Types.ObjectId], ref: 'QuickVendorOrder', default: [] })
+    @Prop({ type: [Types.ObjectId], ref: 'VendorQuickOrder', default: [] })
     vendorOrders: Types.ObjectId[]
 
     @Prop()
@@ -232,6 +243,22 @@ export class QuickOrder {
 
     @Prop({ default: 0 })
     grandTotal: number;
+
+    @Prop({
+        type: {
+            type: String,
+            enum: ['Point'],
+            default: 'Point',
+        },
+        coordinates: {
+            type: [Number],
+            default: [0, 0],
+        },
+    })
+    location!: {
+        type: string;
+        coordinates: number[];
+    };
 
     @Prop({
         enum: QuickOrderStatus,

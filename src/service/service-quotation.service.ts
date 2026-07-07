@@ -11,6 +11,7 @@ import { ServiceStaff, ServiceStaffDocument } from './schema/service-staff.schem
 import { ServiceProvider, ServiceProviderDocument } from './schema/service-provider.schema';
 import { CreateServiceQuotationDto, UpdateServiceQuotationDto, QuotationItemDto } from './dto/service-quotation.dto';
 import { ApiResponse } from '../common/responses/api-response';
+import { formatDateIST, formatTimeIST } from 'src/utils/helper';
 
 @Injectable()
 export class ServiceQuotationService {
@@ -28,18 +29,17 @@ export class ServiceQuotationService {
     private computeTotals(items: QuotationItemDto[]) {
         let subtotal = 0;
         const processedItems = items.map(item => {
-            const totalPrice = item.quantity * item.unitOfferedPrice;
+            const totalPrice = item.quantity * item.unitPrice;
             subtotal += totalPrice;
             return {
                 ...item,
-                serviceId: item.serviceId ? new Types.ObjectId(item.serviceId) : undefined,
                 totalPrice
             };
         });
         return { items: processedItems, subtotal, finalAmount: subtotal };
     }
 
-    private async checkStaffAvailability(providerId: string, serviceDate: Date, slotStartTime: Date, slotEndTime: Date, requiredStaffCount: number) {
+    private async checkStaffAvailability(providerId: string, serviceDate: Date, slotStartTime: Date | undefined, slotEndTime: Date | undefined, requiredStaffCount: number) {
         const startOfDay = new Date(serviceDate);
         startOfDay.setHours(0, 0, 0, 0);
 
@@ -73,26 +73,34 @@ export class ServiceQuotationService {
             },
         }).lean();
 
-        const slotStartMin = slotStartTime.getHours() * 60 + slotStartTime.getMinutes();
-        const slotEndMin = slotEndTime.getHours() * 60 + slotEndTime.getMinutes();
+        let availableStaff = staff;
 
-        // Count how many staff members are actually available (not overlapping)
-        const availableStaff = staff.filter(staffMember => {
-            const hasBooking = existingBookings.some(booking => {
-                if (booking.staffId?.toString() !== staffMember._id.toString()) {
-                    return false;
-                }
+        if (slotStartTime && slotEndTime) {
+            const slotStartMin = slotStartTime.getHours() * 60 + slotStartTime.getMinutes();
+            const slotEndMin = slotEndTime.getHours() * 60 + slotEndTime.getMinutes();
 
-                const bookingDateObjStart = new Date(booking.slotStartTime);
-                const bookingDateObjEnd = new Date(booking.slotEndTime);
+            // Count how many staff members are actually available (not overlapping)
+            availableStaff = staff.filter(staffMember => {
+                const hasBooking = existingBookings.some(booking => {
+                    if (booking.staffId?.toString() !== staffMember._id.toString()) {
+                        return false;
+                    }
 
-                const bookingStart = bookingDateObjStart.getHours() * 60 + bookingDateObjStart.getMinutes();
-                const bookingEnd = bookingDateObjEnd.getHours() * 60 + bookingDateObjEnd.getMinutes();
+                    if (!booking.slotStartTime || !booking.slotEndTime) {
+                        return true; // Overlaps with an all-day/unspecified time booking
+                    }
 
-                return (slotStartMin < bookingEnd && slotEndMin > bookingStart);
+                    const bookingDateObjStart = new Date(booking.slotStartTime);
+                    const bookingDateObjEnd = new Date(booking.slotEndTime);
+
+                    const bookingStart = bookingDateObjStart.getHours() * 60 + bookingDateObjStart.getMinutes();
+                    const bookingEnd = bookingDateObjEnd.getHours() * 60 + bookingDateObjEnd.getMinutes();
+
+                    return (slotStartMin < bookingEnd && slotEndMin > bookingStart);
+                });
+                return !hasBooking;
             });
-            return !hasBooking;
-        });
+        }
 
         if (availableStaff.length < requiredStaffCount) {
             throw new BadRequestException(`Insufficient staff available for this time and duration. Only ${availableStaff.length} staff are available.`);
@@ -109,7 +117,20 @@ export class ServiceQuotationService {
 
         const provider = await this.providerModel.findById(new Types.ObjectId(providerId));
         if (!provider) {
-             throw new NotFoundException('Service provider not found');
+            throw new NotFoundException('Service provider not found');
+        }
+
+        if (dto.serviceDate && lead.preferredDateAndTime) {
+            const dtoServiceDate = new Date(dto.serviceDate);
+            const leadPreferredDate = new Date(lead.preferredDateAndTime as any);
+
+            if (
+                dtoServiceDate.getFullYear() !== leadPreferredDate.getFullYear() ||
+                dtoServiceDate.getMonth() !== leadPreferredDate.getMonth() ||
+                dtoServiceDate.getDate() !== leadPreferredDate.getDate()
+            ) {
+                throw new BadRequestException('Quotation service date must match the lead\'s preferred date');
+            }
         }
 
         const providerAny = provider as any;
@@ -120,35 +141,46 @@ export class ServiceQuotationService {
             }
         }
 
-        await this.checkStaffAvailability(
-            providerId,
-            new Date(dto.serviceDate),
-            new Date(dto.slotStartTime),
-            new Date(dto.slotEndTime),
-            dto.requiredStaffCount
-        );
+        if (dto.slotStartTime && dto.slotEndTime) {
+            await this.checkStaffAvailability(
+                providerId,
+                dto.serviceDate,
+                dto.slotStartTime,
+                dto.slotEndTime,
+                dto.requiredStaffCount
+            );
+        }
 
         const { items, subtotal, finalAmount } = this.computeTotals(dto.items);
+
+        const user = await this.connection.models.User.findById(lead.userId);
+
+        let calculatedDuration = 0;
+        if (dto.slotStartTime && dto.slotEndTime) {
+            calculatedDuration = Math.round((dto.slotEndTime.getTime() - dto.slotStartTime.getTime()) / 60000);
+            if (calculatedDuration < 0) {
+                throw new BadRequestException('slotEndTime must be after slotStartTime');
+            }
+        }
 
         const quotation = await this.quotationModel.create({
             leadId: new Types.ObjectId(dto.leadId),
             providerId: new Types.ObjectId(providerId),
-            serviceDate: new Date(dto.serviceDate),
-            slotStartTime: new Date(dto.slotStartTime),
-            slotEndTime: new Date(dto.slotEndTime),
+            serviceDate: dto.serviceDate,
+            slotStartTime: dto.slotStartTime,
+            slotEndTime: dto.slotEndTime,
+            totalDurationMinutes: calculatedDuration,
             requiredStaffCount: dto.requiredStaffCount,
             // note: dto.note,
             items,
             subtotal,
             finalAmount,
             notes: dto.notes,
-            includedItems: dto.includedItems || [],
-            excludedItems: dto.excludedItems || [],
-            validTill: new Date(dto.validTill),
-            customerName: dto.customerName,
-            customerPhone: dto.customerPhone,
-            customerEmail: dto.customerEmail,
-            serviceAddress: dto.serviceAddress,
+            validTill: dto.validTill,
+            customerName: user ? user.name : lead.name,
+            customerPhone: lead.phoneNumber,
+            customerEmail: lead.email,
+            serviceAddress: `${lead.address}, ${lead.city}, ${lead.state} - ${lead.pincode}`,
             status: ServiceQuotationStatus.PENDING,
             version: 1
         });
@@ -156,7 +188,7 @@ export class ServiceQuotationService {
         return ApiResponse.success('Quotation created successfully', quotation);
     }
 
-    async getLeadQuotations(userId: string, leadId: string) {
+    async getLeadQuotations(userId: string, leadId: string): Promise<any> {
         const lead = await this.leadModel.findById(new Types.ObjectId(leadId));
         if (!lead) {
             throw new NotFoundException('Service lead not found');
@@ -168,7 +200,15 @@ export class ServiceQuotationService {
         }
 
         const quotations = await this.quotationModel.find({ leadId: new Types.ObjectId(leadId) }).lean();
-        return ApiResponse.success('Quotations fetched successfully', quotations);
+        const formattedQuotations = quotations.map(q => {
+            return {
+                ...q,
+                serviceDate: q.serviceDate ? formatDateIST(q.serviceDate) : q.serviceDate,
+                slotStartTime: q.slotStartTime ? formatTimeIST(q.slotStartTime) : q.slotStartTime,
+                slotEndTime: q.slotEndTime ? formatTimeIST(q.slotEndTime) : q.slotEndTime,
+            };
+        });
+        return ApiResponse.success('Quotations fetched successfully', formattedQuotations);
     }
 
     async deleteQuotation(providerId: string, id: string) {
@@ -177,7 +217,7 @@ export class ServiceQuotationService {
             throw new NotFoundException('Quotation not found');
         }
 
-        if (quotation.providerId.toString() !== providerId) {
+        if (quotation.providerId.toString() !== String(providerId)) {
             throw new ForbiddenException('You do not have permission to delete this quotation');
         }
 
@@ -196,7 +236,7 @@ export class ServiceQuotationService {
         }
 
 
-        if (quotation.providerId.toString() !== providerId) {
+        if (quotation.providerId.toString() !== String(providerId)) {
             throw new ForbiddenException('You do not have permission to update this quotation');
         }
 
@@ -214,13 +254,7 @@ export class ServiceQuotationService {
 
         // if (dto.note !== undefined) quotation.note = dto.note;
         if (dto.notes !== undefined) quotation.notes = dto.notes;
-        if (dto.includedItems !== undefined) quotation.includedItems = dto.includedItems;
-        if (dto.excludedItems !== undefined) quotation.excludedItems = dto.excludedItems;
-        if (dto.validTill !== undefined) quotation.validTill = new Date(dto.validTill);
-        if (dto.customerName !== undefined) quotation.customerName = dto.customerName;
-        if (dto.customerPhone !== undefined) quotation.customerPhone = dto.customerPhone;
-        if (dto.customerEmail !== undefined) quotation.customerEmail = dto.customerEmail;
-        if (dto.serviceAddress !== undefined) quotation.serviceAddress = dto.serviceAddress;
+        if (dto.validTill !== undefined) quotation.validTill = dto.validTill;
 
         await quotation.save();
         return ApiResponse.success('Quotation updated successfully', quotation);
@@ -300,6 +334,9 @@ export class ServiceQuotationService {
                 await this.staffAllocationModel.insertMany(allocations, { session });
             }
 
+            quotation.bookingId = leadBooking._id;
+            await quotation.save({ session })
+
             await session.commitTransaction();
             return ApiResponse.success('Quotation accepted and lead booking created successfully with assigned staff', { quotation, leadBooking, assignedStaffIds });
         } catch (error) {
@@ -320,7 +357,7 @@ export class ServiceQuotationService {
                 throw new NotFoundException('Quotation not found');
             }
 
-            if (quotation.providerId.toString() !== providerId) {
+            if (quotation.providerId.toString() !== String(providerId)) {
                 throw new ForbiddenException('You do not have permission to complete this quotation');
             }
 

@@ -16,7 +16,7 @@ export class BankAccountController {
     @Roles(UserRole.VENDOR, UserRole.INFLUENCER, UserRole.SERVICE_PROVIDER, UserRole.EDUCATOR)
     @Post('add')
     addBankAccount(@Req() req: any, @Body() dto: CreateBankAccountDto) {
-        return this.bankAccountService.addBankAccount(req.user._id.toString(), req.user.role, dto);
+        return this.bankAccountService.addBankAccount(req.user._id.toString(), req.user.roles, dto);
     }
 
     @Roles(UserRole.VENDOR, UserRole.INFLUENCER, UserRole.SERVICE_PROVIDER, UserRole.EDUCATOR)

@@ -182,7 +182,7 @@ export class AdminController {
     return this.influencerService.getAllCommissionSlabs(page, limit);
   }
 
-  @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
+  @AdminAccess(AdminModule.PLATFORM, AccessType.WRITE)
   // @Post('vendor-payout/settle')
   // settleVendorPayout(@Body() dto: SettleVendorPayoutDto) {
   //   return this.payoutService.settleVendorPayout(dto);
@@ -245,7 +245,7 @@ export class AdminController {
   //   );
   // }
 
-  @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
+  @AdminAccess(AdminModule.PLATFORM, AccessType.WRITE)
   // @Post('vendor-pays/:vendorId')
   // async payVendor(
   //   @Req() req: any,
@@ -423,7 +423,7 @@ export class AdminController {
     return await this.adminService.restoreServiceProvider(id);
   }
 
-  @AdminAccess(AdminModule.HOME_CONTENT, AccessType.READ)
+  @AdminAccess(AdminModule.PLATFORM, AccessType.READ)
   @Get('cloudinary-storage-size')
   async getCloudinaryStorageSize() {
     const data = await this.adminService.getCloudinaryStorageSize();

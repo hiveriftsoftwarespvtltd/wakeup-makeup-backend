@@ -19,7 +19,7 @@ export class CourseCommentController {
     }
 
     @UseGuards(JwtAuthGuard)
-    // @AdminAccess(AdminModule.COURSES, AccessType.READ)
+    
     @Get('list/:lessonId')
     async getCommentsByLesson(@Req() req: any, @Param('lessonId') lessonId: string) {
         return await this.courseCommentService.getCommentsByLesson(req.user._id.toString(), lessonId);

@@ -88,7 +88,7 @@ export class CartService {
 
     const productIds = cart.items.map((item) => item.product);
     const variantIds = cart.items.map((item) => item.variant);
-    
+
 
     const products = await this.productModel.find({
       _id: { $in: productIds },
@@ -101,7 +101,7 @@ export class CartService {
       isDeleted: false,
       isActive: true,
     });
-    
+
 
     const productMap = new Map(
       products.map((product) => [product._id.toString(), product]),
@@ -110,7 +110,7 @@ export class CartService {
     const variantMap = new Map(
       variants.map((variant) => [variant._id.toString(), variant]),
     );
-   
+
 
     const validItems = cart.items.filter((item) => {
       // const product = productMap.get(item.product.toString());
@@ -145,14 +145,14 @@ export class CartService {
       return true;
     });
 
-    
+
 
     if (validItems.length !== cart.items.length) {
       cart.items = validItems;
       await cart.save();
     }
 
- 
+
 
     return cart;
   }
@@ -196,7 +196,7 @@ export class CartService {
       user: new Types.ObjectId(userId),
     });
 
-    
+
 
     if (!cart) {
       cart = await this.cartModel.create({
@@ -207,7 +207,7 @@ export class CartService {
 
     await this.cleanInvalidCartItems(cart);
 
-  
+
 
 
     const existingItem = cart.items.find(
@@ -217,7 +217,7 @@ export class CartService {
     );
 
 
-   
+
 
     if (existingItem) {
       const updatedQty = existingItem.quantity + quantity;
@@ -235,11 +235,11 @@ export class CartService {
       } as any);
     }
 
-    
+
 
     await cart.save();
 
-    
+
 
     // return await this.fetchUserCart(userId);
     return ApiResponse.success("Item added to cart successfully", cart)
@@ -274,11 +274,11 @@ export class CartService {
       return ApiResponse.success('Cart not found', { items: [] });
     }
 
-   
+
 
     await this.cleanInvalidCartItems(cart);
 
-    
+
 
     return ApiResponse.success('Cart fetched successfully', cart);
   }
@@ -372,6 +372,7 @@ export class CartService {
   }
 
   async estimateCartSummary(userId: string, addressId: string) {
+    console.log("UserId and AddressId in line 375 : ", userId, addressId)
     const address = await this.addressModel
       .findOne({
         user: new Types.ObjectId(userId),
@@ -561,6 +562,8 @@ export class CartService {
         breadth: width,
         height,
       });
+
+      console.log("Shipping Charge", shipping)
 
       totalShippingCharge += shipping.shippingCharge;
 

@@ -34,12 +34,15 @@ export class BankAccount {
     })
     ownerId: Types.ObjectId;
 
-    @Prop({
-        required: true,
-        enum: BankAccountOwnerType,
-        index: true,
-    })
-    ownerType: BankAccountOwnerType;
+    // @Prop({
+    //     required: true,
+    //     enum: BankAccountOwnerType,
+    //     index: true,
+    // })
+    // ownerType: BankAccountOwnerType;
+
+    @Prop({ type: [String], enum: BankAccountOwnerType, default: [] })
+    ownerTypes: BankAccountOwnerType[]
 
     @Prop({
         required: true,

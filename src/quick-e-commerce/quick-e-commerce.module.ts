@@ -10,7 +10,8 @@ import { Vendor, VendorSchema } from 'src/vendor/schema/vendor.schema';
 import { ProductVariant, ProductVariantSchema } from 'src/product/schema/product-variant.schema';
 import { DeliveryPerson, DeliveryPersonSchema } from './schema/delivery-person.schema';
 import { DeliveryPersonService } from './delivery-person.service';
-import { DeliveryPersonController } from './delivery-person.controller';
+import { VendorDeliveryPersonController } from './vendor-delivery-person.controller';
+import { AdminDeliveryPersonController } from './admin-delivery-person.controller';
 import { QuickVendorController } from './quick-vendor.controller';
 import { QuickVendorService } from './quick-vendor.service';
 import { QuickAdminController } from './quick-admin.controller';
@@ -20,33 +21,72 @@ import { QuickOrder, QuickOrderSchema } from './schema/quick-order.schema';
 import { QuickDeliveryCart, QuickDeliveryCartSchema } from './schema/quick-delivery-cart';
 import { QuickDeliveryCartController } from './quick-delivery-cart.controller';
 import { QuickDeliveryCartService } from './quick-delivery-cart.service';
+import { QuickDeliveryConfiguration, QuickDeliveryConfigurationSchema } from './schema/quickDeliveryConfig';
+import { QuickDeliveryConfigController } from './quick-delivery-config.controller';
+import { QuickDeliveryConfigService } from './quick-delivery-config.service';
+import { Admin, AdminSchema } from 'src/admin/schema/admin.schema';
+import { Coupon, CouponSchema } from 'src/coupon/schema/coupon.schema';
+import { QuickDeliveryCheckoutService } from './quick-delivery-checkout.service';
+import { QuickDeliveryCheckoutController } from './quick-delivery-checkout.controller';
+import { QuickOrderService } from './quick-delivery-order.service';
+import { QuickOrderController } from './quick-delivery-order.controller';
+import { VendorQuickOrderController } from './vendor-quick-order.controller';
+import { AdminQuickOrderController } from './admin-quick-order.controller';
+import { DeliveryPersonQuickOrderController } from './delivery-person-quick-order.controller';
+import { UserWallet, UserWalletSchema } from 'src/wallet/schema/user/user.wallet.schema';
+import { WalletTransaction, WalletTransactionSchema } from 'src/wallet/schema/user/user.wallet.transactions';
+import { CommissionRate, CommissionRateSchema } from 'src/admin/schema/commission-rate.schema';
+import { DocumentModule } from 'src/document/document.module';
+import { Notification, NotificationSchema } from 'src/notification/schema/notification.schema';
+import { NotificationModule } from 'src/notification/notification.module';
 
 @Module({
-  imports: [MongooseModule.forFeature([
-    { name: Product.name, schema: ProductSchema }, 
-    { name: Category.name, schema: CategorySchema }, 
-    { name: User.name, schema: UserSchema }, 
-    { name: Address.name, schema: AddressSchema },
-    { name: Vendor.name, schema: VendorSchema },
-    { name: ProductVariant.name, schema: ProductVariantSchema },
-    { name: DeliveryPerson.name, schema: DeliveryPersonSchema },
-    { name: VendorQuickOrder.name, schema: VendorOrderSchema },
-    { name: QuickOrder.name, schema: QuickOrderSchema },
-    { name: QuickDeliveryCart.name, schema: QuickDeliveryCartSchema }
-  ])],
+  imports: [
+    MongooseModule.forFeature([
+      { name: Product.name, schema: ProductSchema },
+      { name: Category.name, schema: CategorySchema },
+      { name: User.name, schema: UserSchema },
+      { name: Address.name, schema: AddressSchema },
+      { name: Vendor.name, schema: VendorSchema },
+      { name: ProductVariant.name, schema: ProductVariantSchema },
+      { name: DeliveryPerson.name, schema: DeliveryPersonSchema },
+      { name: VendorQuickOrder.name, schema: VendorOrderSchema },
+      { name: QuickOrder.name, schema: QuickOrderSchema },
+      { name: QuickDeliveryCart.name, schema: QuickDeliveryCartSchema },
+      { name: QuickDeliveryConfiguration.name, schema: QuickDeliveryConfigurationSchema },
+      { name: Admin.name, schema: AdminSchema },
+      { name: Coupon.name, schema: CouponSchema },
+      { name: UserWallet.name, schema: UserWalletSchema },
+      { name: WalletTransaction.name, schema: WalletTransactionSchema },
+      { name: CommissionRate.name, schema: CommissionRateSchema },
+      { name: Notification.name, schema: NotificationSchema }
+    ]),
+    DocumentModule,
+    NotificationModule
+  ],
   providers: [
-    QuickECommerceService, 
+    QuickECommerceService,
     DeliveryPersonService,
     QuickVendorService,
     QuickAdminService,
-    QuickDeliveryCartService
+    QuickDeliveryCartService,
+    QuickDeliveryConfigService,
+    QuickDeliveryCheckoutService,
+    QuickOrderService
   ],
   controllers: [
-    QuickECommerceController, 
-    DeliveryPersonController,
+    QuickECommerceController,
+    VendorDeliveryPersonController,
+    AdminDeliveryPersonController,
     QuickVendorController,
     QuickAdminController,
-    QuickDeliveryCartController
+    QuickDeliveryCartController,
+    QuickDeliveryConfigController,
+    QuickDeliveryCheckoutController,
+    QuickOrderController,
+    VendorQuickOrderController,
+    AdminQuickOrderController,
+    DeliveryPersonQuickOrderController
   ]
 })
 export class QuickECommerceModule { }

@@ -17,7 +17,14 @@ export class QuickDeliveryCartService {
   async getCart(userId: string) {
     let cart = await this.cartModel
       .findOne({ user: new Types.ObjectId(userId) })
-      .populate('items.product','_id name slug description')
+      .populate({
+        path: 'items.product',
+        select: '_id name slug description vendorId',
+        populate: {
+          path: 'vendorId',
+          select: '_id businessName slug logo'
+        }
+      })
       .populate({
         path: 'items.variant',
         select: '_id productId attributes salesPrice offeredPrice stock',
@@ -26,16 +33,54 @@ export class QuickDeliveryCartService {
           select: "_id publicId url"
         }
       })
-      // .populate('items.variant')
       .exec();
 
     if (!cart) {
-      cart = await this.cartModel.create({ user: new Types.ObjectId(userId), items: [] });
+      const newCart = await this.cartModel.create({ user: new Types.ObjectId(userId), items: [] });
+      cart = newCart as any;
     }
+
+    const cartObj = (cart as any).toObject ? (cart as any).toObject() : cart;
+
+    const vendorMap = new Map();
+    let totalPrice = 0;
+    let discountPrice = 0;
+
+    for (const item of cartObj.items || []) {
+      const vendor = item.product?.vendorId;
+      const vendorIdStr = vendor?._id?.toString() || 'unknown';
+      if (!vendorMap.has(vendorIdStr)) {
+        vendorMap.set(vendorIdStr, {
+          vendor: vendor || null,
+          items: []
+        });
+      }
+      vendorMap.get(vendorIdStr).items.push(item);
+
+      const variant = item.variant;
+      if (variant) {
+        const salesPrice = variant.salesPrice || 0;
+        const offeredPrice = variant.offeredPrice || 0;
+        const quantity = item.quantity || 1;
+
+        totalPrice += salesPrice * quantity;
+        if (salesPrice > offeredPrice && offeredPrice > 0) {
+          discountPrice += (salesPrice - offeredPrice) * quantity;
+        }
+      }
+    }
+
+    if (vendorMap.size > 1) {
+      cartObj.groupedItems = Array.from(vendorMap.values());
+    }
+
+    cartObj.totalPrice = totalPrice;
+    cartObj.discountPrice = discountPrice;
+    cartObj.finalPrice = totalPrice - discountPrice;
 
     return {
       message: 'Cart retrieved successfully',
-      data: cart,
+      data: cartObj,
     };
   }
 

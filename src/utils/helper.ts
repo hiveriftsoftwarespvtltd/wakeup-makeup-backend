@@ -108,6 +108,30 @@ export const calculateEndTime = (
   return new Date(date.getTime() + durationMinutes * 60000);
 };
 
+export const formatTimeIST = (date: Date | string): string => {
+  if (!date) return '';
+  return new Date(date).toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  }).toUpperCase();
+};
+
+export const formatDateIST = (date: Date | string): string => {
+  if (!date) return '';
+  return new Date(date).toLocaleDateString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+};
+
+export const formatDateTimeIST = (date: Date | string): string => {
+  if (!date) return '';
+  return `${formatDateIST(date)} at ${formatTimeIST(date)}`;
+};
 
 export const geocodePincode = async (
   pincode: string,

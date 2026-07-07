@@ -22,6 +22,7 @@ export class QuickDeliveryCart {
 
     @Prop({ type: [QuickDeliveryCartItemSchema], default: [] })
     items!: QuickDeliveryCartItem[]
+
 }
 
 export const QuickDeliveryCartSchema = SchemaFactory.createForClass(QuickDeliveryCart)

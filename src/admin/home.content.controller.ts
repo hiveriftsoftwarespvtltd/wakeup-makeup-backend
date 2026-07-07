@@ -16,7 +16,7 @@ export class HomeContentController {
 
     @UseGuards(JwtAuthGuard, RolesGuard)
 
-    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
+    @AdminAccess(AdminModule.PLATFORM, AccessType.WRITE)
     @Post('add')
     @UseInterceptors(FileFieldsInterceptor([
         { name: 'computerImage', maxCount: 1 },
@@ -46,7 +46,7 @@ export class HomeContentController {
 
     @UseGuards(JwtAuthGuard, RolesGuard)
 
-    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.READ)
+    @AdminAccess(AdminModule.PLATFORM, AccessType.READ)
     @Get('get-details/:id')
     findOne(@Param('id') id: string) {
         return this.homeContentService.findOne(id);
@@ -55,7 +55,7 @@ export class HomeContentController {
 
     @UseGuards(JwtAuthGuard, RolesGuard)
 
-    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
+    @AdminAccess(AdminModule.PLATFORM, AccessType.WRITE)
     @Put('update/:id')
     @UseInterceptors(FileFieldsInterceptor([
         { name: 'computerImage', maxCount: 1 },
@@ -81,7 +81,7 @@ export class HomeContentController {
 
     @UseGuards(JwtAuthGuard, RolesGuard)
 
-    @AdminAccess(AdminModule.HOME_CONTENT, AccessType.WRITE)
+    @AdminAccess(AdminModule.PLATFORM, AccessType.WRITE)
     @Delete('delete-home-content/:id')
     remove(@Param('id') id: string) {
         return this.homeContentService.remove(id);

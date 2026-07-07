@@ -13,11 +13,36 @@ export enum CouponType {
   FIXED = 'fixed',
 }
 
+
 export enum CouponScope {
   PLATFORM = 'platform',
-  VENDOR = 'vendor',
-  INFLUENCER = 'influencer',
+  PRODUCT = 'product',
+  QUICK_DELIVERY = 'quick_delivery',
+  SERVICE = 'service',
+  COURSE = 'course',
+  VENDOR = 'vendor'
 }
+
+
+export enum CouponFor {
+  USER = 'user',
+  ADMIN = 'admin',
+  INFLUENCER = 'influencer',
+  EDUCATOR = 'educator',
+  SERVICE_PROVIDERS = 'service_providers'
+
+}
+
+
+export enum OwnerType {
+  SUPER_ADMIN = 'super_admin',
+  ADMIN = 'admin',
+  INFLUENCER = 'influencer',
+  EDUCATOR = 'educator',
+  SERVICE_PROVIDER = 'service_provider',
+  VENDOR = 'vendor'
+}
+
 
 @Schema({ timestamps: true })
 export class Coupon {
@@ -100,6 +125,29 @@ export class Coupon {
 
   @Prop({ default: true })
   isInfluencerCoupon!: boolean;
+
+  @Prop({ type: Types.ObjectId, ref: 'User', default: null })
+  createdBy!: Types.ObjectId
+
+  @Prop({ type: String, enum: OwnerType, default: OwnerType.SUPER_ADMIN })
+  ownerType!: OwnerType
+
+  @Prop({ type: Types.ObjectId, default: null })
+  ownerId: Types.ObjectId
+
+  @Prop({ type: [Types.ObjectId], ref: 'Product', default: [] })
+  appliedProducts!: Types.ObjectId[]
+
+  @Prop({ type: [Types.ObjectId], ref: 'Service', default: [] })
+  appliedServices!: Types.ObjectId[]
+
+  @Prop({ type: [Types.ObjectId], ref: 'Course', default: [] })
+  appliedCourses!: Types.ObjectId[]
+
+  @Prop({ type: String, enum: CouponFor, default: CouponFor.USER })
+  couponFor!: CouponFor
+
+
 }
 
 export const CouponSchema = SchemaFactory.createForClass(Coupon);

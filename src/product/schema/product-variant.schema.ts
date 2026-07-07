@@ -1,10 +1,17 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Types,Document } from "mongoose";
+import { Types, Document } from "mongoose";
 
 
 export type ProductVariantDocument = ProductVariant & Document
 
-@Schema({ timestamps: true })
+@Schema({
+  timestamps: true, toObject: {
+    flattenMaps: true,
+  },
+  toJSON: {
+    flattenMaps: true,
+  },
+})
 export class ProductVariant {
 
   @Prop({
@@ -53,17 +60,17 @@ export class ProductVariant {
   })
   attributes!: Record<string, string>;
 
-  @Prop({required:true,min:0})
-  weight!:number
+  @Prop({ required: true, min: 0 })
+  weight!: number
 
-  @Prop({required:true,min:0})
-  length!:number
+  @Prop({ required: true, min: 0 })
+  length!: number
 
-  @Prop({required:true,min:0})
-  width!:number
+  @Prop({ required: true, min: 0 })
+  width!: number
 
-  @Prop({required:true,min:0})
-  height!:number
+  @Prop({ required: true, min: 0 })
+  height!: number
 
 
   @Prop({ default: true })

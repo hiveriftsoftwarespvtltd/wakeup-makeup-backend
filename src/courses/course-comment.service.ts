@@ -15,7 +15,6 @@ export class CourseCommentService {
     ) { }
 
     private async checkEnrollment(userId: string, courseId: Types.ObjectId | string) {
-        console.log("UserId and Course Id",courseId,userId)
         const isEnrolled = await this.courseEnrollmentModel.findOne({
             learnerId: new Types.ObjectId(userId),
             courseId: new Types.ObjectId(courseId)
